@@ -1,55 +1,28 @@
-pub mod component {
-
-    trait Component {
-        type Msg;
-        type Propagation;
-        fn update(&mut self, msg: Self::Msg) -> Self::Propagation;
-        fn view(&self) -> super::dom::Node;
-    }
-
-}
-
 pub mod dom {
     extern crate wasm_bindgen;
+    extern crate web_sys;
 
     use std::collections::HashMap;
     use std::collections::HashSet;
     use wasm_bindgen::prelude::*;
 
-    #[wasm_bindgen]
-    extern {
-        fn get_element_by_id(s: &str);
+    pub fn render(before: &Node, after: Node, root: &mut web_sys::Element) -> Result<Node, JsValue>{
+        match &after {
+            Node::Element {tag_name, attributes, children} =>
+                for node in children {
+                }
+            Node::Text(text) => ()
+        }
+        Ok(after)
     }
 
-    pub struct Render<'a> {
-        rootId: &'a str,
-        rootNode: Node<'a>,
-    }
-
-    impl<'a> Render<'a> {
-        pub fn new(rootId: &'a str) -> Render<'a> {
-            Render {
-                rootId: rootId,
-                rootNode: Node::Text(""),
-            }
-        }
-
-        pub fn update(&mut self) {
-            
-        }
-
-        pub fn render(node: &Node) {
-            get_element_by_id("");
-        }
-    }
-
-    pub enum Node<'a> {
+    pub enum Node {
         Element {
             tag_name: String,
             attributes: Attributes,
-            children: Vec<Node<'a>>,
+            children: Vec<Node>,
         },
-        Text(&'a str),
+        Text(String),
     }
 
     pub struct Attributes {
@@ -67,24 +40,29 @@ pub mod dom {
             }
         }
 
-        pub fn add_class(mut self, class: String) -> Self {
-            self.class.insert(class);
+        pub fn with_class(mut self, class_name: impl Into<String>) -> Self {
+            self.class.insert(class_name.into());
             self
         }
 
-        pub fn add_id(mut self, id: String) -> Self {
-            self.id.insert(id);
+        pub fn with_id(mut self, id_name: impl Into<String>) -> Self {
+            self.id.insert(id_name.into());
             self
         }
 
-        pub fn add_attribute(mut self, name: String, value: String) -> Self {
-            self.attributes.insert(name, value);
+        pub fn with_attribute(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
+            self.attributes.insert(name.into(), value.into());
             self
         }
     }
 
-    pub struct Events<Msg> {
-        on_click: Box<FnOnce()->Msg>,
+    pub struct Events {
+        on_click: Box<FnOnce()->EventResult>,
+    }
+
+    pub struct EventResult {
+        prevent_default: bool,
+        stop_propagation: bool,
     }
 
 }
