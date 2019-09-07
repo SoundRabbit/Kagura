@@ -6,14 +6,66 @@ pub mod dom {
     use std::collections::HashSet;
     use wasm_bindgen::prelude::*;
 
-    pub fn render(before: &Node, after: Node, root: &mut web_sys::Element) -> Result<Node, JsValue>{
-        match &after {
-            Node::Element {tag_name, attributes, children} =>
-                for node in children {
-                }
-            Node::Text(text) => ()
+    pub enum Rendered {
+        Element(web_sys::Element),
+        Text(String)
+    }
+
+    pub fn render(node: &Node) {
+        let window = web_sys::window().expect("no global `window` exists");
+        let document = window.document().expect("should have a document on window");
+        let body = document.body().expect("document should have a body");
+        let rendered = render_all(node, node, &document).expect("some error is occured in rendering");
+        match &rendered {
+            Rendered::Element(element) => {
+                body.append_child(element);
+            }
+            _ => ()
         }
-        Ok(after)
+    }
+
+    pub fn render_all(
+        before: &Node,
+        after: &Node,
+        document: &web_sys::Document,
+    ) -> Result<Rendered, JsValue> {
+        match after {
+            Node::Element {
+                tag_name,
+                attributes,
+                children,
+            } => {
+                let el = document.create_element(tag_name)?;
+                let class: Vec<&str> = attributes
+                    .class
+                    .iter()
+                    .map(|class_name| -> &str { &class_name })
+                    .collect();
+                let id: Vec<&str> = attributes
+                    .id
+                    .iter()
+                    .map(|class_name| -> &str { &class_name })
+                    .collect();
+
+                el.set_class_name(&class.join(" "));
+                el.set_id(&id.join(" "));
+                for attr in &attributes.attributes {
+                    let (attr, value) = attr;
+                    el.set_attribute(attr, value);
+                    el.set_inner_html("");
+                }
+
+                for child in children {
+                    match render_all(child, child, document)? {
+                        Rendered::Element(element) => { el.append_child(&element); },
+                        Rendered::Text(text) => { el.set_inner_html(&text); }
+                    }
+                }
+
+                Ok(Rendered::Element(el))
+            }
+            Node::Text(text) => Ok(Rendered::Text(text.to_string())),
+        }
     }
 
     pub enum Node {
@@ -57,7 +109,7 @@ pub mod dom {
     }
 
     pub struct Events {
-        on_click: Box<FnOnce()->EventResult>,
+        on_click: Box<FnOnce() -> EventResult>,
     }
 
     pub struct EventResult {
