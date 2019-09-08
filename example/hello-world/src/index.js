@@ -1,3 +1,1 @@
-import("../pkg").then(wasm => {
-    wasm.f();
-});
+import("../pkg");

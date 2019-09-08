@@ -1,120 +1,136 @@
-pub mod dom {
-    extern crate wasm_bindgen;
-    extern crate web_sys;
+extern crate rand;
 
-    use std::collections::HashMap;
-    use std::collections::HashSet;
-    use wasm_bindgen::prelude::*;
+use rand::prelude::*;
 
-    pub enum Rendered {
-        Element(web_sys::Element),
-        Text(String)
-    }
+pub mod dom;
 
-    pub fn render(node: &Node) {
-        let window = web_sys::window().expect("no global `window` exists");
-        let document = window.document().expect("should have a document on window");
-        let body = document.body().expect("document should have a body");
-        let rendered = render_all(node, node, &document).expect("some error is occured in rendering");
-        match &rendered {
-            Rendered::Element(element) => {
-                body.append_child(element);
-            }
-            _ => ()
+static mut APP: Option<Box<Composable>> = None;
+
+trait Composable {
+    fn update(&mut self, id: u128);
+    fn render(&mut self) -> dom::Node;
+    fn get_id(&self) -> u128;
+}
+
+pub struct Component<Msg, State> {
+    state: State,
+    update: fn(&mut State, &Msg),
+    render: fn(&State) -> Html,
+    msg: Option<Msg>,
+    children: Vec<Box<Composable>>,
+    id: u128,
+}
+
+pub enum Html {
+    Composable(Box<Composable>),
+    TextNode(String),
+    ElementNode {
+        tag_name: String,
+        children: Vec<Html>,
+    },
+}
+
+impl<Msg, State> Component<Msg, State> {
+    pub fn new(
+        state: State,
+        update: fn(&mut State, &Msg),
+        render: fn(&State) -> Html,
+    ) -> Component<Msg, State> {
+        Component {
+            state,
+            update,
+            render,
+            msg: None,
+            children: vec![],
+            id: rand::random::<u128>(),
         }
     }
 
-    pub fn render_all(
-        before: &Node,
-        after: &Node,
-        document: &web_sys::Document,
-    ) -> Result<Rendered, JsValue> {
-        match after {
-            Node::Element {
-                tag_name,
-                attributes,
-                children,
-            } => {
-                let el = document.create_element(tag_name)?;
-                let class: Vec<&str> = attributes
-                    .class
-                    .iter()
-                    .map(|class_name| -> &str { &class_name })
-                    .collect();
-                let id: Vec<&str> = attributes
-                    .id
-                    .iter()
-                    .map(|class_name| -> &str { &class_name })
-                    .collect();
+    fn append_composable(&mut self, composable: Box<Composable>) {
+        self.children.push(composable);
+    }
 
-                el.set_class_name(&class.join(" "));
-                el.set_id(&id.join(" "));
-                for attr in &attributes.attributes {
-                    let (attr, value) = attr;
-                    el.set_attribute(attr, value);
-                    el.set_inner_html("");
-                }
-
-                for child in children {
-                    match render_all(child, child, document)? {
-                        Rendered::Element(element) => { el.append_child(&element); },
-                        Rendered::Text(text) => { el.set_inner_html(&text); }
-                    }
-                }
-
-                Ok(Rendered::Element(el))
+    fn adapt_html(&mut self, html: Html) -> dom::Node {
+        match html {
+            Html::Composable(mut composable) => {
+                let node = composable.render();
+                self.append_composable(composable);
+                node
             }
-            Node::Text(text) => Ok(Rendered::Text(text.to_string())),
+            Html::TextNode(text) => dom::Node::Text(text),
+            Html::ElementNode { tag_name, children } => dom::Node::Element {
+                tag_name: tag_name,
+                attributes: dom::Attributes::new(),
+                events: dom::Events::new(),
+                children: children
+                    .into_iter()
+                    .map(|child| self.adapt_html(child))
+                    .collect::<Vec<dom::Node>>(),
+            },
         }
     }
+}
 
-    pub enum Node {
-        Element {
-            tag_name: String,
-            attributes: Attributes,
-            children: Vec<Node>,
-        },
-        Text(String),
-    }
-
-    pub struct Attributes {
-        class: HashSet<String>,
-        id: HashSet<String>,
-        attributes: HashMap<String, String>,
-    }
-
-    impl Attributes {
-        pub fn new() -> Attributes {
-            Attributes {
-                class: HashSet::new(),
-                id: HashSet::new(),
-                attributes: HashMap::new(),
+impl<Msg, State> Composable for Component<Msg, State> {
+    fn update(&mut self, id: u128) {
+        if id == self.id {
+            if let Some(msg) = &self.msg {
+                (self.update)(&mut self.state, msg);
+            }
+        } else {
+            for child in &mut self.children {
+                (*child).update(id);
             }
         }
-
-        pub fn with_class(mut self, class_name: impl Into<String>) -> Self {
-            self.class.insert(class_name.into());
-            self
-        }
-
-        pub fn with_id(mut self, id_name: impl Into<String>) -> Self {
-            self.id.insert(id_name.into());
-            self
-        }
-
-        pub fn with_attribute(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
-            self.attributes.insert(name.into(), value.into());
-            self
-        }
     }
 
-    pub struct Events {
-        on_click: Box<FnOnce() -> EventResult>,
+    fn render(&mut self) -> dom::Node {
+        self.children.clear();
+        let html = (self.render)(&self.state);
+        self.adapt_html(html)
     }
 
-    pub struct EventResult {
-        prevent_default: bool,
-        stop_propagation: bool,
+    fn get_id(&self) -> u128 {
+        self.id
     }
+}
 
+impl Html {
+    pub fn component<M, S>(component: Component<M, S>) -> Html
+    where
+        M: 'static,
+        S: 'static,
+    {
+        Html::Composable(Box::new(component))
+    }
+    pub fn text(text: impl Into<String>) -> Html {
+        Html::TextNode(text.into())
+    }
+    pub fn node(tag_name: impl Into<String>, children: Vec<Html>) -> Html {
+        Html::ElementNode {
+            tag_name: tag_name.into(),
+            children,
+        }
+    }
+}
+
+pub fn run<M, S>(mut component: Component<M, S>)
+where
+        M: 'static,
+        S: 'static,
+{
+    component.render();
+    let composable: Box<Composable> = Box::new(component);
+    // unsafe {
+    //     APP = Some(composable);
+    // }
+}
+
+fn update(id: u128) {
+    // unsafe {
+    //     if let Some(app) = &mut APP {
+    //         app.update(id);
+    //         app.render();
+    //     }
+    // }
 }

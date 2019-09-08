@@ -1,17 +1,20 @@
 extern crate osashimi;
 extern crate wasm_bindgen;
+
 use wasm_bindgen::prelude::*;
 
-#[wasm_bindgen]
-pub fn f() {
-    use osashimi::dom::*;
-    let node = Node::Element {
-        tag_name: "h1".to_string(),
-        attributes: Attributes::new().with_attribute("style", "color: red"),
-        children: vec![
-            Node::Text("Hello Osashimi".to_string())
-        ]
-    };
+#[wasm_bindgen(start)]
+pub fn main() {
+    osashimi::Component::new(0, update, render);
+}
 
-    render(&node);
+type State = u64;
+
+enum Msg {}
+
+fn update(state: &mut State, msg: &Msg) {}
+
+fn render(state: &State) -> osashimi::Html {
+    use osashimi::Html;
+    Html::text("hello osashimi")
 }
