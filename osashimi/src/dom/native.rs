@@ -19,7 +19,10 @@ pub fn render(
     document: &web_sys::Document,
     root: web_sys::Element,
 ) -> dom::Node {
-    render_all(&after, document);
+    match render_all(&after, document) {
+        RenderingResult::Text(text) => {root.append_child(text.as_ref());},
+        RenderingResult::Element(element) => {root.append_child(element.as_ref());}
+    }
     after
 }
 

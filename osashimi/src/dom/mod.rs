@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-mod native;
+pub mod native;
 
 pub enum Node {
     Element {

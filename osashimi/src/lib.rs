@@ -1,6 +1,9 @@
 extern crate rand;
+extern crate wasm_bindgen;
+extern crate web_sys;
 
 use rand::prelude::*;
+use wasm_bindgen::prelude::*;
 
 pub mod dom;
 
@@ -112,6 +115,9 @@ impl Html {
             children,
         }
     }
+    pub fn h1(children: Vec<Html>) -> Html {
+        Html::node("h1", children)
+    }
 }
 
 pub fn run<M, S>(mut component: Component<M, S>)
@@ -119,18 +125,21 @@ where
         M: 'static,
         S: 'static,
 {
-    component.render();
+    let window = web_sys::window().unwrap();
+    let document = window.document().unwrap();
+    let node = component.render();
+    dom::native::render(None, node, &document, document.get_element_by_id("app").unwrap());
     let composable: Box<Composable> = Box::new(component);
-    // unsafe {
-    //     APP = Some(composable);
-    // }
+    unsafe {
+        APP = Some(composable);
+    }
 }
 
 fn update(id: u128) {
-    // unsafe {
-    //     if let Some(app) = &mut APP {
-    //         app.update(id);
-    //         app.render();
-    //     }
-    // }
+    unsafe {
+        if let Some(app) = &mut APP {
+            app.update(id);
+            app.render();
+        }
+    }
 }
