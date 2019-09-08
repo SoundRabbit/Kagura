@@ -120,7 +120,7 @@ impl Html {
     }
 }
 
-pub fn run<M, S>(mut component: Component<M, S>)
+pub fn run<M, S>(mut component: Component<M, S>, id: &str)
 where
         M: 'static,
         S: 'static,
@@ -128,7 +128,7 @@ where
     let window = web_sys::window().unwrap();
     let document = window.document().unwrap();
     let node = component.render();
-    dom::native::render(None, node, &document, document.get_element_by_id("app").unwrap());
+    dom::native::render(None, node, &document, document.get_element_by_id(id).unwrap());
     let composable: Box<Composable> = Box::new(component);
     unsafe {
         APP = Some(composable);
