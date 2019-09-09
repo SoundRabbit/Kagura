@@ -1,5 +1,10 @@
+extern crate wasm_bindgen;
+extern crate web_sys;
+
+use rand::prelude::*;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use wasm_bindgen::prelude::*;
 
 pub mod native;
 
@@ -20,7 +25,7 @@ pub struct Attributes {
 }
 
 pub struct Events {
-    on_click: Option<Box<FnMut()>>,
+    on_click: Option<Closure<FnMut()>>,
 }
 
 impl Attributes {
@@ -51,5 +56,10 @@ impl Attributes {
 impl Events {
     pub fn new() -> Events {
         Events { on_click: None }
+    }
+    pub fn with_on_click(mut self, handler: Closure<FnMut()>) -> Self {
+        native::console_log("set on_click");
+        self.on_click = Some(handler);
+        self
     }
 }

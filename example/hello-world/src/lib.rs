@@ -10,11 +10,20 @@ pub fn main() {
 
 type State = u64;
 
-enum Msg {}
+enum Msg {
+    CountUp,
+}
 
-fn update(state: &mut State, msg: &Msg) {}
+fn update(state: &mut State, msg: &Msg) {
+    *state += 1;
+}
 
-fn render(state: &State) -> osashimi::Html {
+fn render(state: &State) -> osashimi::Html<Msg> {
+    use osashimi::Event;
     use osashimi::Html;
-    Html::h1(vec![Html::text("hello osashimi")])
+    Html::h1(
+        vec![],
+        vec![Event::OnClick(Box::new(|| Msg::CountUp))],
+        vec![Html::text(state.to_string())],
+    )
 }

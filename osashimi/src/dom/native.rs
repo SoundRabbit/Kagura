@@ -1,58 +1,97 @@
 extern crate wasm_bindgen;
-extern crate web_sys;
 
 use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen]
+extern "C" {
+    pub type Element;
+    type Text;
+    type Node;
+
+    #[wasm_bindgen(js_namespace = console, js_name="log")]
+    pub fn console_log(message: &str);
+
+    #[wasm_bindgen(js_namespace = document, js_name="getElementById")]
+    pub fn get_element_by_id(id: &str) -> Element;
+
+    #[wasm_bindgen(js_namespace = document, js_name="createElement")]
+    fn create_element(tag_name: &str) -> Element;
+
+    #[wasm_bindgen(method, js_name = "appendChild")]
+    fn append_child_element(this: &Element, element: Element);
+
+    #[wasm_bindgen(method, js_name = "addEventListener")]
+    fn add_event_listener(this: &Element, type_ : &str, closure: &Closure<FnMut()>);
+
+    #[wasm_bindgen(method, getter, structural, js_name = "parentNode")]
+    fn parent_node(this: &Element) -> Node;
+
+    #[wasm_bindgen(method, js_name = "remove")]
+    fn remove(this: &Element);
+
+    #[wasm_bindgen(method, js_name = "addEventListener")]
+    fn set_attribute(this: &Element, name: &str, value: &str);
+
+    #[wasm_bindgen(js_namespace = document, js_name="createTextNode")]
+    fn create_text_node(text: &str) -> Text;
+
+    #[wasm_bindgen(method, js_name = "appendChild")]
+    fn append_child_text_node(this: &Element, text: Text);
+}
 
 use crate::dom;
 
 pub type Render =
-    fn(Option<dom::Node>, dom::Node, &web_sys::Document, web_sys::Element) -> dom::Node;
+    fn(Option<dom::Node>, dom::Node, String) -> dom::Node;
 
 enum RenderingResult {
-    Text(web_sys::Text),
-    Element(web_sys::Element),
+    Text(Text),
+    Element(Element),
 }
 
 pub fn render(
-    before: Option<dom::Node>,
     after: dom::Node,
-    document: &web_sys::Document,
-    root: web_sys::Element,
-) -> dom::Node {
-    match render_all(&after, document) {
-        RenderingResult::Text(text) => {root.append_child(text.as_ref());},
-        RenderingResult::Element(element) => {root.append_child(element.as_ref());}
+    root: &Element
+) {
+    match render_all(after) {
+        RenderingResult::Text(text) => {
+            root.append_child_text_node(text);
+        }
+        RenderingResult::Element(element) => {
+            root.append_child_element(element);
+        }
     }
-    after
 }
 
-fn render_all(node: &dom::Node, document: &web_sys::Document) -> RenderingResult {
+fn render_all(node: dom::Node) -> RenderingResult {
     match node {
-        dom::Node::Text(text) => RenderingResult::Text(document.create_text_node(&text)),
+        dom::Node::Text(text) => RenderingResult::Text(create_text_node(&text)),
         dom::Node::Element {
             tag_name,
             attributes,
             events,
             children,
         } => {
-            if let Ok(root) = document.create_element(&tag_name) {
-                let class: Vec<&str> = attributes.class.iter().map(|id| &id as &str).collect();
-                let class = class.join(" ");
-                let id: Vec<&str> = attributes.id.iter().map(|id| &id as &str).collect();
-                let id = id.join(" ");
-                for (attribute, value) in &attributes.attributes {
-                    root.set_attribute(&attribute, &value);
-                }
-                for child in children {
-                    match render_all(child, document) {
-                        RenderingResult::Text(text) => root.append_child(text.as_ref()),
-                        RenderingResult::Element(element) => root.append_child(element.as_ref()),
-                    };
-                }
-                RenderingResult::Element(root)
-            } else {
-                RenderingResult::Text(document.create_text_node(""))
+            let root = create_element(&tag_name);
+            let class: Vec<&str> = attributes.class.iter().map(|id| &id as &str).collect();
+            let class = class.join(" ");
+            let id: Vec<&str> = attributes.id.iter().map(|id| &id as &str).collect();
+            let id = id.join(" ");
+            for (attribute, value) in &attributes.attributes {
+                root.set_attribute(&attribute, &value);
             }
+            if let Some(on_click) = events.on_click {
+                dom::native::console_log("on_click");
+                root.add_event_listener("click", &on_click);
+                on_click.forget();
+            }
+            for child in children {
+                match render_all(child) {
+                    RenderingResult::Text(text) => root.append_child_text_node(text),
+                    RenderingResult::Element(element) => root.append_child_element(element),
+                };
+            }
+            RenderingResult::Element(root)
         }
     }
 }
