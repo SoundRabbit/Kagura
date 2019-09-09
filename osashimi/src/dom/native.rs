@@ -50,9 +50,11 @@ extern "C" {
     #[wasm_bindgen(method, js_name = "remove")]
     fn remove(this: &Element);
 
-    #[wasm_bindgen(method, js_name = "addEventListener")]
+    #[wasm_bindgen(method, js_name = "setAttribute")]
     fn set_attribute(this: &Element, name: &str, value: &str);
 
+    #[wasm_bindgen(method, setter = parentNode)]
+    fn set_id(this: &Element, id :&str);
 }
 
 use crate::dom;
@@ -63,6 +65,16 @@ enum NodeKind {
 }
 
 pub fn render(after: dom::Node, root: &Element) -> Option<Element>{
+    match render_all(after) {
+        NodeKind::Text(text) => None,
+        NodeKind::Element(element) => {
+            root.append_child(&element);
+            Some(element)
+        }
+    }
+}
+
+pub fn rerender(after: dom::Node, root: &Element) -> Option<Element>{
     let parent = root.parent_node();
     match render_all(after) {
         NodeKind::Text(text) => None,
@@ -89,6 +101,8 @@ fn render_all(node: dom::Node) -> NodeKind {
             let class = class.join(" ");
             let id: Vec<&str> = attributes.id.iter().map(|id| &id as &str).collect();
             let id = id.join(" ");
+            root.set_attribute("id", &id);
+            root.set_attribute("class", &class);
             for (attribute, value) in &attributes.attributes {
                 root.set_attribute(&attribute, &value);
             }

@@ -72,6 +72,7 @@ impl<Msg, State> Component<Msg, State> {
         match html {
             Html::Composable(mut composable) => {
                 if let Some(child) = self.children.get_mut(*child_index) {
+                    *child_index += 1;
                     (*child).render(Some(id))
                 } else {
                     let node = composable.render(Some(id));
@@ -207,7 +208,7 @@ fn update(id: u128, msg: &Any) {
         if let Some((app, root)) = &mut APP {
             app.update(id, msg);
             let node = app.render(Some(id));
-            if let Some(new_root) = dom::native::render(node, root) {
+            if let Some(new_root) = dom::native::rerender(node, root) {
                 *root = new_root;
             }
         }
