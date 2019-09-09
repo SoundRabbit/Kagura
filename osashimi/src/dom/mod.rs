@@ -14,6 +14,7 @@ pub enum Node {
         attributes: Attributes,
         events: Events,
         children: Vec<Node>,
+        rerender: bool,
     },
     Text(String),
 }

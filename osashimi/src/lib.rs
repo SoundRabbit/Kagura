@@ -4,15 +4,15 @@ extern crate wasm_bindgen;
 mod dom;
 
 use rand::prelude::*;
-use wasm_bindgen::prelude::*;
 use std::any;
 use std::any::Any;
+use wasm_bindgen::prelude::*;
 
 static mut APP: Option<(Box<Composable>, dom::native::Element)> = None;
 
 trait Composable {
     fn update(&mut self, id: u128, msg: &Any);
-    fn render(&mut self) -> dom::Node;
+    fn render(&mut self, id: Option<u128>) -> dom::Node;
     fn get_id(&self) -> u128;
 }
 
@@ -53,12 +53,14 @@ impl<Msg, State> Component<Msg, State> {
         update: fn(&mut State, &Msg),
         render: fn(&State) -> Html<Msg>,
     ) -> Component<Msg, State> {
+        let id = rand::random::<u128>();
+        dom::native::console_log(&(id.to_string() + ": create"));
         Component {
             state,
             update,
             render,
             children: vec![],
-            id: rand::random::<u128>(),
+            id: id,
         }
     }
 
@@ -66,10 +68,43 @@ impl<Msg, State> Component<Msg, State> {
         self.children.push(composable);
     }
 
-    fn adapt_html(&mut self, html: Html<Msg>) -> dom::Node {
+    fn adapt_html_lazy(&mut self, html: Html<Msg>, child_index: &mut usize, id: u128) -> dom::Node{
         match html {
             Html::Composable(mut composable) => {
-                let node = composable.render();
+                if let Some(child) = self.children.get_mut(*child_index) {
+                    (*child).render(Some(id))
+                } else {
+                    let node = composable.render(Some(id));
+                    self.append_composable(composable);
+                    node
+                }
+            },
+            Html::TextNode(text) => dom::Node::Text(text),
+            Html::ElementNode {
+                tag_name,
+                attributes,
+                events,
+                children,
+            } => {
+                let children = children
+                    .into_iter()
+                    .map(|child| self.adapt_html_lazy(child, child_index, id))
+                    .collect::<Vec<dom::Node>>();
+                dom::Node::Element {
+                    tag_name,
+                    attributes: dom::Attributes::new(),
+                    events: dom::Events::new(),
+                    children,
+                    rerender: false
+                }
+            }
+        }
+    }
+
+    fn adapt_html_force(&mut self, html: Html<Msg>) -> dom::Node {
+        match html {
+            Html::Composable(mut composable) => {
+                let node = composable.render(None);
                 self.append_composable(composable);
                 node
             }
@@ -82,7 +117,7 @@ impl<Msg, State> Component<Msg, State> {
             } => {
                 let children = children
                     .into_iter()
-                    .map(|child| self.adapt_html(child))
+                    .map(|child| self.adapt_html_force(child))
                     .collect::<Vec<dom::Node>>();
                 let attributes =
                     attributes
@@ -94,7 +129,7 @@ impl<Msg, State> Component<Msg, State> {
                                     attributes.with_attribute(attr, val)
                                 }
                             },
-                        );
+                        ).with_id(self.id.to_string());
                 let component_id = self.id;
                 let events =
                     events
@@ -111,6 +146,7 @@ impl<Msg, State> Component<Msg, State> {
                     attributes,
                     events,
                     children,
+                    rerender: true
                 }
             }
         }
@@ -130,14 +166,51 @@ impl<Msg, State> Composable for Component<Msg, State> {
         }
     }
 
-    fn render(&mut self) -> dom::Node {
-        self.children.clear();
+    fn render(&mut self, id: Option<u128>) -> dom::Node {
         let html = (self.render)(&self.state);
-        self.adapt_html(html)
+        if let Some(id) = id {
+            if id == self.id {
+                self.children.clear();
+                self.adapt_html_force(html)
+            } else {
+                self.adapt_html_lazy(html, &mut 0, id)
+            }
+        } else {
+            self.adapt_html_force(html)
+        }
     }
 
     fn get_id(&self) -> u128 {
         self.id
+    }
+}
+
+pub fn run<M, S>(mut component: Component<M, S>, id: &str)
+where
+    M: 'static,
+    S: 'static,
+{
+    let node = component.render(None);
+    let root = dom::native::get_element_by_id(id);
+    let root = dom::native::render(node, &root);
+    let composable: Box<Composable> = Box::new(component);
+    if let Some(root) = root {
+        unsafe {
+            APP = Some((composable, root));
+        }
+    }
+}
+
+fn update(id: u128, msg: &Any) {
+    dom::native::console_log(&id.to_string());
+    unsafe {
+        if let Some((app, root)) = &mut APP {
+            app.update(id, msg);
+            let node = app.render(Some(id));
+            if let Some(new_root) = dom::native::render(node, root) {
+                *root = new_root;
+            }
+        }
     }
 }
 
@@ -165,6 +238,27 @@ impl<Msg> Html<Msg> {
             events,
         }
     }
+    pub fn a(
+        attributes: Vec<Attribute>,
+        events: Vec<Event<Msg>>,
+        children: Vec<Html<Msg>>,
+    ) -> Self {
+        Html::node("a", attributes, events, children)
+    }
+    pub fn button(
+        attributes: Vec<Attribute>,
+        events: Vec<Event<Msg>>,
+        children: Vec<Html<Msg>>,
+    ) -> Self {
+        Html::node("button", attributes, events, children)
+    }
+    pub fn div(
+        attributes: Vec<Attribute>,
+        events: Vec<Event<Msg>>,
+        children: Vec<Html<Msg>>,
+    ) -> Self {
+        Html::node("div", attributes, events, children)
+    }
     pub fn h1(
         attributes: Vec<Attribute>,
         events: Vec<Event<Msg>>,
@@ -172,35 +266,46 @@ impl<Msg> Html<Msg> {
     ) -> Self {
         Html::node("h1", attributes, events, children)
     }
-}
-
-pub fn run<M, S>(mut component: Component<M, S>, id: &str)
-where
-    M: 'static,
-    S: 'static,
-{
-    let node = component.render();
-    let root = dom::native::get_element_by_id(id);
-    dom::native::render(
-        node,
-        &root,
-    );
-    let composable: Box<Composable> = Box::new(component);
-    unsafe {
-        APP = Some((composable, root));
+    pub fn h2(
+        attributes: Vec<Attribute>,
+        events: Vec<Event<Msg>>,
+        children: Vec<Html<Msg>>,
+    ) -> Self {
+        Html::node("h2", attributes, events, children)
     }
-}
-
-fn update (id: u128, msg: &Any) {
-    dom::native::console_log("update");
-    unsafe {
-        if let Some((app, root)) = &mut APP {
-            app.update(id, msg);
-            let node = app.render();
-            dom::native::render(
-                node,
-                root
-            );
-        }
+    pub fn h3(
+        attributes: Vec<Attribute>,
+        events: Vec<Event<Msg>>,
+        children: Vec<Html<Msg>>,
+    ) -> Self {
+        Html::node("h3", attributes, events, children)
+    }
+    pub fn h4(
+        attributes: Vec<Attribute>,
+        events: Vec<Event<Msg>>,
+        children: Vec<Html<Msg>>,
+    ) -> Self {
+        Html::node("h4", attributes, events, children)
+    }
+    pub fn h5(
+        attributes: Vec<Attribute>,
+        events: Vec<Event<Msg>>,
+        children: Vec<Html<Msg>>,
+    ) -> Self {
+        Html::node("h5", attributes, events, children)
+    }
+    pub fn h6(
+        attributes: Vec<Attribute>,
+        events: Vec<Event<Msg>>,
+        children: Vec<Html<Msg>>,
+    ) -> Self {
+        Html::node("h6", attributes, events, children)
+    }
+    pub fn span(
+        attributes: Vec<Attribute>,
+        events: Vec<Event<Msg>>,
+        children: Vec<Html<Msg>>,
+    ) -> Self {
+        Html::node("span", attributes, events, children)
     }
 }

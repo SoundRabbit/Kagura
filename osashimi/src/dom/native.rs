@@ -1,12 +1,24 @@
 extern crate wasm_bindgen;
 
 use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsValue;
 
 #[wasm_bindgen]
 extern "C" {
+    /*型 */
+
+    pub type EventTarget;
+
+    #[wasm_bindgen(extends = EventTarget)]
+    pub type Node;
+
+    #[wasm_bindgen(extends = Node)]
     pub type Element;
-    type Text;
-    type Node;
+
+    #[wasm_bindgen(extends = Node)]
+    pub type Text;
+
+    /*直下 */
 
     #[wasm_bindgen(js_namespace = console, js_name="log")]
     pub fn console_log(message: &str);
@@ -17,14 +29,23 @@ extern "C" {
     #[wasm_bindgen(js_namespace = document, js_name="createElement")]
     fn create_element(tag_name: &str) -> Element;
 
-    #[wasm_bindgen(method, js_name = "appendChild")]
-    fn append_child_element(this: &Element, element: Element);
+    #[wasm_bindgen(js_namespace = document, js_name="createTextNode")]
+    fn create_text_node(text: &str) -> Text;
+
+    /* EventTargetのメソッド */
 
     #[wasm_bindgen(method, js_name = "addEventListener")]
-    fn add_event_listener(this: &Element, type_ : &str, closure: &Closure<FnMut()>);
+    fn add_event_listener(this: &EventTarget, type_: &str, closure: &Closure<FnMut()>);
 
-    #[wasm_bindgen(method, getter, structural, js_name = "parentNode")]
-    fn parent_node(this: &Element) -> Node;
+    /* Nodeのメソッド */
+
+    #[wasm_bindgen(method, js_name = "appendChild")]
+    fn append_child(this: &Node, a_child: &Node);
+
+    #[wasm_bindgen(method, getter = parentNode)]
+    fn parent_node(this: &Node) -> Node;
+
+    /* Elementのメソッド */
 
     #[wasm_bindgen(method, js_name = "remove")]
     fn remove(this: &Element);
@@ -32,45 +53,36 @@ extern "C" {
     #[wasm_bindgen(method, js_name = "addEventListener")]
     fn set_attribute(this: &Element, name: &str, value: &str);
 
-    #[wasm_bindgen(js_namespace = document, js_name="createTextNode")]
-    fn create_text_node(text: &str) -> Text;
-
-    #[wasm_bindgen(method, js_name = "appendChild")]
-    fn append_child_text_node(this: &Element, text: Text);
 }
 
 use crate::dom;
 
-pub type Render =
-    fn(Option<dom::Node>, dom::Node, String) -> dom::Node;
-
-enum RenderingResult {
+enum NodeKind {
     Text(Text),
-    Element(Element),
+    Element(Element)
 }
 
-pub fn render(
-    after: dom::Node,
-    root: &Element
-) {
+pub fn render(after: dom::Node, root: &Element) -> Option<Element>{
+    let parent = root.parent_node();
     match render_all(after) {
-        RenderingResult::Text(text) => {
-            root.append_child_text_node(text);
-        }
-        RenderingResult::Element(element) => {
-            root.append_child_element(element);
+        NodeKind::Text(text) => None,
+        NodeKind::Element(element) => {
+            parent.append_child(&element);
+            root.remove();
+            Some(element)
         }
     }
 }
 
-fn render_all(node: dom::Node) -> RenderingResult {
+fn render_all(node: dom::Node) -> NodeKind {
     match node {
-        dom::Node::Text(text) => RenderingResult::Text(create_text_node(&text)),
+        dom::Node::Text(text) => NodeKind::Text(create_text_node(&text)),
         dom::Node::Element {
             tag_name,
             attributes,
             events,
             children,
+            rerender,
         } => {
             let root = create_element(&tag_name);
             let class: Vec<&str> = attributes.class.iter().map(|id| &id as &str).collect();
@@ -87,11 +99,11 @@ fn render_all(node: dom::Node) -> RenderingResult {
             }
             for child in children {
                 match render_all(child) {
-                    RenderingResult::Text(text) => root.append_child_text_node(text),
-                    RenderingResult::Element(element) => root.append_child_element(element),
-                };
+                    NodeKind::Text(text) => {root.append_child(&text);}
+                    NodeKind::Element(element) => {root.append_child(&element);}
+                }
             }
-            RenderingResult::Element(root)
+            NodeKind::Element(root)
         }
     }
 }
