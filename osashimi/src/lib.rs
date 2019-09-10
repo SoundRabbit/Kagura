@@ -8,7 +8,7 @@ use std::any;
 use std::any::Any;
 use wasm_bindgen::prelude::*;
 
-static mut APP: Option<(Box<Composable>, dom::native::Element)> = None;
+static mut APP: Option<(Box<Composable>, dom::native::Renderer)> = None;
 
 trait Composable {
     fn update(&mut self, id: u128, msg: &Any);
@@ -68,7 +68,7 @@ impl<Msg, State> Component<Msg, State> {
         self.children.push(composable);
     }
 
-    fn adapt_html_lazy(&mut self, html: Html<Msg>, child_index: &mut usize, id: u128) -> dom::Node{
+    fn adapt_html_lazy(&mut self, html: Html<Msg>, child_index: &mut usize, id: u128) -> dom::Node {
         match html {
             Html::Composable(mut composable) => {
                 if let Some(child) = self.children.get_mut(*child_index) {
@@ -79,7 +79,7 @@ impl<Msg, State> Component<Msg, State> {
                     self.append_composable(composable);
                     node
                 }
-            },
+            }
             Html::TextNode(text) => dom::Node::Text(text),
             Html::ElementNode {
                 tag_name,
@@ -96,7 +96,7 @@ impl<Msg, State> Component<Msg, State> {
                     attributes: dom::Attributes::new(),
                     events: dom::Events::new(),
                     children,
-                    rerender: false
+                    rerender: false,
                 }
             }
         }
@@ -120,34 +120,30 @@ impl<Msg, State> Component<Msg, State> {
                     .into_iter()
                     .map(|child| self.adapt_html_force(child))
                     .collect::<Vec<dom::Node>>();
-                let attributes =
-                    attributes
-                        .into_iter()
-                        .fold(
-                            dom::Attributes::new(),
-                            |attributes, attribute| match attribute {
-                                Attribute::Attribute(attr, val) => {
-                                    attributes.with_attribute(attr, val)
-                                }
-                            },
-                        ).with_id(self.id.to_string());
+                let attributes = attributes
+                    .into_iter()
+                    .fold(
+                        dom::Attributes::new(),
+                        |attributes, attribute| match attribute {
+                            Attribute::Attribute(attr, val) => attributes.with_attribute(attr, val),
+                        },
+                    )
+                    .with_id(self.id.to_string());
                 let component_id = self.id;
                 let events =
                     events
                         .into_iter()
                         .fold(dom::Events::new(), |events, event| match event {
-                            Event::OnClick(mut handler) => {
-                                events.with_on_click(Closure::wrap(Box::new(move || {
-                                    update(component_id, &handler());
-                                })))
-                            }
+                            Event::OnClick(mut handler) => events.with_on_click(move || {
+                                update(component_id, &handler());
+                            }),
                         });
                 dom::Node::Element {
                     tag_name,
                     attributes,
                     events,
                     children,
-                    rerender: true
+                    rerender: true,
                 }
             }
         }
@@ -193,24 +189,20 @@ where
 {
     let node = component.render(None);
     let root = dom::native::get_element_by_id(id);
-    let root = dom::native::render(node, &root);
+    let renderer = dom::native::Renderer::new(node, &root);
     let composable: Box<Composable> = Box::new(component);
-    if let Some(root) = root {
-        unsafe {
-            APP = Some((composable, root));
-        }
+    unsafe {
+        APP = Some((composable, renderer));
     }
 }
 
 fn update(id: u128, msg: &Any) {
     dom::native::console_log(&id.to_string());
     unsafe {
-        if let Some((app, root)) = &mut APP {
+        if let Some((app, renderer)) = &mut APP {
             app.update(id, msg);
             let node = app.render(Some(id));
-            if let Some(new_root) = dom::native::rerender(node, root) {
-                *root = new_root;
-            }
+            renderer.update(node);
         }
     }
 }

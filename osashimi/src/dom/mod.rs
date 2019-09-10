@@ -8,6 +8,7 @@ use wasm_bindgen::prelude::*;
 
 pub mod native;
 
+#[derive(Clone)]
 pub enum Node {
     Element {
         tag_name: String,
@@ -19,6 +20,7 @@ pub enum Node {
     Text(String),
 }
 
+#[derive(Clone)]
 pub struct Attributes {
     class: HashSet<String>,
     id: HashSet<String>,
@@ -26,7 +28,7 @@ pub struct Attributes {
 }
 
 pub struct Events {
-    on_click: Option<Closure<FnMut()>>,
+    on_click: Option<Box<FnMut()>>,
 }
 
 impl Attributes {
@@ -58,9 +60,15 @@ impl Events {
     pub fn new() -> Events {
         Events { on_click: None }
     }
-    pub fn with_on_click(mut self, handler: Closure<FnMut()>) -> Self {
+    pub fn with_on_click(mut self, handler: impl FnMut() + 'static) -> Self {
         native::console_log("set on_click");
-        self.on_click = Some(handler);
+        self.on_click = Some(Box::new(handler));
         self
+    }
+}
+
+impl Clone for Events {
+    fn clone(&self) -> Self {
+        Self::new()
     }
 }
