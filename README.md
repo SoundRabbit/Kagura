@@ -1,6 +1,12 @@
+<div style="text-aligin: center !important;">
+
+![logo](kagura.png)
+
 # 神楽 : Kagura
 
 Frontend frame-work for wasm on Rust.
+
+</div>
 
 ## Usage
 
