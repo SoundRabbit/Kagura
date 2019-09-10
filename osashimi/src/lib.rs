@@ -4,7 +4,6 @@ extern crate wasm_bindgen;
 mod dom;
 
 use rand::prelude::*;
-use std::any;
 use std::any::Any;
 use wasm_bindgen::prelude::*;
 
@@ -119,14 +118,17 @@ impl<Msg, State> Component<Msg, State> {
                     .into_iter()
                     .map(|child| self.adapt_html_force(child))
                     .collect::<Vec<dom::Node>>();
-                let attributes = attributes
-                    .into_iter()
-                    .fold(
-                        dom::Attributes::new(),
-                        |attributes, attribute| match attribute {
-                            Attribute::Attribute(attr, val) => attributes.with_attribute(attr, val),
-                        },
-                    );
+                let attributes =
+                    attributes
+                        .into_iter()
+                        .fold(
+                            dom::Attributes::new(),
+                            |attributes, attribute| match attribute {
+                                Attribute::Attribute(attr, val) => {
+                                    attributes.with_attribute(attr, val)
+                                }
+                            },
+                        );
                 let component_id = self.id;
                 let events =
                     events
@@ -212,7 +214,7 @@ impl<Msg> Html<Msg> {
     {
         Html::Composable(Box::new(component))
     }
-    pub fn text(text: impl Into<String>) -> Self {
+    pub fn unsafe_text(text: impl Into<String>) -> Self {
         Html::TextNode(text.into())
     }
     pub fn node(

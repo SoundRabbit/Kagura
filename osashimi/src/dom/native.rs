@@ -1,8 +1,7 @@
 extern crate wasm_bindgen;
 
-use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsValue;
 use crate::dom;
+use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 extern "C" {
@@ -72,7 +71,7 @@ extern "C" {
 
 pub struct Renderer {
     before: dom::Node,
-    root: Node
+    root: Node,
 }
 
 impl Renderer {
@@ -80,10 +79,7 @@ impl Renderer {
         let before = virtual_node.clone();
         let root = Self::render_all(virtual_node);
         root_node.parent_node().replace_child(&root, &root_node);
-        Self {
-            before,
-            root
-        }
+        Self { before, root }
     }
 
     pub fn update(&mut self, after: dom::Node) {
@@ -93,9 +89,9 @@ impl Renderer {
         }
     }
 
-    fn render_all(virtual_node :dom::Node) -> Node {
+    fn render_all(virtual_node: dom::Node) -> Node {
         match virtual_node {
-            dom::Node::Text(text) => {create_text_node(&text).into()},
+            dom::Node::Text(text) => create_text_node(&text).into(),
             dom::Node::Element {
                 tag_name,
                 attributes,
@@ -104,10 +100,34 @@ impl Renderer {
                 rerender,
             } => {
                 let root = create_element(&tag_name);
-                let class = attributes.class.iter().map(|id| &id as &str).collect::<Vec<&str>>().join(" ");
-                let id = attributes.id.iter().map(|id| &id as &str).collect::<Vec<&str>>().join(" ");
+                let class = attributes
+                    .class
+                    .iter()
+                    .map(|class| &class as &str)
+                    .collect::<Vec<&str>>()
+                    .join(" ");
+                let id = attributes
+                    .id
+                    .iter()
+                    .map(|id| &id as &str)
+                    .collect::<Vec<&str>>()
+                    .join(" ");
+                let style = attributes
+                    .style
+                    .iter()
+                    .map(|style| &style as &str)
+                    .collect::<Vec<&str>>()
+                    .join(";");
+                let accept = attributes
+                    .accept
+                    .iter()
+                    .map(|accept| &accept as &str)
+                    .collect::<Vec<&str>>()
+                    .join(",");
                 root.set_attribute("id", &id);
                 root.set_attribute("class", &class);
+                root.set_attribute("style", &style);
+
                 for (attribute, value) in &attributes.attributes {
                     root.set_attribute(&attribute, &value);
                 }
@@ -125,7 +145,7 @@ impl Renderer {
         }
     }
 
-    fn render_component (virtual_node :dom::Node, root: &Node, parent: &Node) -> Option<Node> {
+    fn render_component(virtual_node: dom::Node, root: &Node, parent: &Node) -> Option<Node> {
         match virtual_node {
             dom::Node::Text(text) => (None),
             dom::Node::Element {
@@ -135,8 +155,8 @@ impl Renderer {
                 children,
                 rerender,
             } => {
-                if(rerender) {
-                    let new_root = Self::render_all(dom::Node::Element{
+                if (rerender) {
+                    let new_root = Self::render_all(dom::Node::Element {
                         tag_name,
                         attributes,
                         events,
@@ -146,7 +166,7 @@ impl Renderer {
                     parent.replace_child(&new_root, root);
                     Some(new_root)
                 } else {
-                    let mut i :usize = 0;
+                    let mut i: usize = 0;
                     for child in children {
                         if let Some(node) = root.children().item(i) {
                             Self::render_component(child, &node, &root);
