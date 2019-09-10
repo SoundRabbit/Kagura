@@ -42,8 +42,10 @@ mod child {
         CountUp,
     }
 
-    fn update(state: &mut State, _: &Msg) {
-        *state += 1;
+    fn update(state: &mut State, msg: &Msg) {
+        match msg {
+            Msg::CountUp => {*state += 1;}
+        }
     }
 
     fn render(state: &State) -> kagura::Html<Msg> {
