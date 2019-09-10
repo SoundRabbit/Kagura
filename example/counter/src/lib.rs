@@ -5,10 +5,10 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(start)]
 pub fn main() {
-    kagura::run(kagura::Component::new(0, update, render), "app");
+    kagura::run(kagura::Component::new(State, update, render), "app");
 }
 
-type State = u64;
+type State;
 
 struct Msg;
 
@@ -42,8 +42,10 @@ mod child {
         CountUp,
     }
 
-    fn update(state: &mut State, _: &Msg) {
-        *state += 1;
+    fn update(state: &mut State, msg: &Msg) {
+        match msg {
+            Msg::CountUp => {*state += 1;}
+        }
     }
 
     fn render(state: &State) -> kagura::Html<Msg> {
