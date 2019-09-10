@@ -10,23 +10,18 @@ pub fn main() {
 
 type State = u64;
 
-enum Msg {
-    CountUp,
-}
+struct Msg;
 
-fn update(state: &mut State, msg: &Msg) {
-    *state += 1;
-}
+fn update(_: &mut State, _: &Msg) {}
 
-fn render(state: &State) -> osashimi::Html<Msg> {
-    use osashimi::Event;
+fn render(_: &State) -> osashimi::Html<Msg> {
     use osashimi::Html;
+    use osashimi::Attributes;
+    use osashimi::Events;
     Html::div(
-        vec![osashimi::Attribute::Attribute(
-            "style".to_string(),
-            "color: red".to_string(),
-        )],
-        vec![],
+        Attributes::new()
+            .with_style("color: red;"),
+        Events::new(),
         vec![
             Html::component(child::new()),
             Html::component(child::new()),
@@ -47,17 +42,19 @@ mod child {
         CountUp,
     }
 
-    fn update(state: &mut State, msg: &Msg) {
+    fn update(state: &mut State, _: &Msg) {
         *state += 1;
     }
 
     fn render(state: &State) -> osashimi::Html<Msg> {
-        use osashimi::Event;
+        use osashimi::Events;
+        use osashimi::Attributes;
         use osashimi::Html;
         Html::h1(
-            vec![],
-            vec![Event::OnClick(Box::new(|| Msg::CountUp))],
-            vec![Html::text(state.to_string())],
+            Attributes::new(),
+            Events::new()
+                .with_on_click(|| {Msg::CountUp}),
+            vec![Html::unsafe_text(state.to_string())],
         )
     }
 }

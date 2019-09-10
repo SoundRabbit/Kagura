@@ -283,3 +283,16 @@ impl<Msg> Html<Msg> {
         Html::node("span", attributes, events, children)
     }
 }
+
+impl<Msg> Events<Msg> {
+    pub fn new() -> Self{
+        Self {
+            on_click: None,
+        }
+    }
+
+    pub fn with_on_click(mut self, handler: impl FnMut() -> Msg + 'static) -> Self {
+        self.on_click = Some(Box::new(handler));
+        self
+    }
+}
