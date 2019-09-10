@@ -1,5 +1,3 @@
-# Osashimi
+# 神楽 : Kagura
 
-Rustでフロントエンドを書くためのクレートを作りたい
-
-example/hello-world は統合テストに使用中
+Frontend frame-work for wasm on Rust.
