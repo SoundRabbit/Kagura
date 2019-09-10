@@ -22,9 +22,17 @@ fn render(state: &State) -> osashimi::Html<Msg> {
     use osashimi::Event;
     use osashimi::Html;
     Html::div(
-        vec![osashimi::Attribute::Attribute("style".to_string(), "color: red".to_string())],
+        vec![osashimi::Attribute::Attribute(
+            "style".to_string(),
+            "color: red".to_string(),
+        )],
         vec![],
-        vec![Html::component(child::new()), Html::component(child::new())],
+        vec![
+            Html::component(child::new()),
+            Html::component(child::new()),
+            Html::component(child::new()),
+            Html::component(child::new()),
+        ],
     )
 }
 
