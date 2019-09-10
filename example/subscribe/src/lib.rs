@@ -28,7 +28,7 @@ fn render(state: &State) -> kagura::Html<Msg> {
         Events::new(),
         vec![
             Html::unsafe_text(state.to_string()),
-            Html::component(child::new().subscribe(|_| {
+            Html::component(child::new(state%2==1).subscribe(|_| {
                 Box::new(Msg)
             })),
         ],
@@ -36,11 +36,16 @@ fn render(state: &State) -> kagura::Html<Msg> {
 }
 
 mod child {
-    pub fn new() -> kagura::Component<Msg, State, Sub> {
-        kagura::Component::new(State, update, render)
+    use kagura::Component;
+    use kagura::Events;
+    use kagura::Attributes;
+    use kagura::Html;
+
+    pub fn new(is_odd_number: bool) -> Component<Msg, State, Sub> {
+        Component::new(is_odd_number, update, render)
     }
 
-    pub struct State;
+    type State = bool;
 
     pub struct Msg;
 
@@ -50,12 +55,28 @@ mod child {
         Some(Sub)
     }
 
-    fn render(_: &State) -> kagura::Html<Msg> {
-        use kagura::Events;
-        use kagura::Attributes;
-        use kagura::Html;
+    fn render(state: &State) -> Html<Msg> {
+        if *state {
+            render_odd()
+        }else{
+            render_even()
+        }
+    }
+
+    fn render_odd() -> Html<Msg> {
         Html::h1(
-            Attributes::new(),
+            Attributes::new()
+                .with_style("color: red"),
+            Events::new()
+                .with_on_click(|| {Msg}),
+            vec![Html::unsafe_text("click here")],
+        )
+    }
+
+    fn render_even() -> Html<Msg> {
+        Html::h1(
+            Attributes::new()
+                .with_style("color: black"),
             Events::new()
                 .with_on_click(|| {Msg}),
             vec![Html::unsafe_text("click here")],
