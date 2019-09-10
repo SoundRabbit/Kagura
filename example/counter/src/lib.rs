@@ -5,10 +5,10 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(start)]
 pub fn main() {
-    kagura::run(kagura::Component::new(0, update, render), "app");
+    kagura::run(kagura::Component::new(State, update, render), "app");
 }
 
-type State = u64;
+struct State;
 
 struct Msg;
 
