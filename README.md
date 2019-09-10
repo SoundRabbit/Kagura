@@ -8,8 +8,30 @@ Frontend frame-work for wasm on Rust.
 
 See example/hello-world
 
-### CreateComponent
+### create component
 
 ```Rust
 kagura::Component::new( /*initial_state*/, /*update*/, /*render*/);
+```
+
+### set component to application
+
+```Rust
+kagura::run( /*component*/, /*id of entry point in html*/);
+```
+
+### render component in render
+
+```Rust
+fn render( /*state*/ ) -> HTML< /*Msg*/ > {
+    Html::component( /*component*/ )
+}
+```
+
+### subscribe component message
+
+```Rust
+Html::component( /*component*/.subscribe(| /*sub msg*/ | {
+    /*bind sub msg to msg*/
+}));
 ```
