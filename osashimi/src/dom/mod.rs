@@ -1,9 +1,5 @@
-extern crate wasm_bindgen;
-
-use rand::prelude::*;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use wasm_bindgen::prelude::*;
 
 pub mod native;
 

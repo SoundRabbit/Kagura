@@ -1,15 +1,14 @@
 extern crate rand;
-extern crate wasm_bindgen;
 
 mod dom;
 
+#[allow(unused_imports)]
 use rand::prelude::*;
 use std::any::Any;
-use wasm_bindgen::prelude::*;
 
 static mut APP: Option<(Box<Composable>, dom::native::Renderer)> = None;
 
-trait Composable {
+pub trait Composable {
     fn update(&mut self, id: u128, msg: &Any);
     fn render(&mut self, id: Option<u128>) -> dom::Node;
     fn get_id(&self) -> u128;
@@ -81,8 +80,8 @@ impl<Msg, State> Component<Msg, State> {
             Html::TextNode(text) => dom::Node::Text(text),
             Html::ElementNode {
                 tag_name,
-                attributes,
-                events,
+                attributes: _,
+                events: _,
                 children,
             } => {
                 let children = children

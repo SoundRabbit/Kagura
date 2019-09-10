@@ -97,37 +97,13 @@ impl Renderer {
                 attributes,
                 events,
                 children,
-                rerender,
+                rerender: _,
             } => {
-                let root = create_element(&tag_name);
-                let class = attributes
-                    .class
-                    .iter()
-                    .map(|class| &class as &str)
-                    .collect::<Vec<&str>>()
-                    .join(" ");
-                let id = attributes
-                    .id
-                    .iter()
-                    .map(|id| &id as &str)
-                    .collect::<Vec<&str>>()
-                    .join(" ");
-                let style = attributes
-                    .style
-                    .iter()
-                    .map(|style| &style as &str)
-                    .collect::<Vec<&str>>()
-                    .join(";");
-                let accept = attributes
-                    .accept
-                    .iter()
-                    .map(|accept| &accept as &str)
-                    .collect::<Vec<&str>>()
-                    .join(",");
-                root.set_attribute("id", &id);
-                root.set_attribute("class", &class);
-                root.set_attribute("style", &style);
-
+                let mut root = create_element(&tag_name);
+                Self::adapt_attribute_id(&mut root, &attributes);
+                Self::adapt_attribute_class(&mut root, &attributes);
+                Self::adapt_attribute_style(&mut root, &attributes);
+                Self::adapt_attribute_accept(&mut root, &attributes);
                 for (attribute, value) in &attributes.attributes {
                     root.set_attribute(&attribute, &value);
                 }
@@ -147,7 +123,7 @@ impl Renderer {
 
     fn render_component(virtual_node: dom::Node, root: &Node, parent: &Node) -> Option<Node> {
         match virtual_node {
-            dom::Node::Text(text) => (None),
+            dom::Node::Text(_) => (None),
             dom::Node::Element {
                 tag_name,
                 attributes,
@@ -155,7 +131,7 @@ impl Renderer {
                 children,
                 rerender,
             } => {
-                if (rerender) {
+                if rerender {
                     let new_root = Self::render_all(dom::Node::Element {
                         tag_name,
                         attributes,
@@ -176,6 +152,62 @@ impl Renderer {
                     None
                 }
             }
+        }
+    }
+
+    fn adapt_attribute_class(root: &mut Element, attributes: &dom::Attributes) {
+        if !attributes.class.is_empty() {
+            root.set_attribute(
+                "class",
+                &attributes
+                    .class
+                    .iter()
+                    .map(|class| &class as &str)
+                    .collect::<Vec<&str>>()
+                    .join(" "),
+            );
+        }
+    }
+
+    fn adapt_attribute_id(root: &mut Element, attributes: &dom::Attributes) {
+        if !attributes.id.is_empty() {
+            root.set_attribute(
+                "id",
+                &attributes
+                    .id
+                    .iter()
+                    .map(|id| &id as &str)
+                    .collect::<Vec<&str>>()
+                    .join(" "),
+            );
+        }
+    }
+
+    fn adapt_attribute_style(root: &mut Element, attributes: &dom::Attributes) {
+        if !attributes.style.is_empty() {
+            root.set_attribute(
+                "style",
+                &attributes
+                    .style
+                    .iter()
+                    .map(|style| &style as &str)
+                    .collect::<Vec<&str>>()
+                    .join(";"),
+            );
+        }
+    }
+
+    fn adapt_attribute_accept(root: &mut Element, attributes: &dom::Attributes) {
+        if !attributes.accept.is_empty() {
+            root.set_attribute(
+                "accept",
+                &attributes
+                    .accept
+                    .iter()
+                    .map(|accept| &accept as &str)
+                    .collect::<Vec<&str>>()
+                    .join(","),
+            );
         }
     }
 }
