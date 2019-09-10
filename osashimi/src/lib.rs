@@ -127,8 +127,7 @@ impl<Msg, State> Component<Msg, State> {
                         |attributes, attribute| match attribute {
                             Attribute::Attribute(attr, val) => attributes.with_attribute(attr, val),
                         },
-                    )
-                    .with_id(self.id.to_string());
+                    );
                 let component_id = self.id;
                 let events =
                     events
@@ -189,7 +188,7 @@ where
 {
     let node = component.render(None);
     let root = dom::native::get_element_by_id(id);
-    let renderer = dom::native::Renderer::new(node, &root);
+    let renderer = dom::native::Renderer::new(node, root.into());
     let composable: Box<Composable> = Box::new(component);
     unsafe {
         APP = Some((composable, renderer));
@@ -197,7 +196,6 @@ where
 }
 
 fn update(id: u128, msg: &Any) {
-    dom::native::console_log(&id.to_string());
     unsafe {
         if let Some((app, renderer)) = &mut APP {
             app.update(id, msg);

@@ -61,7 +61,6 @@ impl Events {
         Events { on_click: None }
     }
     pub fn with_on_click(mut self, handler: impl FnMut() + 'static) -> Self {
-        native::console_log("set on_click");
         self.on_click = Some(Box::new(handler));
         self
     }

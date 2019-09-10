@@ -8,18 +8,18 @@ use crate::dom;
 extern "C" {
     /*型 */
 
-    pub type EventTarget_;
+    pub type EventTarget;
 
-    #[wasm_bindgen(extends = EventTarget_)]
-    pub type Node_;
+    #[wasm_bindgen(extends = EventTarget)]
+    pub type Node;
 
-    #[wasm_bindgen(extends = Node_)]
-    pub type Element_;
+    #[wasm_bindgen(extends = Node)]
+    pub type Element;
 
-    #[wasm_bindgen(extends = Node_)]
-    pub type Text_;
+    #[wasm_bindgen(extends = Node)]
+    pub type Text;
 
-    pub type HTMLCollection_;
+    pub type HTMLCollection;
 
     /*直下 */
 
@@ -27,52 +27,47 @@ extern "C" {
     pub fn console_log(message: &str);
 
     #[wasm_bindgen(js_namespace = document, js_name="getElementById")]
-    pub fn get_element_by_id(id: &str) -> Element_;
+    pub fn get_element_by_id(id: &str) -> Element;
 
     #[wasm_bindgen(js_namespace = document, js_name="createElement")]
-    pub fn create_element(tag_name: &str) -> Element_;
+    pub fn create_element(tag_name: &str) -> Element;
 
     #[wasm_bindgen(js_namespace = document, js_name="createTextNode")]
-    pub fn create_text_node(text: &str) -> Text_;
+    pub fn create_text_node(text: &str) -> Text;
 
     /* EventTargetのメソッド */
 
     #[wasm_bindgen(method, js_name = "addEventListener")]
-    pub fn add_event_listener(this: &EventTarget_, type_: &str, closure: &Closure<FnMut()>);
+    pub fn add_event_listener(this: &EventTarget, type_: &str, closure: &Closure<FnMut()>);
 
     /* Nodeのメソッド */
 
     #[wasm_bindgen(method, js_name = "appendChild")]
-    pub fn append_child(this: &Node_, a_child: &Node_);
+    pub fn append_child(this: &Node, a_child: &Node);
 
     #[wasm_bindgen(method, js_name = "replaceChild")]
-    pub fn replace_child(this: &Node_, new_child: &Node_, old_child: &Node_);
+    pub fn replace_child(this: &Node, new_child: &Node, old_child: &Node);
 
     #[wasm_bindgen(method, getter = parentNode)]
-    pub fn parent_node(this: &Node_) -> Node_;
+    pub fn parent_node(this: &Node) -> Node;
 
     #[wasm_bindgen(method, getter = children)]
-    pub fn children(this: &Node_) -> HTMLCollection_;
+    pub fn children(this: &Node) -> HTMLCollection;
 
     /* Elementのメソッド */
 
     #[wasm_bindgen(method, js_name = "remove")]
-    pub fn remove(this: &Element_);
+    pub fn remove(this: &Element);
 
     #[wasm_bindgen(method, js_name = "setAttribute")]
-    pub fn set_attribute(this: &Element_, name: &str, value: &str);
+    pub fn set_attribute(this: &Element, name: &str, value: &str);
 
-    #[wasm_bindgen(method, setter = parentNode)]
-    pub fn set_id(this: &Element_, id: &str);
+    #[wasm_bindgen(method, setter = id)]
+    pub fn set_id(this: &Element, id: &str);
 
     /* HTMLCollectionのメソッド */
     #[wasm_bindgen(method, js_name = "item")]
-    pub fn item(this: &HTMLCollection_, index: usize) -> Option<Node_>;
-}
-
-pub enum Node {
-    Text(Text_),
-    Element(Element_)
+    pub fn item(this: &HTMLCollection, index: usize) -> Option<Node>;
 }
 
 pub struct Renderer {
@@ -81,39 +76,26 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(node: dom::Node, root: &Node_) -> Self {
-        let before = node.clone();
-        let parent = root.parent_node();
-        let new_root = Self::render_all(node);
-        match &new_root {
-            Node::Text(text) => {parent.replace_child(text, root);},
-            Node::Element(element) => {parent.replace_child(element, root);}
-        }
+    pub fn new(virtual_node: dom::Node, root_node: Node) -> Self {
+        let before = virtual_node.clone();
+        let root = Self::render_all(virtual_node);
+        root_node.parent_node().replace_child(&root, &root_node);
         Self {
             before,
-            root: new_root
+            root
         }
     }
 
     pub fn update(&mut self, after: dom::Node) {
-        let before = after.clone();
-        let root: &Node_ = match &self.root {
-            Node::Text(text) => text,
-            Node::Element(element) => element
-        };
-        let parent = root.parent_node();
-        let new_root = Self::render_all(after);
-        match &new_root {
-            Node::Text(text) => {parent.replace_child(text, root);},
-            Node::Element(element) => {parent.replace_child(element, root);}
+        self.before = after.clone();
+        if let Some(root) = Self::render_component(after, &self.root, &self.root.parent_node()) {
+            self.root = root;
         }
-        self.root = new_root;
-        self.before = before;
     }
 
-    fn render_all(node :dom::Node) -> Node {
-        match node {
-            dom::Node::Text(text) => Node::Text(create_text_node(&text)),
+    fn render_all(virtual_node :dom::Node) -> Node {
+        match virtual_node {
+            dom::Node::Text(text) => {create_text_node(&text).into()},
             dom::Node::Element {
                 tag_name,
                 attributes,
@@ -135,12 +117,44 @@ impl Renderer {
                     a.forget();
                 }
                 for child in children {
-                    match Self::render_all(child) {
-                        Node::Text(text) => {root.append_child(&text);},
-                        Node::Element(element) => {root.append_child(&element);}
-                    }
+                    let child = Self::render_all(child);
+                    root.append_child(&child);
                 }
-                Node::Element(root)
+                root.into()
+            }
+        }
+    }
+
+    fn render_component (virtual_node :dom::Node, root: &Node, parent: &Node) -> Option<Node> {
+        match virtual_node {
+            dom::Node::Text(text) => (None),
+            dom::Node::Element {
+                tag_name,
+                attributes,
+                events,
+                children,
+                rerender,
+            } => {
+                if(rerender) {
+                    let new_root = Self::render_all(dom::Node::Element{
+                        tag_name,
+                        attributes,
+                        events,
+                        children,
+                        rerender,
+                    });
+                    parent.replace_child(&new_root, root);
+                    Some(new_root)
+                } else {
+                    let mut i :usize = 0;
+                    for child in children {
+                        if let Some(node) = root.children().item(i) {
+                            Self::render_component(child, &node, &root);
+                        }
+                        i += 1;
+                    }
+                    None
+                }
             }
         }
     }
