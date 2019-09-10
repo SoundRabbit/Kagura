@@ -54,7 +54,6 @@ impl<Msg, State> Component<Msg, State> {
         render: fn(&State) -> Html<Msg>,
     ) -> Component<Msg, State> {
         let id = rand::random::<u128>();
-        dom::native::console_log(&(id.to_string() + ": create"));
         Component {
             state,
             update,
