@@ -6,6 +6,8 @@ mod dom;
 use rand::prelude::*;
 use std::any::Any;
 
+pub use dom::Attributes;
+
 static mut APP: Option<(Box<Composable>, dom::native::Renderer)> = None;
 
 pub trait Composable {
@@ -32,17 +34,13 @@ pub enum Html<Msg> {
     ElementNode {
         tag_name: String,
         children: Vec<Html<Msg>>,
-        attributes: Vec<Attribute>,
-        events: Vec<Event<Msg>>,
+        attributes: Attributes,
+        events: Events<Msg>,
     },
 }
 
-pub enum Attribute {
-    Attribute(String, String),
-}
-
-pub enum Event<Msg> {
-    OnClick(Box<FnMut() -> Msg>),
+pub struct Events<Msg> {
+    on_click: Option<Box<FnMut() -> Msg>>,
 }
 
 impl<Msg, State> Component<Msg, State> {
@@ -117,30 +115,15 @@ impl<Msg, State> Component<Msg, State> {
                     .into_iter()
                     .map(|child| self.adapt_html_force(child))
                     .collect::<Vec<dom::Node>>();
-                let attributes =
-                    attributes
-                        .into_iter()
-                        .fold(
-                            dom::Attributes::new(),
-                            |attributes, attribute| match attribute {
-                                Attribute::Attribute(attr, val) => {
-                                    attributes.with_attribute(attr, val)
-                                }
-                            },
-                        );
                 let component_id = self.id;
-                let events =
-                    events
-                        .into_iter()
-                        .fold(dom::Events::new(), |events, event| match event {
-                            Event::OnClick(mut handler) => events.with_on_click(move || {
-                                update(component_id, &handler());
-                            }),
-                        });
+                let mut dom_events = dom::Events::new();
+                if let Some(mut handler) = events.on_click {
+                    dom_events = dom_events.with_on_click(move || {update(component_id, &handler());});
+                }
                 dom::Node::Element {
                     tag_name,
                     attributes,
-                    events,
+                    events: dom_events,
                     children,
                     rerender: true,
                 }
@@ -218,8 +201,8 @@ impl<Msg> Html<Msg> {
     }
     pub fn node(
         tag_name: impl Into<String>,
-        attributes: Vec<Attribute>,
-        events: Vec<Event<Msg>>,
+        attributes: Attributes,
+        events: Events<Msg>,
         children: Vec<Html<Msg>>,
     ) -> Self {
         Html::ElementNode {
@@ -230,71 +213,71 @@ impl<Msg> Html<Msg> {
         }
     }
     pub fn a(
-        attributes: Vec<Attribute>,
-        events: Vec<Event<Msg>>,
+        attributes: Attributes,
+        events: Events<Msg>,
         children: Vec<Html<Msg>>,
     ) -> Self {
         Html::node("a", attributes, events, children)
     }
     pub fn button(
-        attributes: Vec<Attribute>,
-        events: Vec<Event<Msg>>,
+        attributes: Attributes,
+        events: Events<Msg>,
         children: Vec<Html<Msg>>,
     ) -> Self {
         Html::node("button", attributes, events, children)
     }
     pub fn div(
-        attributes: Vec<Attribute>,
-        events: Vec<Event<Msg>>,
+        attributes: Attributes,
+        events: Events<Msg>,
         children: Vec<Html<Msg>>,
     ) -> Self {
         Html::node("div", attributes, events, children)
     }
     pub fn h1(
-        attributes: Vec<Attribute>,
-        events: Vec<Event<Msg>>,
+        attributes: Attributes,
+        events: Events<Msg>,
         children: Vec<Html<Msg>>,
     ) -> Self {
         Html::node("h1", attributes, events, children)
     }
     pub fn h2(
-        attributes: Vec<Attribute>,
-        events: Vec<Event<Msg>>,
+        attributes: Attributes,
+        events: Events<Msg>,
         children: Vec<Html<Msg>>,
     ) -> Self {
         Html::node("h2", attributes, events, children)
     }
     pub fn h3(
-        attributes: Vec<Attribute>,
-        events: Vec<Event<Msg>>,
+        attributes: Attributes,
+        events: Events<Msg>,
         children: Vec<Html<Msg>>,
     ) -> Self {
         Html::node("h3", attributes, events, children)
     }
     pub fn h4(
-        attributes: Vec<Attribute>,
-        events: Vec<Event<Msg>>,
+        attributes: Attributes,
+        events: Events<Msg>,
         children: Vec<Html<Msg>>,
     ) -> Self {
         Html::node("h4", attributes, events, children)
     }
     pub fn h5(
-        attributes: Vec<Attribute>,
-        events: Vec<Event<Msg>>,
+        attributes: Attributes,
+        events: Events<Msg>,
         children: Vec<Html<Msg>>,
     ) -> Self {
         Html::node("h5", attributes, events, children)
     }
     pub fn h6(
-        attributes: Vec<Attribute>,
-        events: Vec<Event<Msg>>,
+        attributes: Attributes,
+        events: Events<Msg>,
         children: Vec<Html<Msg>>,
     ) -> Self {
         Html::node("h6", attributes, events, children)
     }
     pub fn span(
-        attributes: Vec<Attribute>,
-        events: Vec<Event<Msg>>,
+        attributes: Attributes,
+        events: Events<Msg>,
         children: Vec<Html<Msg>>,
     ) -> Self {
         Html::node("span", attributes, events, children)
