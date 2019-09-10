@@ -1,4 +1,4 @@
-<div style="text-aligin: center !important;">
+<div align="center">
 
 ![logo](kagura.png)
 
