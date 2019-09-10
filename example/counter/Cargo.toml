@@ -1,5 +1,5 @@
 [package]
-name = "hello-world"
+name = "counter"
 version = "0.1.0"
 authors = ["SoundRabbit <soundrabbitstd@gmail.com>"]
 edition = "2018"
