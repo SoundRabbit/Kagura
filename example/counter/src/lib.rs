@@ -1,11 +1,11 @@
-extern crate osashimi;
+extern crate kagura;
 extern crate wasm_bindgen;
 
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(start)]
 pub fn main() {
-    osashimi::run(osashimi::Component::new(0, update, render), "app");
+    kagura::run(kagura::Component::new(0, update, render), "app");
 }
 
 type State = u64;
@@ -14,10 +14,10 @@ struct Msg;
 
 fn update(_: &mut State, _: &Msg) {}
 
-fn render(_: &State) -> osashimi::Html<Msg> {
-    use osashimi::Html;
-    use osashimi::Attributes;
-    use osashimi::Events;
+fn render(_: &State) -> kagura::Html<Msg> {
+    use kagura::Html;
+    use kagura::Attributes;
+    use kagura::Events;
     Html::div(
         Attributes::new()
             .with_style("color: red;"),
@@ -32,8 +32,8 @@ fn render(_: &State) -> osashimi::Html<Msg> {
 }
 
 mod child {
-    pub fn new() -> osashimi::Component<Msg, State> {
-        osashimi::Component::new(0, update, render)
+    pub fn new() -> kagura::Component<Msg, State> {
+        kagura::Component::new(0, update, render)
     }
 
     pub type State = u64;
@@ -46,10 +46,10 @@ mod child {
         *state += 1;
     }
 
-    fn render(state: &State) -> osashimi::Html<Msg> {
-        use osashimi::Events;
-        use osashimi::Attributes;
-        use osashimi::Html;
+    fn render(state: &State) -> kagura::Html<Msg> {
+        use kagura::Events;
+        use kagura::Attributes;
+        use kagura::Html;
         Html::h1(
             Attributes::new(),
             Events::new()
