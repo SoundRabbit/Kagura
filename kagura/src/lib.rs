@@ -11,21 +11,25 @@ pub use dom::Attributes;
 static mut APP: Option<(Box<Composable>, dom::native::Renderer)> = None;
 
 pub trait Composable {
-    fn update(&mut self, id: u128, msg: &Any);
+    fn update(&mut self, id: u128, msg: &Any) -> bool;
     fn render(&mut self, id: Option<u128>) -> dom::Node;
     fn get_id(&self) -> u128;
+    fn set_parent_id(&mut self, id: u128);
 }
 
-pub struct Component<Msg, State>
+pub struct Component<Msg, State, Sub>
 where
     Msg: 'static,
     State: 'static,
+    Sub: 'static
 {
     state: State,
-    update: fn(&mut State, &Msg),
+    update: fn(&mut State, &Msg) -> Option<Sub>,
+    subscribe: Option<Box<FnMut(Sub) -> Box<Any>>>,
     render: fn(&State) -> Html<Msg>,
     children: Vec<Box<Composable>>,
     id: u128,
+    parent_id: Option<u128>,
 }
 
 pub enum Html<Msg> {
@@ -43,12 +47,12 @@ pub struct Events<Msg> {
     on_click: Option<Box<FnMut() -> Msg>>,
 }
 
-impl<Msg, State> Component<Msg, State> {
+impl<Msg, State, Sub> Component<Msg, State, Sub> {
     pub fn new(
         state: State,
-        update: fn(&mut State, &Msg),
+        update: fn(&mut State, &Msg) -> Option<Sub>,
         render: fn(&State) -> Html<Msg>,
-    ) -> Component<Msg, State> {
+    ) -> Component<Msg, State, Sub> {
         let id = rand::random::<u128>();
         Component {
             state,
@@ -56,11 +60,19 @@ impl<Msg, State> Component<Msg, State> {
             render,
             children: vec![],
             id: id,
+            subscribe: None,
+            parent_id: None,
         }
     }
 
-    fn append_composable(&mut self, composable: Box<Composable>) {
+    fn append_composable(&mut self, mut composable: Box<Composable>) {
+        composable.set_parent_id(self.id);
         self.children.push(composable);
+    }
+
+    pub fn subscribe(mut self, sub: impl FnMut(Sub) -> Box<Any> + 'static) -> Self {
+        self.subscribe = Some(Box::new(sub));
+        self
     }
 
     fn adapt_html_lazy(&mut self, html: Html<Msg>, child_index: &mut usize, id: u128) -> dom::Node {
@@ -132,17 +144,26 @@ impl<Msg, State> Component<Msg, State> {
     }
 }
 
-impl<Msg, State> Composable for Component<Msg, State> {
-    fn update(&mut self, id: u128, msg: &Any) {
+impl<Msg, State, Sub> Composable for Component<Msg, State, Sub> {
+    fn update(&mut self, id: u128, msg: &Any) -> bool {
         if id == self.id {
             if let Some(msg) = msg.downcast_ref::<Msg>() {
-                (self.update)(&mut self.state, msg);
+                if let Some(sub) = (self.update)(&mut self.state, msg) {
+                    if let Some(parent_id) = self.parent_id {
+                        if let Some(subscribe) = &mut self.subscribe {
+                            let msg = subscribe(sub);
+                            update(parent_id, &(*msg));
+                            return false;
+                        }
+                    }
+                }
             }
         } else {
             for child in &mut self.children {
                 (*child).update(id, msg);
             }
         }
+        true
     }
 
     fn render(&mut self, id: Option<u128>) -> dom::Node {
@@ -162,12 +183,17 @@ impl<Msg, State> Composable for Component<Msg, State> {
     fn get_id(&self) -> u128 {
         self.id
     }
+
+    fn set_parent_id(&mut self, id: u128) {
+        self.parent_id = Some(id);
+    }
 }
 
-pub fn run<M, S>(mut component: Component<M, S>, id: &str)
+pub fn run<M, S, B>(mut component: Component<M, S, B>, id: &str)
 where
     M: 'static,
     S: 'static,
+    B: 'static,
 {
     let node = component.render(None);
     let root = dom::native::get_element_by_id(id);
@@ -181,18 +207,20 @@ where
 fn update(id: u128, msg: &Any) {
     unsafe {
         if let Some((app, renderer)) = &mut APP {
-            app.update(id, msg);
-            let node = app.render(Some(id));
-            renderer.update(node);
+            if app.update(id, msg) {
+                let node = app.render(Some(id));
+                renderer.update(node);
+            }
         }
     }
 }
 
 impl<Msg> Html<Msg> {
-    pub fn component<M, S>(component: Component<M, S>) -> Self
+    pub fn component<M, S, B>(component: Component<M, S, B>) -> Self
     where
         M: 'static,
         S: 'static,
+        B: 'static,
     {
         Html::Composable(Box::new(component))
     }

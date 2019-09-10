@@ -8,11 +8,11 @@ pub fn main() {
     kagura::run(kagura::Component::new(State, update, render), "app");
 }
 
-type State;
+struct State;
 
 struct Msg;
 
-fn update(_: &mut State, _: &Msg) {}
+fn update(_: &mut State, _: &Msg) -> Option<()> {None}
 
 fn render(_: &State) -> kagura::Html<Msg> {
     use kagura::Html;
@@ -32,7 +32,7 @@ fn render(_: &State) -> kagura::Html<Msg> {
 }
 
 mod child {
-    pub fn new() -> kagura::Component<Msg, State> {
+    pub fn new() -> kagura::Component<Msg, State, ()> {
         kagura::Component::new(0, update, render)
     }
 
@@ -42,10 +42,11 @@ mod child {
         CountUp,
     }
 
-    fn update(state: &mut State, msg: &Msg) {
+    fn update(state: &mut State, msg: &Msg) -> Option<()> {
         match msg {
             Msg::CountUp => {*state += 1;}
         }
+        None
     }
 
     fn render(state: &State) -> kagura::Html<Msg> {
