@@ -6,12 +6,15 @@ pub struct Attributes {
 }
 
 impl Attributes {
+<<<<<<< HEAD
     pub fn new() -> Self{
         Self {
             attributes: dom::Attributes::new(),
             last_attribute: "".to_string()
         }
     }
+=======
+>>>>>>> 55c15dd69e259a0c0b3503c91069c99695d1344c
 
     pub fn string(mut self, name: impl Into<String>, value: impl Into <String>) -> Self {
         let name = name.into();
