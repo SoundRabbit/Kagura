@@ -1,9 +1,10 @@
 use crate::component::Component;
 use crate::component::Composable;
-use crate::dom::native;
+use crate::native;
+use crate::renderer::Renderer;
 use std::any::Any;
 
-static mut APP: Option<(Box<Composable>, native::Renderer)> = None;
+static mut APP: Option<(Box<Composable>, Renderer)> = None;
 
 pub fn run<M, S, B>(mut component: Component<M, S, B>, id: &str)
 where
@@ -13,7 +14,7 @@ where
 {
     let node = component.render(None);
     let root = native::get_element_by_id(id);
-    let renderer = native::Renderer::new(node, root.into());
+    let renderer = Renderer::new(node, root.into());
     let composable: Box<Composable> = Box::new(component);
     unsafe {
         APP = Some((composable, renderer));
