@@ -67,6 +67,22 @@ impl Attributes {
     }
 
     pub fn attribute(mut self, name: impl Into<String>, value: Value) -> Self {
+        self.add(name, value);
+        self
+    }
+
+    pub fn flag(mut self, name: impl Into<String>) -> Self{
+        self.set(name);
+        self
+    }
+
+    pub fn delimiter(mut self, name: impl Into<String>, dlm: impl Into<String>) -> Self {
+        self.delimit(name, dlm);
+        self
+    }
+
+
+    pub fn add(&mut self, name: impl Into<String>, value: Value) {
         let name: String = name.into();
         if let Some(attr) = self.attributes.get_mut(&name) {
             attr.insert(value);
@@ -75,32 +91,17 @@ impl Attributes {
             attr.insert(value);
             self.attributes.insert(name, attr);
         }
-        self
     }
 
-    pub fn set(mut self, name: impl Into<String>) -> Self {
+    pub fn set(&mut self, name: impl Into<String>) {
         let name: String = name.into();
         if let None = self.attributes.get(&name) {
             self.attributes.insert(name, HashSet::new());
         }
-        self
     }
 
-    pub fn delimiter(mut self, name: impl Into<String>, dlm: impl Into<String>) -> Self {
+    pub fn delimit(&mut self, name: impl Into<String>, dlm: impl Into<String>) {
         self.delimiters.insert(name.into(), dlm.into());
-        self
-    }
-
-    pub fn class(self, class_name: impl Into<String>) -> Self {
-        self.attribute("class", Value::Str(class_name.into()))
-    }
-
-    pub fn id(self, id_name: impl Into<String>) -> Self {
-        self.attribute("id", Value::Str(id_name.into()))
-    }
-
-    pub fn style(self, style: impl Into<String>) -> Self {
-        self.attribute("style", Value::Str(style.into()))
     }
 }
 

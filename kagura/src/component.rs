@@ -116,7 +116,7 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
 
                 dom::Node::Element {
                     tag_name,
-                    attributes,
+                    attributes: attributes.attributes,
                     events: dom_events,
                     children,
                     rerender: true,
