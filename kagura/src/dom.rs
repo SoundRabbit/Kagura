@@ -18,8 +18,8 @@ pub enum Node {
 
 #[derive(Clone)]
 pub struct Attributes {
-    attributes: HashMap<String, HashSet<Value>>,
-    delimiters: HashMap<String, String>,
+    pub attributes: HashMap<String, HashSet<Value>>,
+    pub delimiters: HashMap<String, String>,
 }
 
 #[derive(Clone, Eq, PartialEq, Hash)]
@@ -78,9 +78,29 @@ impl Attributes {
         self
     }
 
+    pub fn set(mut self, name: impl Into<String>) -> Self {
+        let name: String = name.into();
+        if let None = self.attributes.get(&name) {
+            self.attributes.insert(name, HashSet::new());
+        }
+        self
+    }
+
     pub fn delimiter(mut self, name: impl Into<String>, dlm: impl Into<String>) -> Self {
         self.delimiters.insert(name.into(), dlm.into());
         self
+    }
+
+    pub fn class(self, class_name: impl Into<String>) -> Self {
+        self.attribute("class", Value::Str(class_name.into()))
+    }
+
+    pub fn id(self, id_name: impl Into<String>) -> Self {
+        self.attribute("id", Value::Str(id_name.into()))
+    }
+
+    pub fn style(self, style: impl Into<String>) -> Self {
+        self.attribute("style", Value::Str(style.into()))
     }
 }
 

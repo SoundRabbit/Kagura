@@ -26,12 +26,14 @@ impl Renderer {
             dom::Node::Text(text) => native::create_text_node(&text).into(),
             dom::Node::Element {
                 tag_name,
-                attributes: _,
+                attributes,
                 events: _,
                 children,
                 rerender: _,
             } => {
-                let root = native::create_element(&tag_name);
+                let mut root = native::create_element(&tag_name);
+
+                Self::adapt_attribute_all(&mut root, &attributes);
 
                 for child in children {
                     let child = Self::render_all(child);
@@ -72,6 +74,40 @@ impl Renderer {
                         i += 1;
                     }
                     None
+                }
+            }
+        }
+    }
+
+    fn adapt_attribute_all(element: &mut native::Element, attributes: &dom::Attributes) {
+        for (attr, val) in &attributes.attributes {
+            if val.is_empty() {
+                element.set_attribute(&attr, "");
+            } else {
+                let val = val
+                    .iter()
+                    .map(|v| match v {
+                        dom::Value::Str(s) => s.clone(),
+                        dom::Value::Int(i) => i.to_string(),
+                        dom::Value::Nut(i) => i.to_string(),
+                    })
+                    .collect::<Vec<String>>();
+                if let Some(dlm) = attributes.delimiters.get(attr) {
+                    element.set_attribute(
+                        &attr,
+                        &val.iter()
+                            .map(|v| &v as &str)
+                            .collect::<Vec<&str>>()
+                            .join(dlm),
+                    );
+                } else {
+                    element.set_attribute(
+                        &attr,
+                        &val.iter()
+                            .map(|v| &v as &str)
+                            .collect::<Vec<&str>>()
+                            .join(""),
+                    );
                 }
             }
         }
