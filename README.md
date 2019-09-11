@@ -2,7 +2,7 @@
 
 ![logo](kagura.png)
 
-# 神楽 : Kagura
+# Kagura
 
 Frontend frame-work for wasm on Rust.
 
