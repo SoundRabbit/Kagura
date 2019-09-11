@@ -56,7 +56,7 @@ mod child {
         Html::h1(
             Attributes::new(),
             Events::new()
-                .with_on_click(|| {Msg::CountUp}),
+                .with_on_click(|_| {Msg::CountUp}),
             vec![Html::unsafe_text(state.to_string())],
         )
     }

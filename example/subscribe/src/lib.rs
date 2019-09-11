@@ -68,7 +68,7 @@ mod child {
             Attributes::new()
                 .with_style("color: red"),
             Events::new()
-                .with_on_click(|| {Msg}),
+                .with_on_click(|_| {Msg}),
             vec![Html::unsafe_text("click here")],
         )
     }
@@ -78,7 +78,7 @@ mod child {
             Attributes::new()
                 .with_style("color: black"),
             Events::new()
-                .with_on_click(|| {Msg}),
+                .with_on_click(|_| {Msg}),
             vec![Html::unsafe_text("click here")],
         )
     }
