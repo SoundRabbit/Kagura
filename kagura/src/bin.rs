@@ -1,7 +1,7 @@
-use std::any::Any;
-use crate::dom::native;
 use crate::component::Component;
 use crate::component::Composable;
+use crate::dom::native;
+use std::any::Any;
 
 static mut APP: Option<(Box<Composable>, native::Renderer)> = None;
 

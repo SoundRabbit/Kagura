@@ -1,7 +1,7 @@
-use std::any::Any;
-use crate::Html;
-use crate::main::update;
+use crate::bin::update;
 use crate::dom;
+use crate::Html;
+use std::any::Any;
 
 pub trait Composable {
     fn update(&mut self, id: u128, msg: &Any) -> bool;
@@ -14,7 +14,7 @@ pub struct Component<Msg, State, Sub>
 where
     Msg: 'static,
     State: 'static,
-    Sub: 'static
+    Sub: 'static,
 {
     state: State,
     update: fn(&mut State, &Msg) -> Option<Sub>,
@@ -108,7 +108,14 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
                 let component_id = self.id;
                 let mut dom_events = dom::Events::new();
                 if let Some(mut handler) = events.on_click {
-                    dom_events = dom_events.with_on_click(move || {update(component_id, &handler());});
+                    dom_events = dom_events.with_on_click(move |e| {
+                        update(component_id, &handler(e));
+                    });
+                }
+                if let Some(mut handler) = events.on_input {
+                    dom_events = dom_events.with_on_input(move |e| {
+                        update(component_id, &handler(e));
+                    });
                 }
                 dom::Node::Element {
                     tag_name,

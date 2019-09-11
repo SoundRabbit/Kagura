@@ -15,10 +15,33 @@ extern "C" {
     #[wasm_bindgen(extends = Node)]
     pub type Element;
 
+    #[wasm_bindgen(extends = Element)]
+    pub type HtmlElement;
+
+    #[wasm_bindgen(extends = HtmlElement)]
+    pub type HtmlInputElement;
+
     #[wasm_bindgen(extends = Node)]
     pub type Text;
 
     pub type HTMLCollection;
+
+    pub type Event;
+
+    #[wasm_bindgen(extends = Event)]
+    pub type FocusEvent;
+
+    #[wasm_bindgen(extends = Event)]
+    pub type ClipboardEvent;
+
+    #[wasm_bindgen(extends = Event)]
+    pub type KeyboardEvent;
+
+    #[wasm_bindgen(extends = Event)]
+    pub type MouseEvent;
+
+    #[wasm_bindgen(extends = Event)]
+    pub type DragEvent;
 
     /*直下 */
 
@@ -37,7 +60,7 @@ extern "C" {
     /* EventTargetのメソッド */
 
     #[wasm_bindgen(method, js_name = "addEventListener")]
-    pub fn add_event_listener(this: &EventTarget, type_: &str, closure: &Closure<FnMut()>);
+    pub fn add_event_listener(this: &EventTarget, type_: &str, closure: &Closure<FnMut(Event)>);
 
     /* Nodeのメソッド */
 
@@ -64,9 +87,84 @@ extern "C" {
     #[wasm_bindgen(method, setter = id)]
     pub fn set_id(this: &Element, id: &str);
 
+    /* HtmlInputElementのメソッド */
+
+    #[wasm_bindgen(method, getter = value)]
+    pub fn value(this: &HtmlInputElement) -> String;
+
+    #[wasm_bindgen(method, setter = value)]
+    pub fn set_value(this: &HtmlInputElement) -> String;
+
     /* HTMLCollectionのメソッド */
+
     #[wasm_bindgen(method, js_name = "item")]
     pub fn item(this: &HTMLCollection, index: usize) -> Option<Node>;
+
+    /* Eventのメソッド */
+
+    #[wasm_bindgen(method, getter = target)]
+    pub fn target(this: &Event) -> EventTarget;
+
+    /* KeyboardEventのメソッド */
+
+    #[wasm_bindgen(method, getter = altKey)]
+    pub fn alt_key(this: &KeyboardEvent) -> bool;
+
+    #[wasm_bindgen(method, getter = code)]
+    pub fn code(this: &KeyboardEvent) -> String;
+
+    #[wasm_bindgen(method, getter = key)]
+    pub fn key(this: &KeyboardEvent) -> String;
+
+    #[wasm_bindgen(method, getter = shiftKey)]
+    pub fn shift_key(this: &KeyboardEvent) -> bool;
+
+    /* MouseEventのメソッド */
+
+    #[wasm_bindgen(method, getter = altKey)]
+    pub fn alt_key(this: &MouseEvent) -> bool;
+
+    #[wasm_bindgen(method, getter = buttons)]
+    pub fn buttons(this: &MouseEvent) -> u64;
+
+    #[wasm_bindgen(method, getter = clientX)]
+    pub fn client_x(this: &MouseEvent) -> i64;
+
+    #[wasm_bindgen(method, getter = clientY)]
+    pub fn client_y(this: &MouseEvent) -> i64;
+
+    #[wasm_bindgen(method, getter = ctrlKey)]
+    pub fn ctrl_key(this: &MouseEvent) -> bool;
+
+    #[wasm_bindgen(method, getter = metaKey)]
+    pub fn meta_key(this: &MouseEvent) -> bool;
+
+    #[wasm_bindgen(method, getter = movementX)]
+    pub fn movement_x(this: &MouseEvent) -> i64;
+
+    #[wasm_bindgen(method, getter = movementY)]
+    pub fn movement_y(this: &MouseEvent) -> i64;
+
+    #[wasm_bindgen(method, getter = offsetX)]
+    pub fn offset_x(this: &MouseEvent) -> i64;
+
+    #[wasm_bindgen(method, getter = offsetY)]
+    pub fn offset_y(this: &MouseEvent) -> i64;
+
+    #[wasm_bindgen(method, getter = pageX)]
+    pub fn page_x(this: &MouseEvent) -> i64;
+
+    #[wasm_bindgen(method, getter = pageY)]
+    pub fn page_y(this: &MouseEvent) -> i64;
+
+    #[wasm_bindgen(method, getter = screenX)]
+    pub fn screen_x(this: &MouseEvent) -> i64;
+
+    #[wasm_bindgen(method, getter = screenY)]
+    pub fn screen_y(this: &MouseEvent) -> i64;
+
+    #[wasm_bindgen(method, getter = shiftKey)]
+    pub fn shift_key(this: &MouseEvent) -> bool;
 }
 
 pub struct Renderer {
@@ -99,17 +197,24 @@ impl Renderer {
                 children,
                 rerender: _,
             } => {
-                let mut root = create_element(&tag_name);
-                Self::adapt_attribute_id(&mut root, &attributes);
-                Self::adapt_attribute_class(&mut root, &attributes);
-                Self::adapt_attribute_style(&mut root, &attributes);
-                Self::adapt_attribute_accept(&mut root, &attributes);
+                let root = create_element(&tag_name);
+                let root = Self::adapt_attribute_accept(root, &attributes);
+                let root = Self::adapt_attribute_class(root, &attributes);
+                let root = Self::adapt_attribute_id(root, &attributes);
+                let root = Self::adapt_attribute_style(root, &attributes);
+                let root = Self::adapt_attribute_value(root, &attributes);
+                
                 for (attribute, value) in &attributes.attributes {
                     root.set_attribute(&attribute, &value);
                 }
                 if let Some(on_click) = events.on_click {
                     let a = Closure::wrap(on_click);
                     root.add_event_listener("click", &a);
+                    a.forget();
+                }
+                if let Some(on_input) = events.on_input {
+                    let a = Closure::wrap(on_input);
+                    root.add_event_listener("input", &a);
                     a.forget();
                 }
                 for child in children {
@@ -155,49 +260,7 @@ impl Renderer {
         }
     }
 
-    fn adapt_attribute_class(root: &mut Element, attributes: &dom::Attributes) {
-        if !attributes.class.is_empty() {
-            root.set_attribute(
-                "class",
-                &attributes
-                    .class
-                    .iter()
-                    .map(|class| &class as &str)
-                    .collect::<Vec<&str>>()
-                    .join(" "),
-            );
-        }
-    }
-
-    fn adapt_attribute_id(root: &mut Element, attributes: &dom::Attributes) {
-        if !attributes.id.is_empty() {
-            root.set_attribute(
-                "id",
-                &attributes
-                    .id
-                    .iter()
-                    .map(|id| &id as &str)
-                    .collect::<Vec<&str>>()
-                    .join(" "),
-            );
-        }
-    }
-
-    fn adapt_attribute_style(root: &mut Element, attributes: &dom::Attributes) {
-        if !attributes.style.is_empty() {
-            root.set_attribute(
-                "style",
-                &attributes
-                    .style
-                    .iter()
-                    .map(|style| &style as &str)
-                    .collect::<Vec<&str>>()
-                    .join(";"),
-            );
-        }
-    }
-
-    fn adapt_attribute_accept(root: &mut Element, attributes: &dom::Attributes) {
+    fn adapt_attribute_accept(root: Element, attributes: &dom::Attributes) -> Element {
         if !attributes.accept.is_empty() {
             root.set_attribute(
                 "accept",
@@ -209,5 +272,58 @@ impl Renderer {
                     .join(","),
             );
         }
+        root
+    }
+
+    fn adapt_attribute_class(root: Element, attributes: &dom::Attributes) -> Element {
+        if !attributes.class.is_empty() {
+            root.set_attribute(
+                "class",
+                &attributes
+                    .class
+                    .iter()
+                    .map(|class| &class as &str)
+                    .collect::<Vec<&str>>()
+                    .join(" "),
+            );
+        }
+        root
+    }
+
+    fn adapt_attribute_id(root: Element, attributes: &dom::Attributes) -> Element {
+        if !attributes.id.is_empty() {
+            root.set_attribute(
+                "id",
+                &attributes
+                    .id
+                    .iter()
+                    .map(|id| &id as &str)
+                    .collect::<Vec<&str>>()
+                    .join(" "),
+            );
+        }
+        root
+    }
+
+    fn adapt_attribute_style(root: Element, attributes: &dom::Attributes) -> Element {
+        if !attributes.style.is_empty() {
+            root.set_attribute(
+                "style",
+                &attributes
+                    .style
+                    .iter()
+                    .map(|style| &style as &str)
+                    .collect::<Vec<&str>>()
+                    .join(";"),
+            );
+        }
+        root
+    }
+
+    fn adapt_attribute_value(root: Element, attributes: &dom::Attributes) -> Element {
+        if let Some(value) = &attributes.value {
+            root.set_attribute("value", value);
+        }
+        root
     }
 }

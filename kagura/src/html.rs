@@ -4,8 +4,8 @@ pub mod events;
 pub use attributes::Attributes;
 pub use events::Events;
 
-use crate::component::Composable;
 use crate::component::Component;
+use crate::component::Composable;
 
 pub enum Html<Msg> {
     Composable(Box<Composable>),
@@ -43,74 +43,34 @@ impl<Msg> Html<Msg> {
             events,
         }
     }
-    pub fn a(
-        attributes: Attributes,
-        events: Events<Msg>,
-        children: Vec<Html<Msg>>,
-    ) -> Self {
+    pub fn a(attributes: Attributes, events: Events<Msg>, children: Vec<Html<Msg>>) -> Self {
         Html::node("a", attributes, events, children)
     }
-    pub fn button(
-        attributes: Attributes,
-        events: Events<Msg>,
-        children: Vec<Html<Msg>>,
-    ) -> Self {
+    pub fn button(attributes: Attributes, events: Events<Msg>, children: Vec<Html<Msg>>) -> Self {
         Html::node("button", attributes, events, children)
     }
-    pub fn div(
-        attributes: Attributes,
-        events: Events<Msg>,
-        children: Vec<Html<Msg>>,
-    ) -> Self {
+    pub fn div(attributes: Attributes, events: Events<Msg>, children: Vec<Html<Msg>>) -> Self {
         Html::node("div", attributes, events, children)
     }
-    pub fn h1(
-        attributes: Attributes,
-        events: Events<Msg>,
-        children: Vec<Html<Msg>>,
-    ) -> Self {
+    pub fn h1(attributes: Attributes, events: Events<Msg>, children: Vec<Html<Msg>>) -> Self {
         Html::node("h1", attributes, events, children)
     }
-    pub fn h2(
-        attributes: Attributes,
-        events: Events<Msg>,
-        children: Vec<Html<Msg>>,
-    ) -> Self {
+    pub fn h2(attributes: Attributes, events: Events<Msg>, children: Vec<Html<Msg>>) -> Self {
         Html::node("h2", attributes, events, children)
     }
-    pub fn h3(
-        attributes: Attributes,
-        events: Events<Msg>,
-        children: Vec<Html<Msg>>,
-    ) -> Self {
+    pub fn h3(attributes: Attributes, events: Events<Msg>, children: Vec<Html<Msg>>) -> Self {
         Html::node("h3", attributes, events, children)
     }
-    pub fn h4(
-        attributes: Attributes,
-        events: Events<Msg>,
-        children: Vec<Html<Msg>>,
-    ) -> Self {
+    pub fn h4(attributes: Attributes, events: Events<Msg>, children: Vec<Html<Msg>>) -> Self {
         Html::node("h4", attributes, events, children)
     }
-    pub fn h5(
-        attributes: Attributes,
-        events: Events<Msg>,
-        children: Vec<Html<Msg>>,
-    ) -> Self {
+    pub fn h5(attributes: Attributes, events: Events<Msg>, children: Vec<Html<Msg>>) -> Self {
         Html::node("h5", attributes, events, children)
     }
-    pub fn h6(
-        attributes: Attributes,
-        events: Events<Msg>,
-        children: Vec<Html<Msg>>,
-    ) -> Self {
+    pub fn h6(attributes: Attributes, events: Events<Msg>, children: Vec<Html<Msg>>) -> Self {
         Html::node("h6", attributes, events, children)
     }
-    pub fn span(
-        attributes: Attributes,
-        events: Events<Msg>,
-        children: Vec<Html<Msg>>,
-    ) -> Self {
+    pub fn span(attributes: Attributes, events: Events<Msg>, children: Vec<Html<Msg>>) -> Self {
         Html::node("span", attributes, events, children)
     }
 }

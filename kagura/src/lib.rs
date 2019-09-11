@@ -1,17 +1,17 @@
 extern crate rand;
 
+mod bin;
+mod component;
 mod dom;
-pub mod html;
-pub mod component;
-mod main;
+mod html;
 
 #[allow(unused_imports)]
 use rand::prelude::*;
 
-pub use html::Html;
+pub use component::Component;
 pub use html::Attributes;
 pub use html::Events;
-pub use component::Component;
+pub use html::Html;
 
 pub fn run<M, S, B>(component: Component<M, S, B>, id: &str)
 where
@@ -19,5 +19,5 @@ where
     S: 'static,
     B: 'static,
 {
-    main::run(component, id);
+    bin::run(component, id);
 }
