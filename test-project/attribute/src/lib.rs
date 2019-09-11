@@ -20,7 +20,8 @@ fn render(_: &State) -> kagura::Html<Msg> {
     use kagura::Events;
     Html::h1(
         Attributes::new()
-            .style("color: red"),
+            .style("color: #FFF")
+            .style("background-color: #D3381C"),
         Events::new(),
         vec![
             Html::unsafe_text("hello kagura"),
