@@ -4,6 +4,8 @@ mod bin;
 mod component;
 mod dom;
 mod html;
+pub mod native;
+mod renderer;
 
 #[allow(unused_imports)]
 use rand::prelude::*;

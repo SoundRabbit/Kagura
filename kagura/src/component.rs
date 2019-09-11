@@ -107,16 +107,13 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
                     .collect::<Vec<dom::Node>>();
                 let component_id = self.id;
                 let mut dom_events = dom::Events::new();
-                if let Some(mut handler) = events.on_click {
-                    dom_events = dom_events.with_on_click(move |e| {
+
+                for (name, mut handler) in events.handlers {
+                    dom_events.add(name, move |e| {
                         update(component_id, &handler(e));
                     });
                 }
-                if let Some(mut handler) = events.on_input {
-                    dom_events = dom_events.with_on_input(move |e| {
-                        update(component_id, &handler(e));
-                    });
-                }
+
                 dom::Node::Element {
                     tag_name,
                     attributes,

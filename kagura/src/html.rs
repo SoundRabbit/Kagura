@@ -73,7 +73,11 @@ impl<Msg> Html<Msg> {
     pub fn bdo(attributes: Attributes, events: Events<Msg>, children: Vec<Html<Msg>>) -> Self {
         Html::node("bdo", attributes, events, children)
     }
-    pub fn blockquote(attributes: Attributes, events: Events<Msg>, children: Vec<Html<Msg>>) -> Self {
+    pub fn blockquote(
+        attributes: Attributes,
+        events: Events<Msg>,
+        children: Vec<Html<Msg>>,
+    ) -> Self {
         Html::node("blockquote", attributes, events, children)
     }
     pub fn button(attributes: Attributes, events: Events<Msg>, children: Vec<Html<Msg>>) -> Self {
@@ -136,7 +140,11 @@ impl<Msg> Html<Msg> {
     pub fn fieldset(attributes: Attributes, events: Events<Msg>, children: Vec<Html<Msg>>) -> Self {
         Html::node("fieldset", attributes, events, children)
     }
-    pub fn figcaption(attributes: Attributes, events: Events<Msg>, children: Vec<Html<Msg>>) -> Self {
+    pub fn figcaption(
+        attributes: Attributes,
+        events: Events<Msg>,
+        children: Vec<Html<Msg>>,
+    ) -> Self {
         Html::node("figcaption", attributes, events, children)
     }
     pub fn figure(attributes: Attributes, events: Events<Msg>, children: Vec<Html<Msg>>) -> Self {
