@@ -1,3 +1,39 @@
+//! # Kagura
+//! Kagura is a web-frontend framework for wasm on Rust.
+//! 
+//! ## example for "hello-world"
+//! 
+//! ```
+//! extern crate kagura;
+//! extern crate wasm_bindgen;
+//! 
+//! use wasm_bindgen::prelude::*;
+//! 
+//! #[wasm_bindgen(start)]
+//! pub fn main() {
+//!     kagura::run(kagura::Component::new(State, update, render), "app");
+//! }
+//! 
+//! struct State;
+//! 
+//! struct Msg;
+//! 
+//! fn update(_: &mut State, _: &Msg) -> Option<()> {None}
+//! 
+//! fn render(_: &State) -> kagura::Html<Msg> {
+//!     use kagura::Html;
+//!     use kagura::Attributes;
+//!     use kagura::Events;
+//!     Html::h1(
+//!         Attributes::new(),
+//!         Events::new(),
+//!         vec![
+//!             Html::unsafe_text("hello kagura"),
+//!         ],
+//!     )
+//! }
+//! ```
+
 extern crate rand;
 
 mod bin;
@@ -15,11 +51,19 @@ pub use html::Attributes;
 pub use html::Events;
 pub use html::Html;
 
-pub fn run<M, S, B>(component: Component<M, S, B>, id: &str)
+/// Starts application with component
+/// コンポーネントを指定してアプリケーションを開始する
+/// 
+/// # Examples
+/// 
+/// ```
+/// kagura::run(component, "id of entry point");
+/// ```
+pub fn run<Msg, State, Sub>(component: Component<Msg, State, Sub>, id: &str)
 where
-    M: 'static,
-    S: 'static,
-    B: 'static,
+    Msg: 'static,
+    State: 'static,
+    Sub: 'static,
 {
     bin::run(component, id);
 }

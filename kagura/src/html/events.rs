@@ -4,19 +4,27 @@ use crate::native;
 use std::collections::HashMap;
 use wasm_bindgen::JsCast;
 
+/// Events for Html<Msg>
+/// Html<Msg>用のイベント
 pub struct Events<Msg> {
     pub handlers: HashMap<String, Box<FnMut(native::Event) -> Msg>>,
 }
 
+/// Props of MouseEvent
+/// MouseEventのプロパティ
 pub struct MouseEvent;
 
 impl<Msg> Events<Msg> {
+    /// Creates new empty Events
+    /// 空のイベントを作成する
     pub fn new() -> Self {
         Self {
             handlers: HashMap::new(),
         }
     }
 
+    /// Adds event handler
+    /// イベントハンドラを追加
     pub fn on(
         mut self,
         type_: impl Into<String>,

@@ -3,6 +3,7 @@ use crate::dom;
 use crate::Html;
 use std::any::Any;
 
+/// Wrapper of Component
 pub trait Composable {
     fn update(&mut self, id: u128, msg: &Any) -> bool;
     fn render(&mut self, id: Option<u128>) -> dom::Node;
@@ -10,6 +11,8 @@ pub trait Composable {
     fn set_parent_id(&mut self, id: u128);
 }
 
+/// Component constructed by State-update-render
+/// State, update, render で構成されるコンポーネント 
 pub struct Component<Msg, State, Sub>
 where
     Msg: 'static,
@@ -26,6 +29,32 @@ where
 }
 
 impl<Msg, State, Sub> Component<Msg, State, Sub> {
+    /// Creates new component ftom initial state, update, render
+    /// 初期ステート, update, render からコンポーネントを作成する
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    /// fn hello_world_component() -> Component<Msg, State, Sub> {
+    ///     Component::new(initial_state, update, render)
+    /// }
+    /// 
+    /// struct Msg;
+    /// struct State;
+    /// struct Sub;
+    /// 
+    /// fn update(_: &mut State, _: &Msg) -> Option<Sub> { None }
+    /// 
+    /// fn render(_: &State) -> Html<Msg> {
+    ///     Html::h1(
+    ///     Attributes::new(),
+    ///     Events::new(),
+    ///     vec![
+    ///         Html::unsafe_text("hello kagura"),
+    ///     ],
+    /// )
+    /// } 
+    /// ```
     pub fn new(
         state: State,
         update: fn(&mut State, &Msg) -> Option<Sub>,
@@ -48,6 +77,18 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
         self.children.push(composable);
     }
 
+    /// Regists binder from child Sub to parent Msg
+    /// 子コンポーネントのSubを親コンポーネントのMsgに変換するクロージャを登録する
+    /// 
+    /// #Example
+    /// 
+    /// ```
+    /// create_a_child_component(props).subscribe(|sub| {
+    ///     match sub {
+    ///         ChildComponent::Sub::Input(value) => Box::new(Msg::Send(value))
+    ///     }
+    /// })
+    /// ```
     pub fn subscribe(mut self, sub: impl FnMut(Sub) -> Box<Any> + 'static) -> Self {
         self.subscribe = Some(Box::new(sub));
         self
