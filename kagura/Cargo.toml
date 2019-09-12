@@ -1,10 +1,15 @@
 [package]
 name = "kagura"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["SoundRabbit <soundrabbitstd@gmail.com>"]
 edition = "2018"
 description = "Frontend frame-work for wasm on Rust."
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/SoundRabbit/Kagura"
+homepage = "https://github.com/SoundRabbit/Kagura"
+readme = "README.md"
+keywords = ["web", "wasm", "front-end"]
+categories = ["gui", "web-programming"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
