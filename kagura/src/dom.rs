@@ -71,7 +71,7 @@ impl Attributes {
         self
     }
 
-    pub fn flag(mut self, name: impl Into<String>) -> Self{
+    pub fn flag(mut self, name: impl Into<String>) -> Self {
         self.set(name);
         self
     }
@@ -80,7 +80,6 @@ impl Attributes {
         self.delimit(name, dlm);
         self
     }
-
 
     pub fn add(&mut self, name: impl Into<String>, value: Value) {
         let name: String = name.into();

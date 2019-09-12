@@ -6,14 +6,14 @@ pub struct Attributes {
 }
 
 impl Attributes {
-    pub fn new() -> Self{
+    pub fn new() -> Self {
         Self {
             attributes: dom::Attributes::new(),
-            last_attribute: "".to_string()
+            last_attribute: "".to_string(),
         }
     }
 
-    pub fn string(mut self, name: impl Into<String>, value: impl Into <String>) -> Self {
+    pub fn string(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         let name = name.into();
         self.last_attribute = name.clone();
         self.attributes.add(name, dom::Value::Str(value.into()));
@@ -57,7 +57,7 @@ impl Attributes {
     pub fn hidden(self) -> Self {
         self.flag("hidden")
     }
-    
+
     pub fn href(self, uri: impl Into<String>) -> Self {
         self.string("href", uri)
     }
@@ -70,11 +70,11 @@ impl Attributes {
         self.string("placeholder", value)
     }
 
-    pub fn selected(self) -> Self{
+    pub fn selected(self) -> Self {
         self.flag("selected")
     }
 
-    pub fn style(self, name: impl Into<String>, value: impl Into <String>) -> Self {
+    pub fn style(self, name: impl Into<String>, value: impl Into<String>) -> Self {
         self.string("style", name.into() + ":" + &value.into())
     }
 
