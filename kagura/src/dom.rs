@@ -30,7 +30,7 @@ pub enum Value {
 }
 
 pub struct Events {
-    handlers: HashMap<String, Box<FnMut(Event)>>,
+    pub handlers: HashMap<String, Box<FnMut(Event)>>,
 }
 
 impl Node {
