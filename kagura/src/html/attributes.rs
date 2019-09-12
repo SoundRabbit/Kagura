@@ -1,7 +1,6 @@
 use crate::dom;
 
 /// Attributes for Html<Msg>
-/// Html<Msg>用の属性
 pub struct Attributes {
     pub attributes: dom::Attributes,
     last_attribute: String,
@@ -9,7 +8,6 @@ pub struct Attributes {
 
 impl Attributes {
     /// Creates new empty Attributs
-    /// 空の属性を作成する
     pub fn new() -> Self {
         Self {
             attributes: dom::Attributes::new(),
@@ -18,7 +16,6 @@ impl Attributes {
     }
 
     /// Adds attribute having string value
-    /// 文字列を持つ属性を追加する
     pub fn string(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         let name = name.into();
         self.last_attribute = name.clone();
@@ -27,7 +24,6 @@ impl Attributes {
     }
 
     /// Adds attribute having natural number
-    /// 自然数を持つ属性を追加する
     pub fn nut(mut self, name: impl Into<String>, value: u64) -> Self {
         let name = name.into();
         self.last_attribute = name.clone();
@@ -36,7 +32,6 @@ impl Attributes {
     }
 
     /// Adds attribute having integer
-    /// 整数を持つ属性を追加する
     pub fn int(mut self, name: impl Into<String>, value: i64) -> Self {
         let name = name.into();
         self.last_attribute = name.clone();
@@ -45,7 +40,6 @@ impl Attributes {
     }
 
     /// Adds attribute not hanving any value
-    /// 値を持たない属性を追加する
     pub fn flag(mut self, name: impl Into<String>) -> Self {
         let name = name.into();
         self.last_attribute = name.clone();
@@ -54,13 +48,11 @@ impl Attributes {
     }
 
     /// Sets delimiter for last attribute
-    /// 直近の属性にデリミタを設定する
     /// 
     /// # Example
     /// 
     /// ```
     /// /* This is creation of attribute: foo="x, y, z" */
-    /// /* 属性: foo="x, y, z" を作成 */
     /// Attributes::new()
     ///     .string("foo", "x")
     ///     .string("foo", "y")

@@ -21,7 +21,6 @@ pub enum Html<Msg> {
 
 impl<Msg> Html<Msg> {
     /// Creates Html<Msg> from component
-    /// コンポーネントからHtml<Msg>を作成する
     pub fn component<M, S, B>(component: Component<M, S, B>) -> Self
     where
         M: 'static,
@@ -32,13 +31,11 @@ impl<Msg> Html<Msg> {
     }
 
     /// Creates Html<Msg> from a non-validated text
-    /// バリデーションが行われていないテキストからHtml<Msg>を作成する
     pub fn unsafe_text(text: impl Into<String>) -> Self {
         Html::TextNode(text.into())
     }
 
     /// Creates Html<Msg> from element
-    /// エレメントからHtml<Msg>を作成する
     pub fn node(
         tag_name: impl Into<String>,
         attributes: Attributes,

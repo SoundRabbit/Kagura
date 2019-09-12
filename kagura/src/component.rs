@@ -12,7 +12,6 @@ pub trait Composable {
 }
 
 /// Component constructed by State-update-render
-/// State, update, render で構成されるコンポーネント 
 pub struct Component<Msg, State, Sub>
 where
     Msg: 'static,
@@ -30,7 +29,6 @@ where
 
 impl<Msg, State, Sub> Component<Msg, State, Sub> {
     /// Creates new component ftom initial state, update, render
-    /// 初期ステート, update, render からコンポーネントを作成する
     /// 
     /// # Example
     /// 
@@ -78,7 +76,6 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
     }
 
     /// Regists binder from child Sub to parent Msg
-    /// 子コンポーネントのSubを親コンポーネントのMsgに変換するクロージャを登録する
     /// 
     /// #Example
     /// 

@@ -52,7 +52,6 @@ pub use html::Events;
 pub use html::Html;
 
 /// Starts application with component
-/// コンポーネントを指定してアプリケーションを開始する
 /// 
 /// # Examples
 /// 
