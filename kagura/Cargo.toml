@@ -7,7 +7,7 @@ description = "Frontend frame-work for wasm on Rust."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/SoundRabbit/Kagura"
 homepage = "https://github.com/SoundRabbit/Kagura"
-readme = "README.md"
+readme = "../README.md"
 keywords = ["web", "wasm", "front-end"]
 categories = ["gui", "web-programming"]
 
