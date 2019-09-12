@@ -1,3 +1,6 @@
+extern crate wasm_bindgen;
+
+use wasm_bindgen::prelude::*;
 use crate::dom;
 use crate::native;
 
@@ -27,13 +30,14 @@ impl Renderer {
             dom::Node::Element {
                 tag_name,
                 attributes,
-                events: _,
+                events,
                 children,
                 rerender: _,
             } => {
                 let mut root = native::create_element(&tag_name);
 
                 Self::adapt_attribute_all(&mut root, &attributes);
+                Self::adapt_event_all(&mut root, events);
 
                 for child in children {
                     let child = Self::render_all(child);
@@ -110,6 +114,14 @@ impl Renderer {
                     );
                 }
             }
+        }
+    }
+
+    fn adapt_event_all(element: &mut native::Element, events: dom::Events) {
+        for (tp, hnd) in events.handlers {
+            let a = Closure::wrap(hnd);
+            element.add_event_listener(&tp, &a);
+            a.forget();
         }
     }
 }
