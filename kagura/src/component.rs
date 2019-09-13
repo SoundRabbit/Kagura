@@ -29,20 +29,20 @@ where
 
 impl<Msg, State, Sub> Component<Msg, State, Sub> {
     /// Creates new component ftom initial state, update, render
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// fn hello_world_component() -> Component<Msg, State, Sub> {
     ///     Component::new(initial_state, update, render)
     /// }
-    /// 
+    ///
     /// struct Msg;
     /// struct State;
     /// struct Sub;
-    /// 
+    ///
     /// fn update(_: &mut State, _: &Msg) -> Option<Sub> { None }
-    /// 
+    ///
     /// fn render(_: &State) -> Html<Msg> {
     ///     Html::h1(
     ///     Attributes::new(),
@@ -51,7 +51,7 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
     ///         Html::unsafe_text("hello kagura"),
     ///     ],
     /// )
-    /// } 
+    /// }
     /// ```
     pub fn new(
         state: State,
@@ -76,9 +76,9 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
     }
 
     /// Regists binder from child Sub to parent Msg
-    /// 
+    ///
     /// #Example
-    /// 
+    ///
     /// ```
     /// create_a_child_component(props).subscribe(|sub| {
     ///     match sub {
@@ -114,13 +114,13 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
                     .into_iter()
                     .map(|child| self.adapt_html_lazy(child, child_index, id))
                     .collect::<Vec<dom::Node>>();
-                dom::Node::Element {
+                dom::Node::element(
                     tag_name,
-                    attributes: dom::Attributes::new(),
-                    events: dom::Events::new(),
+                    dom::Attributes::new(),
+                    dom::Events::new(),
                     children,
-                    rerender: false,
-                }
+                    false,
+                )
             }
         }
     }
@@ -152,13 +152,7 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
                     });
                 }
 
-                dom::Node::Element {
-                    tag_name,
-                    attributes: attributes.attributes,
-                    events: dom_events,
-                    children,
-                    rerender: true,
-                }
+                dom::Node::element(tag_name, attributes.attributes, dom_events, children, true)
             }
         }
     }

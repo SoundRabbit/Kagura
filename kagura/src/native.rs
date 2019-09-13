@@ -83,6 +83,9 @@ extern "C" {
     #[wasm_bindgen(method, js_name = "setAttribute")]
     pub fn set_attribute(this: &Element, name: &str, value: &str);
 
+    #[wasm_bindgen(method, js_name = "removeAttribute")]
+    pub fn remove_attribute(this: &Element, name: &str);
+
     #[wasm_bindgen(method, setter = id)]
     pub fn set_id(this: &Element, id: &str);
 
