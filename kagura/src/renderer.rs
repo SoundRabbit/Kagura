@@ -16,7 +16,7 @@ impl Renderer {
     pub fn new(virtual_node: dom::Node, root_node: native::Node) -> Self {
         let before = virtual_node.clone();
         let mut root: native::Node;
-        if let Some(node) = render(virtual_node, Some(&root_node)) {
+        if let Some(node) = render(virtual_node, None, Some(&root_node), false) {
             root = node;
         } else {
             root = native::create_text_node("").into();
@@ -28,7 +28,7 @@ impl Renderer {
     pub fn update(&mut self, after: dom::Node) {
         let mut before = after.clone();
         mem::swap(&mut before, &mut self.before);
-        if let Some(root) = render(after, Some(&self.root)) {
+        if let Some(root) = render(after, Some(&before), Some(&self.root), false) {
             self.root.parent_node().replace_child(&root, &self.root);
             self.root = root;
         }
@@ -73,31 +73,64 @@ impl native::Element {
 
 fn render(
     after: dom::Node,
+    before: Option<&dom::Node>,
     root: Option<&native::Node>,
+    cloned: bool,
 ) -> Option<native::Node> {
     use dom::Node;
     match after {
         Node::Text(text) => Some(native::create_text_node(&text).into()),
         Node::Element(after) => {
             if after.need_rerendering {
+                if let (Some(Node::Element(before)), Some(root)) = (before, root) {
+                    if before.tag_name == after.tag_name {
+                        let clone = if !cloned { Some(root.clone_node(true)) } else {None};
+                        let root = if let Some(c) = &clone {c} else {root};
+                        let cloned = true;
+                        if let Some(root) = root.dyn_ref::<native::Element>() {
+                            if before.attributes != after.attributes {
+                                root.remove_attribute_all(&before.attributes);
+                                root.set_attribute_all(&after.attributes);
+                            }
+                            root.set_event_all(after.events);
+                            let mut i = before.children.len() - after.children.len();
+                            while i > 0 {
+                                if let Some(a) = root.child_nodes().item(i) {
+                                    root.remove_child(&a);
+                                }
+                                i -= 1;
+                            }
+                            let mut i = 0;
+                            for child in after.children {
+                                if let Some(b) = root.child_nodes().item(i) {
+                                    if let Some(a) = render(child, before.children.get(i), Some(&b), cloned) {
+                                        root.replace_child(&a, &b);
+                                    }
+                                } else {
+                                    if let Some(a) = render(child, before.children.get(i), None, cloned) {
+                                        root.append_child(&a);
+                                    }
+                                }
+                                i += 1;
+                            }
+                            return clone;
+                        }
+                    }
+                }
                 let el = new_element(&after.tag_name, &after.attributes, after.events);
                 for child in after.children {
-                    if let Some(node) = render(child, None) {
+                    if let Some(node) = render(child, None, None, cloned) {
                         el.append_child(&node);
                     }
                 }
                 Some(el.into())
             } else {
-                if let Some(root) = root {
+                if let (Some(root), Some(Node::Element(before))) = (root, before){
                     let mut i = 0;
                     for child in after.children {
                         if let Some(b) = root.child_nodes().item(i) {
-                            if let Some(a) = render(child, Some(&b)) {
+                            if let Some(a) = render(child, before.children.get(i),Some(&b), cloned) {
                                 root.replace_child(&a, &b);
-                            }
-                        } else {
-                            if let Some(a) = render(child, None) {
-                                root.append_child(&a);
                             }
                         }
                         i += 1;

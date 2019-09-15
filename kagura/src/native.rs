@@ -74,11 +74,14 @@ extern "C" {
     #[wasm_bindgen(method, getter = parentNode)]
     pub fn parent_node(this: &Node) -> Node;
 
-    #[wasm_bindgen(method, getter = children)]
-    pub fn children(this: &Node) -> HTMLCollection;
-
     #[wasm_bindgen(method, getter = childNodes)]
     pub fn child_nodes(this: &Node) -> NodeList;
+    
+    #[wasm_bindgen(method, js_name = "cloneNode")]
+    pub fn clone_node(this: &Node, deep: bool) -> Node;
+
+    #[wasm_bindgen(method, js_name = "removeChild")]
+    pub fn remove_child(this: &Node, child: &Node) -> Node;
 
     /* Elementのメソッド */
 
@@ -94,6 +97,12 @@ extern "C" {
     #[wasm_bindgen(method, setter = id)]
     pub fn set_id(this: &Element, id: &str);
 
+    #[wasm_bindgen(method, getter = tagName)]
+    pub fn tag_name(this: &Element) -> String;
+
+    #[wasm_bindgen(method, getter = children)]
+    pub fn children(this: &Element) -> HTMLCollection;
+
     /* HtmlInputElementのメソッド */
 
     #[wasm_bindgen(method, getter = value)]
@@ -105,7 +114,7 @@ extern "C" {
     /* HTMLCollectionのメソッド */
 
     #[wasm_bindgen(method, js_name = "item")]
-    pub fn item(this: &HTMLCollection, index: usize) -> Option<Node>;
+    pub fn item(this: &HTMLCollection, index: usize) -> Option<Element>;
 
     /* NodeListのメソッド */
 
