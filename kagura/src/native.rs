@@ -25,6 +25,8 @@ extern "C" {
 
     pub type HTMLCollection;
 
+    pub type NodeList;
+
     pub type Event;
 
     #[wasm_bindgen(extends = Event)]
@@ -75,6 +77,9 @@ extern "C" {
     #[wasm_bindgen(method, getter = children)]
     pub fn children(this: &Node) -> HTMLCollection;
 
+    #[wasm_bindgen(method, getter = childNodes)]
+    pub fn child_nodes(this: &Node) -> NodeList;
+
     /* Elementのメソッド */
 
     #[wasm_bindgen(method, js_name = "remove")]
@@ -101,6 +106,11 @@ extern "C" {
 
     #[wasm_bindgen(method, js_name = "item")]
     pub fn item(this: &HTMLCollection, index: usize) -> Option<Node>;
+
+    /* NodeListのメソッド */
+
+    #[wasm_bindgen(method, js_name = "item")]
+    pub fn item(this: &NodeList, index: usize) -> Option<Node>;
 
     /* Eventのメソッド */
 

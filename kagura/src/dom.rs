@@ -10,7 +10,7 @@ pub enum Node {
     Text(String),
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone)]
 pub struct Element {
     pub tag_name: String,
     pub attributes: Attributes,
@@ -55,6 +55,12 @@ impl Node {
 
     pub fn text(t: impl Into<String>) -> Self {
         Node::Text(t.into())
+    }
+}
+
+impl PartialEq for Element {
+    fn eq(&self, other: &Self) -> bool {
+        self.attributes == other.attributes && self.tag_name == other.tag_name
     }
 }
 
@@ -122,6 +128,16 @@ impl PartialEq for Attributes {
                 false
             }
         })
+    }
+}
+
+impl Into<String> for &Value {
+    fn into(self) -> String {
+        match self {
+            Value::Int(v) => v.to_string(),
+            Value::Nut(v) => v.to_string(),
+            Value::Str(v) => v.clone(),
+        }
     }
 }
 

@@ -2,8 +2,10 @@ extern crate wasm_bindgen;
 
 use crate::dom;
 use crate::native;
+use std::collections::HashSet;
 use std::mem;
 use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
 
 pub struct Renderer {
     before: dom::Node,
@@ -13,7 +15,12 @@ pub struct Renderer {
 impl Renderer {
     pub fn new(virtual_node: dom::Node, root_node: native::Node) -> Self {
         let before = virtual_node.clone();
-        let root = Self::render_all(virtual_node);
+        let mut root: native::Node;
+        if let Some(node) = render(virtual_node, Some(&root_node)) {
+            root = node;
+        } else {
+            root = native::create_text_node("").into();
+        }
         root_node.parent_node().replace_child(&root, &root_node);
         Self { before, root }
     }
@@ -21,133 +28,94 @@ impl Renderer {
     pub fn update(&mut self, after: dom::Node) {
         let mut before = after.clone();
         mem::swap(&mut before, &mut self.before);
-        let before = before;
-        if let Some(root) = Self::render_component(after, &before, &self.root, &self.root.parent_node()) {
+        if let Some(root) = render(after, Some(&self.root)) {
+            self.root.parent_node().replace_child(&root, &self.root);
             self.root = root;
         }
     }
+}
 
-    fn render_all(virtual_node: dom::Node) -> native::Node {
-        match virtual_node {
-            dom::Node::Text(text) => native::create_text_node(&text).into(),
-            dom::Node::Element(el) => {
-                let root = native::create_element(&el.tag_name);
-
-                Self::adapt_attribute_all(&root, &el.attributes);
-                Self::adapt_event_all(&root, el.events);
-
-                for child in el.children {
-                    let child = Self::render_all(child);
-                    root.append_child(&child);
-                }
-
-                root.into()
-            }
-        }
-    }
-
-    fn render_diff(
-        after: dom::Node,
-        before: Option<(&dom::Node, &native::Node)>,
-        parent: &native::Node,
-    ) -> Option<native::Node> {
-        if let Some((before, root)) = before {
-            if *before == after {
-                None
+impl native::Element {
+    fn set_attribute_all(&self, attributes: &dom::Attributes) {
+        for (a, v) in &attributes.attributes {
+            if v.is_empty() {
+                self.set_attribute(&a, "");
+            } else if let Some(d) = attributes.delimiters.get(a) {
+                self.set_attribute_set(a, v, d);
             } else {
-                let new_root = Self::render_all(after);
-                native::console_log("1");
-                parent.replace_child(&new_root, root);
-                Some(new_root)
+                self.set_attribute_set(a, v, "");
             }
-        } else {
-            let root = Self::render_all(after);
-            parent.append_child(&root);
-            Some(root)
         }
     }
 
-    fn render_component(
-        after: dom::Node,
-        before: &dom::Node,
-        root: &native::Node,
-        parent: &native::Node,
-    ) -> Option<native::Node> {
-        match after {
-            dom::Node::Text(_) => (None),
-            dom::Node::Element(el) => {
-                if el.need_rerendering {
-                    Self::render_diff(dom::Node::Element(el), Some((before, root)), parent) 
-                } else if let dom::Node::Element(before) = before{
-                    let mut i: usize = 0;
-                    for child in el.children {
-                        if let Some(node) = root.children().item(i) {
-                            if let Some(before) = before.children.get(i) {
-                                Self::render_component(child, &before, &node, &root);
-                            } else {
-                                let child = Self::render_all(child);
-                                native::console_log("3");
-                                root.replace_child(&child, &node);
+    fn set_attribute_set(&self, a: &str, v: &HashSet<dom::Value>, d: &str) {
+        let v = v.iter().map(|v| v.into()).collect::<Vec<String>>();
+        self.set_attribute(
+            a,
+            &v.iter().map(|v| &v as &str).collect::<Vec<&str>>().join(d),
+        );
+    }
+
+    fn set_event_all(&self, events: dom::Events) {
+        for (t, h) in events.handlers {
+            let h = Closure::wrap(h);
+            self.add_event_listener(&t, &h);
+            h.forget();
+        }
+    }
+
+    fn remove_attribute_all(&self, attributes: &dom::Attributes) {
+        for (attr, _) in &attributes.attributes {
+            self.remove_attribute(&attr);
+        }
+    }
+}
+
+fn render(
+    after: dom::Node,
+    root: Option<&native::Node>,
+) -> Option<native::Node> {
+    use dom::Node;
+    match after {
+        Node::Text(text) => Some(native::create_text_node(&text).into()),
+        Node::Element(after) => {
+            if after.need_rerendering {
+                let el = new_element(&after.tag_name, &after.attributes, after.events);
+                for child in after.children {
+                    if let Some(node) = render(child, None) {
+                        el.append_child(&node);
+                    }
+                }
+                Some(el.into())
+            } else {
+                if let Some(root) = root {
+                    let mut i = 0;
+                    for child in after.children {
+                        if let Some(b) = root.child_nodes().item(i) {
+                            if let Some(a) = render(child, Some(&b)) {
+                                root.replace_child(&a, &b);
+                            }
+                        } else {
+                            if let Some(a) = render(child, None) {
+                                root.append_child(&a);
                             }
                         }
                         i += 1;
                     }
-                    None
-                } else {
-                    let new_root = Self::render_all(dom::Node::Element(el));
-                    native::console_log("4");
-                    parent.replace_child(&new_root, root);
-                    Some(new_root)
                 }
+                None
             }
         }
     }
+}
 
-    fn adapt_attribute_all(element: &native::Element, attributes: &dom::Attributes) {
-        for (attr, val) in &attributes.attributes {
-            if val.is_empty() {
-                element.set_attribute(&attr, "");
-            } else {
-                let val = val
-                    .iter()
-                    .map(|v| match v {
-                        dom::Value::Str(s) => s.clone(),
-                        dom::Value::Int(i) => i.to_string(),
-                        dom::Value::Nut(i) => i.to_string(),
-                    })
-                    .collect::<Vec<String>>();
-                if let Some(dlm) = attributes.delimiters.get(attr) {
-                    element.set_attribute(
-                        &attr,
-                        &val.iter()
-                            .map(|v| &v as &str)
-                            .collect::<Vec<&str>>()
-                            .join(dlm),
-                    );
-                } else {
-                    element.set_attribute(
-                        &attr,
-                        &val.iter()
-                            .map(|v| &v as &str)
-                            .collect::<Vec<&str>>()
-                            .join(""),
-                    );
-                }
-            }
-        }
-    }
-
-    fn adapt_event_all(element: &native::Element, events: dom::Events) {
-        for (tp, hnd) in events.handlers {
-            let a = Closure::wrap(hnd);
-            element.add_event_listener(&tp, &a);
-            a.forget();
-        }
-    }
-
-    fn _remove_attribute_all(element: &native::Element, attributes: &dom::Attributes) {
-        for (attr, _) in &attributes.attributes {
-            element.remove_attribute(&attr);
-        }
-    }
+fn new_element(
+    tag_name: &str,
+    attributes: &dom::Attributes,
+    events: dom::Events,
+) -> native::Element {
+    let element = native::create_element(tag_name);
+    element.set_attribute_all(attributes);
+    element.set_event_all(events);
+    element
 }
