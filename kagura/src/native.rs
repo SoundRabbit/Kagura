@@ -61,7 +61,12 @@ extern "C" {
     /* EventTargetのメソッド */
 
     #[wasm_bindgen(method, js_name = "addEventListener")]
-    pub fn add_event_listener(this: &EventTarget, type_: &str, closure: &Closure<FnMut(Event)>);
+    pub fn add_event_listener(
+        this: &EventTarget,
+        type_: &str,
+        closure: &Closure<FnMut(Event)>,
+        option: &JsValue,
+    );
 
     /* Nodeのメソッド */
 
@@ -76,7 +81,6 @@ extern "C" {
 
     #[wasm_bindgen(method, getter = childNodes)]
     pub fn child_nodes(this: &Node) -> NodeList;
-    
     #[wasm_bindgen(method, js_name = "cloneNode")]
     pub fn clone_node(this: &Node, deep: bool) -> Node;
 
@@ -186,4 +190,36 @@ extern "C" {
 
     #[wasm_bindgen(method, getter = shiftKey)]
     pub fn shift_key(this: &MouseEvent) -> bool;
+}
+
+#[derive(Serialize)]
+pub struct EventOption {
+    capture: bool,
+    once: bool,
+    passive: bool,
+}
+
+impl EventOption {
+    pub fn new() -> Self {
+        Self {
+            capture: false,
+            once: false,
+            passive: false,
+        }
+    }
+
+    pub fn capture(mut self, capture: bool) -> Self {
+        self.capture = capture;
+        self
+    }
+
+    pub fn once(mut self, once: bool) -> Self {
+        self.once = once;
+        self
+    }
+
+    pub fn passive(mut self, passive: bool) -> Self {
+        self.passive = passive;
+        self
+    }
 }
