@@ -15,10 +15,10 @@ extern "C" {
     pub type Element;
 
     #[wasm_bindgen(extends = Element)]
-    pub type HtmlElement;
+    pub type HTMLElement;
 
-    #[wasm_bindgen(extends = HtmlElement)]
-    pub type HtmlInputElement;
+    #[wasm_bindgen(extends = HTMLElement)]
+    pub type HTMLInputElement;
 
     #[wasm_bindgen(extends = Node)]
     pub type Text;
@@ -107,13 +107,13 @@ extern "C" {
     #[wasm_bindgen(method, getter = children)]
     pub fn children(this: &Element) -> HTMLCollection;
 
-    /* HtmlInputElementのメソッド */
+    /* HTMLInputElementのメソッド */
 
     #[wasm_bindgen(method, getter = value)]
-    pub fn value(this: &HtmlInputElement) -> String;
+    pub fn value(this: &HTMLInputElement) -> String;
 
     #[wasm_bindgen(method, setter = value)]
-    pub fn set_value(this: &HtmlInputElement) -> String;
+    pub fn set_value(this: &HTMLInputElement) -> String;
 
     /* HTMLCollectionのメソッド */
 

@@ -2,6 +2,7 @@ extern crate wasm_bindgen;
 
 use crate::native;
 use std::collections::HashMap;
+use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
 /// Events for Html<Msg>
@@ -36,9 +37,9 @@ impl<Msg> Events<Msg> {
 
     pub fn on_input(self, mut handler: impl FnMut(String) -> Msg + 'static) -> Self {
         self.on("input", move |e| {
-            if let Ok(target) = e.target().dyn_into::<native::HtmlInputElement>() {
+            if let Ok(target) = e.target().dyn_into::<native::HTMLInputElement>() {
                 handler(target.value())
-            } else {
+            }else{
                 handler("".to_string())
             }
         })
