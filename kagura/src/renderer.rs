@@ -1,8 +1,11 @@
 extern crate wasm_bindgen;
 
-use wasm_bindgen::prelude::*;
 use crate::dom;
 use crate::native;
+use std::collections::HashSet;
+use std::mem;
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
 
 pub struct Renderer {
     before: dom::Node,
@@ -12,116 +15,160 @@ pub struct Renderer {
 impl Renderer {
     pub fn new(virtual_node: dom::Node, root_node: native::Node) -> Self {
         let before = virtual_node.clone();
-        let root = Self::render_all(virtual_node);
+        let mut root: native::Node;
+        if let Some(node) = render(virtual_node, None, Some(&root_node)) {
+            root = node;
+        } else {
+            root = native::create_text_node("").into();
+        }
         root_node.parent_node().replace_child(&root, &root_node);
         Self { before, root }
     }
 
     pub fn update(&mut self, after: dom::Node) {
-        self.before = after.clone();
-        if let Some(root) = Self::render_component(after, &self.root, &self.root.parent_node()) {
+        let mut before = after.clone();
+        mem::swap(&mut before, &mut self.before);
+        if let Some(root) = render(after, Some(&before), Some(&self.root)) {
+            self.root.parent_node().replace_child(&root, &self.root);
             self.root = root;
         }
     }
+}
 
-    fn render_all(virtual_node: dom::Node) -> native::Node {
-        match virtual_node {
-            dom::Node::Text(text) => native::create_text_node(&text).into(),
-            dom::Node::Element {
-                tag_name,
-                attributes,
-                events,
-                children,
-                rerender: _,
-            } => {
-                let mut root = native::create_element(&tag_name);
-
-                Self::adapt_attribute_all(&mut root, &attributes);
-                Self::adapt_event_all(&mut root, events);
-
-                for child in children {
-                    let child = Self::render_all(child);
-                    root.append_child(&child);
-                }
-
-                root.into()
+impl native::Element {
+    fn set_attribute_all(&self, attributes: &dom::Attributes) {
+        for (a, v) in &attributes.attributes {
+            if v.is_empty() {
+                self.set_attribute(&a, "");
+            } else if let Some(d) = attributes.delimiters.get(a) {
+                self.set_attribute_set(a, v, d);
+            } else {
+                self.set_attribute_set(a, v, "");
             }
         }
     }
 
-    fn render_component(
-        virtual_node: dom::Node,
-        root: &native::Node,
-        parent: &native::Node,
-    ) -> Option<native::Node> {
-        match virtual_node {
-            dom::Node::Text(_) => (None),
-            dom::Node::Element {
-                tag_name,
-                attributes,
-                events,
-                children,
-                rerender,
-            } => {
-                if rerender {
-                    let new_root = Self::render_all(dom::Node::element(
-                        tag_name, attributes, events, children, rerender,
-                    ));
-                    parent.replace_child(&new_root, root);
-                    Some(new_root)
-                } else {
-                    let mut i: usize = 0;
-                    for child in children {
-                        if let Some(node) = root.children().item(i) {
-                            Self::render_component(child, &node, &root);
+    fn set_attribute_set(&self, a: &str, v: &HashSet<dom::Value>, d: &str) {
+        let v = v.iter().map(|v| v.into()).collect::<Vec<String>>();
+        self.set_attribute(
+            a,
+            &v.iter().map(|v| &v as &str).collect::<Vec<&str>>().join(d),
+        );
+    }
+
+    fn set_event_all(&self, events: dom::Events) {
+        for (t, h) in events.handlers {
+            let h = Closure::wrap(h);
+            let option = native::EventOption::new().once(true);
+            if let Ok(option) = JsValue::from_serde(&option) {
+                self.add_event_listener(&t, &h, &option);
+                h.forget();
+            }
+        }
+    }
+
+    fn set_attribute_diff(&self, after: &dom::Attributes, before: &dom::Attributes) {
+        for (a, _) in &before.attributes {
+            if let Some(_) = after.attributes.get(a) {
+
+            } else {
+                self.remove_attribute(a);
+            }
+        }
+        self.set_attribute_all(after);
+    }
+}
+
+fn render(
+    after: dom::Node,
+    before: Option<&dom::Node>,
+    root: Option<&native::Node>,
+) -> Option<native::Node> {
+    use dom::Node;
+    match after {
+        Node::Text(text) => Some(native::create_text_node(&text).into()),
+        Node::Element(after) => {
+            if after.need_rerendering {
+                if let (Some(Node::Element(before)), Some(root)) = (before, root) {
+                    if let Some(root) = root.dyn_ref::<native::Element>() {
+                        if after.tag_name == before.tag_name {
+                            render_element_diff(after, before, root);
+                            None
+                        } else {
+                            Some(render_element_force(after))
                         }
-                        i += 1;
+                    } else {
+                        None
                     }
+                } else {
+                    Some(render_element_force(after))
+                }
+            } else {
+                if let (Some(Node::Element(before)), Some(root)) = (before, root) {
+                    render_element_lazy(after, before, root);
+                    None
+                } else {
                     None
                 }
             }
         }
     }
+}
 
-    fn adapt_attribute_all(element: &mut native::Element, attributes: &dom::Attributes) {
-        for (attr, val) in &attributes.attributes {
-            if val.is_empty() {
-                element.set_attribute(&attr, "");
-            } else {
-                let val = val
-                    .iter()
-                    .map(|v| match v {
-                        dom::Value::Str(s) => s.clone(),
-                        dom::Value::Int(i) => i.to_string(),
-                        dom::Value::Nut(i) => i.to_string(),
-                    })
-                    .collect::<Vec<String>>();
-                if let Some(dlm) = attributes.delimiters.get(attr) {
-                    element.set_attribute(
-                        &attr,
-                        &val.iter()
-                            .map(|v| &v as &str)
-                            .collect::<Vec<&str>>()
-                            .join(dlm),
-                    );
-                } else {
-                    element.set_attribute(
-                        &attr,
-                        &val.iter()
-                            .map(|v| &v as &str)
-                            .collect::<Vec<&str>>()
-                            .join(""),
-                    );
-                }
+fn render_element_lazy(after: dom::Element, before: &dom::Element, root: &native::Node) {
+    let mut i = 0;
+    for child in after.children {
+        if let Some(b) = root.child_nodes().item(i) {
+            if let Some(a) = render(child, before.children.get(i), Some(&b)) {
+                root.replace_child(&a, &b);
             }
         }
+        i += 1;
     }
+}
 
-    fn adapt_event_all(element: &mut native::Element, events: dom::Events) {
-        for (tp, hnd) in events.handlers {
-            let a = Closure::wrap(hnd);
-            element.add_event_listener(&tp, &a);
-            a.forget();
+fn render_element_force(after: dom::Element) -> native::Node {
+    let el = new_element(&after.tag_name, &after.attributes, after.events);
+    for child in after.children {
+        if let Some(node) = render(child, None, None) {
+            el.append_child(&node);
         }
     }
+    el.into()
+}
+
+fn render_element_diff(after: dom::Element, before: &dom::Element, root: &native::Element) {
+    root.set_attribute_diff(&after.attributes, &before.attributes);
+    root.set_event_all(after.events);
+    let mut i = before.children.len() - after.children.len();
+    while i > 0 {
+        if let Some(node) = root.child_nodes().item(after.children.len()+i-1) {
+            root.remove_child(&node);
+        }
+        i -= 1;
+    }
+    let mut i = 0;
+    for child in after.children {
+        if let Some(old) = root.child_nodes().item(i) {
+            if let Some(new) = render(child, before.children.get(i), Some(&old)) {
+                root.replace_child(&new, &old);
+            }
+        } else {
+            if let Some(new) = render(child, None, None) {
+                root.append_child(&new);
+            }
+        }
+        i += 1;
+    }
+}
+
+fn new_element(
+    tag_name: &str,
+    attributes: &dom::Attributes,
+    events: dom::Events,
+) -> native::Element {
+    let element = native::create_element(tag_name);
+    element.set_attribute_all(attributes);
+    element.set_event_all(events);
+    element
 }

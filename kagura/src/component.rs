@@ -2,6 +2,8 @@ use crate::bin::update;
 use crate::dom;
 use crate::Html;
 use std::any::Any;
+use std::collections::hash_set::HashSet;
+use crate::event;
 
 /// Wrapper of Component
 pub trait Composable {
@@ -25,24 +27,25 @@ where
     children: Vec<Box<Composable>>,
     id: u128,
     parent_id: Option<u128>,
+    events: HashSet<u128>,
 }
 
 impl<Msg, State, Sub> Component<Msg, State, Sub> {
     /// Creates new component ftom initial state, update, render
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// fn hello_world_component() -> Component<Msg, State, Sub> {
     ///     Component::new(initial_state, update, render)
     /// }
-    /// 
+    ///
     /// struct Msg;
     /// struct State;
     /// struct Sub;
-    /// 
+    ///
     /// fn update(_: &mut State, _: &Msg) -> Option<Sub> { None }
-    /// 
+    ///
     /// fn render(_: &State) -> Html<Msg> {
     ///     Html::h1(
     ///     Attributes::new(),
@@ -51,7 +54,7 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
     ///         Html::unsafe_text("hello kagura"),
     ///     ],
     /// )
-    /// } 
+    /// }
     /// ```
     pub fn new(
         state: State,
@@ -67,6 +70,7 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
             id: id,
             subscribe: None,
             parent_id: None,
+            events: HashSet::new(),
         }
     }
 
@@ -76,9 +80,9 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
     }
 
     /// Regists binder from child Sub to parent Msg
-    /// 
+    ///
     /// #Example
-    /// 
+    ///
     /// ```
     /// create_a_child_component(props).subscribe(|sub| {
     ///     match sub {
@@ -114,13 +118,13 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
                     .into_iter()
                     .map(|child| self.adapt_html_lazy(child, child_index, id))
                     .collect::<Vec<dom::Node>>();
-                dom::Node::Element {
+                dom::Node::element(
                     tag_name,
-                    attributes: dom::Attributes::new(),
-                    events: dom::Events::new(),
+                    dom::Attributes::new(),
+                    dom::Events::new(),
                     children,
-                    rerender: false,
-                }
+                    false,
+                )
             }
         }
     }
@@ -147,18 +151,17 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
                 let mut dom_events = dom::Events::new();
 
                 for (name, mut handler) in events.handlers {
-                    dom_events.add(name, move |e| {
-                        update(component_id, &handler(e));
+                    let event_id = rand::random::<u128>();
+                    event::add(event_id, move |e| {
+                        (component_id, Box::new(handler(e)))
                     });
+                    dom_events.add(name, move |e| {
+                        event::dispatch(event_id, e);
+                    });
+                    self.events.insert(event_id);
                 }
 
-                dom::Node::Element {
-                    tag_name,
-                    attributes: attributes.attributes,
-                    events: dom_events,
-                    children,
-                    rerender: true,
-                }
+                dom::Node::element(tag_name, attributes.attributes, dom_events, children, true)
             }
         }
     }
@@ -191,6 +194,10 @@ impl<Msg, State, Sub> Composable for Component<Msg, State, Sub> {
         if let Some(id) = id {
             if id == self.id {
                 self.children.clear();
+                for event_id in &self.events {
+                    event::remove(*event_id);
+                }
+                self.events.clear();
                 self.adapt_html_force(html)
             } else {
                 self.adapt_html_lazy(html, &mut 0, id)

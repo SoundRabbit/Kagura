@@ -15,15 +15,17 @@ extern "C" {
     pub type Element;
 
     #[wasm_bindgen(extends = Element)]
-    pub type HtmlElement;
+    pub type HTMLElement;
 
-    #[wasm_bindgen(extends = HtmlElement)]
-    pub type HtmlInputElement;
+    #[wasm_bindgen(extends = HTMLElement)]
+    pub type HTMLInputElement;
 
     #[wasm_bindgen(extends = Node)]
     pub type Text;
 
     pub type HTMLCollection;
+
+    pub type NodeList;
 
     pub type Event;
 
@@ -59,7 +61,12 @@ extern "C" {
     /* EventTargetのメソッド */
 
     #[wasm_bindgen(method, js_name = "addEventListener")]
-    pub fn add_event_listener(this: &EventTarget, type_: &str, closure: &Closure<FnMut(Event)>);
+    pub fn add_event_listener(
+        this: &EventTarget,
+        type_: &str,
+        closure: &Closure<FnMut(Event)>,
+        option: &JsValue,
+    );
 
     /* Nodeのメソッド */
 
@@ -72,8 +79,13 @@ extern "C" {
     #[wasm_bindgen(method, getter = parentNode)]
     pub fn parent_node(this: &Node) -> Node;
 
-    #[wasm_bindgen(method, getter = children)]
-    pub fn children(this: &Node) -> HTMLCollection;
+    #[wasm_bindgen(method, getter = childNodes)]
+    pub fn child_nodes(this: &Node) -> NodeList;
+    #[wasm_bindgen(method, js_name = "cloneNode")]
+    pub fn clone_node(this: &Node, deep: bool) -> Node;
+
+    #[wasm_bindgen(method, js_name = "removeChild")]
+    pub fn remove_child(this: &Node, child: &Node) -> Node;
 
     /* Elementのメソッド */
 
@@ -83,21 +95,35 @@ extern "C" {
     #[wasm_bindgen(method, js_name = "setAttribute")]
     pub fn set_attribute(this: &Element, name: &str, value: &str);
 
+    #[wasm_bindgen(method, js_name = "removeAttribute")]
+    pub fn remove_attribute(this: &Element, name: &str);
+
     #[wasm_bindgen(method, setter = id)]
     pub fn set_id(this: &Element, id: &str);
 
-    /* HtmlInputElementのメソッド */
+    #[wasm_bindgen(method, getter = tagName)]
+    pub fn tag_name(this: &Element) -> String;
+
+    #[wasm_bindgen(method, getter = children)]
+    pub fn children(this: &Element) -> HTMLCollection;
+
+    /* HTMLInputElementのメソッド */
 
     #[wasm_bindgen(method, getter = value)]
-    pub fn value(this: &HtmlInputElement) -> String;
+    pub fn value(this: &HTMLInputElement) -> String;
 
     #[wasm_bindgen(method, setter = value)]
-    pub fn set_value(this: &HtmlInputElement) -> String;
+    pub fn set_value(this: &HTMLInputElement) -> String;
 
     /* HTMLCollectionのメソッド */
 
     #[wasm_bindgen(method, js_name = "item")]
-    pub fn item(this: &HTMLCollection, index: usize) -> Option<Node>;
+    pub fn item(this: &HTMLCollection, index: usize) -> Option<Element>;
+
+    /* NodeListのメソッド */
+
+    #[wasm_bindgen(method, js_name = "item")]
+    pub fn item(this: &NodeList, index: usize) -> Option<Node>;
 
     /* Eventのメソッド */
 
@@ -164,4 +190,36 @@ extern "C" {
 
     #[wasm_bindgen(method, getter = shiftKey)]
     pub fn shift_key(this: &MouseEvent) -> bool;
+}
+
+#[derive(Serialize)]
+pub struct EventOption {
+    capture: bool,
+    once: bool,
+    passive: bool,
+}
+
+impl EventOption {
+    pub fn new() -> Self {
+        Self {
+            capture: false,
+            once: false,
+            passive: false,
+        }
+    }
+
+    pub fn capture(mut self, capture: bool) -> Self {
+        self.capture = capture;
+        self
+    }
+
+    pub fn once(mut self, once: bool) -> Self {
+        self.once = once;
+        self
+    }
+
+    pub fn passive(mut self, passive: bool) -> Self {
+        self.passive = passive;
+        self
+    }
 }

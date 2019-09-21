@@ -3,6 +3,7 @@ use crate::component::Composable;
 use crate::native;
 use crate::renderer::Renderer;
 use std::any::Any;
+use std::cell::RefCell;
 
 static mut APP: Option<(Box<Composable>, Renderer)> = None;
 

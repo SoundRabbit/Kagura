@@ -4,16 +4,19 @@ use crate::native::Event;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Node {
-    Element {
-        tag_name: String,
-        attributes: Attributes,
-        events: Events,
-        children: Vec<Node>,
-        rerender: bool,
-    },
+    Element(Element),
     Text(String),
+}
+
+#[derive(Clone)]
+pub struct Element {
+    pub tag_name: String,
+    pub attributes: Attributes,
+    pub events: Events,
+    pub children: Vec<Node>,
+    pub need_rerendering: bool,
 }
 
 #[derive(Clone)]
@@ -39,19 +42,25 @@ impl Node {
         attributes: Attributes,
         events: Events,
         children: Vec<Node>,
-        rerender: bool,
+        need_rerendering: bool,
     ) -> Self {
-        Node::Element {
+        Node::Element(Element {
             tag_name: tag_name.into(),
             attributes,
             events,
             children,
-            rerender,
-        }
+            need_rerendering,
+        })
     }
 
     pub fn text(t: impl Into<String>) -> Self {
         Node::Text(t.into())
+    }
+}
+
+impl PartialEq for Element {
+    fn eq(&self, other: &Self) -> bool {
+        self.attributes == other.attributes && self.tag_name == other.tag_name
     }
 }
 
@@ -104,6 +113,34 @@ impl Attributes {
     }
 }
 
+impl PartialEq for Attributes {
+    fn eq(&self, other: &Self) -> bool {
+        self.attributes.iter().fold(true, |r, (k, v)| {
+            if let Some(a) = other.attributes.get(k) {
+                r && (a == v)
+            } else {
+                false
+            }
+        }) && other.attributes.iter().fold(true, |r, (k, v)| {
+            if let Some(a) = self.attributes.get(k) {
+                r && (a == v)
+            } else {
+                false
+            }
+        })
+    }
+}
+
+impl Into<String> for &Value {
+    fn into(self) -> String {
+        match self {
+            Value::Int(v) => v.to_string(),
+            Value::Nut(v) => v.to_string(),
+            Value::Str(v) => v.clone(),
+        }
+    }
+}
+
 impl Events {
     pub fn new() -> Self {
         Self {
@@ -113,6 +150,12 @@ impl Events {
 
     pub fn add(&mut self, name: impl Into<String>, handler: impl FnMut(Event) + 'static) {
         self.handlers.insert(name.into(), Box::new(handler));
+    }
+}
+
+impl PartialEq for Events {
+    fn eq(&self, _: &Self) -> bool {
+        false
     }
 }
 

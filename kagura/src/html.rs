@@ -297,7 +297,7 @@ impl<Msg> Html<Msg> {
     pub fn object(attributes: Attributes, events: Events<Msg>, children: Vec<Html<Msg>>) -> Self {
         Html::node("object", attributes, events, children)
     }
-    
+
     pub fn ol(attributes: Attributes, events: Events<Msg>, children: Vec<Html<Msg>>) -> Self {
         Html::node("ol", attributes, events, children)
     }
