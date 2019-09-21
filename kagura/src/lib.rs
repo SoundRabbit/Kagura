@@ -41,10 +41,10 @@ extern crate rand;
 mod bin;
 mod component;
 mod dom;
+mod event;
 mod html;
 pub mod native;
 mod renderer;
-mod event;
 
 #[allow(unused_imports)]
 use rand::prelude::*;

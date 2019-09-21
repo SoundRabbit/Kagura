@@ -141,6 +141,18 @@ extern "C" {
     #[wasm_bindgen(method, getter = key)]
     pub fn key(this: &KeyboardEvent) -> String;
 
+    #[wasm_bindgen(method, getter = locale)]
+    pub fn locale(this: &KeyboardEvent) -> String;
+
+    #[wasm_bindgen(method, getter = location)]
+    pub fn location(this: &KeyboardEvent) -> u64;
+
+    #[wasm_bindgen(method, getter = metaKey)]
+    pub fn meta_key(this: &KeyboardEvent) -> bool;
+
+    #[wasm_bindgen(method, getter = repeat)]
+    pub fn repeat(this: &KeyboardEvent) -> bool;
+
     #[wasm_bindgen(method, getter = shiftKey)]
     pub fn shift_key(this: &KeyboardEvent) -> bool;
 

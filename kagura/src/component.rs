@@ -1,9 +1,9 @@
 use crate::bin::update;
 use crate::dom;
+use crate::event;
 use crate::Html;
 use std::any::Any;
 use std::collections::hash_set::HashSet;
-use crate::event;
 
 /// Wrapper of Component
 pub trait Composable {
@@ -152,9 +152,7 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
 
                 for (name, mut handler) in events.handlers {
                     let event_id = rand::random::<u128>();
-                    event::add(event_id, move |e| {
-                        (component_id, Box::new(handler(e)))
-                    });
+                    event::add(event_id, move |e| (component_id, Box::new(handler(e))));
                     dom_events.add(name, move |e| {
                         event::dispatch(event_id, e);
                     });

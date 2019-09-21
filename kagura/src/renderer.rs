@@ -142,7 +142,7 @@ fn render_element_diff(after: dom::Element, before: &dom::Element, root: &native
     root.set_event_all(after.events);
     let mut i = before.children.len() - after.children.len();
     while i > 0 {
-        if let Some(node) = root.child_nodes().item(after.children.len()+i-1) {
+        if let Some(node) = root.child_nodes().item(after.children.len() + i - 1) {
             root.remove_child(&node);
         }
         i -= 1;
