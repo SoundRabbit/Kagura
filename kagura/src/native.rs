@@ -113,7 +113,7 @@ extern "C" {
     pub fn value(this: &HTMLInputElement) -> String;
 
     #[wasm_bindgen(method, setter = value)]
-    pub fn set_value(this: &HTMLInputElement) -> String;
+    pub fn set_value(this: &HTMLInputElement, val: &str);
 
     /* HTMLCollectionのメソッド */
 

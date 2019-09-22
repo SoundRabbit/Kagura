@@ -50,10 +50,16 @@ impl native::Element {
 
     fn set_attribute_set(&self, a: &str, v: &HashSet<dom::Value>, d: &str) {
         let v = v.iter().map(|v| v.into()).collect::<Vec<String>>();
-        self.set_attribute(
-            a,
-            &v.iter().map(|v| &v as &str).collect::<Vec<&str>>().join(d),
-        );
+        let v = v.iter().map(|v| &v as &str).collect::<Vec<&str>>().join(d);
+        if String::from("value") == String::from(a) {
+            if let Some(el) = self.dyn_ref::<native::HTMLInputElement>() {
+                el.set_value(&v);
+            } else {
+                self.set_attribute(a, &v,);
+            }
+        } else {
+            self.set_attribute(a, &v,);
+        }
     }
 
     fn set_event_all(&self, events: dom::Events) {
