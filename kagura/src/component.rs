@@ -1,13 +1,13 @@
-use crate::bin::update;
 use crate::dom;
 use crate::event;
 use crate::Html;
 use std::any::Any;
 use std::collections::hash_set::HashSet;
+use std::rc::Rc;
 
 /// Wrapper of Component
 pub trait Composable {
-    fn update(&mut self, id: u128, msg: &Any) -> bool;
+    fn update(&mut self, id: u128, msg: Rc<Any>) -> Option<(Box<Any>, u128)>;
     fn render(&mut self, id: Option<u128>) -> dom::Node;
     fn get_id(&self) -> u128;
     fn set_parent_id(&mut self, id: u128);
@@ -166,25 +166,31 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
 }
 
 impl<Msg, State, Sub> Composable for Component<Msg, State, Sub> {
-    fn update(&mut self, id: u128, msg: &Any) -> bool {
+    fn update(&mut self, id: u128, msg: Rc<Any>) -> Option<(Box<Any>, u128)> {
         if id == self.id {
             if let Some(msg) = msg.downcast_ref::<Msg>() {
                 if let Some(sub) = (self.update)(&mut self.state, msg) {
                     if let Some(parent_id) = self.parent_id {
                         if let Some(subscribe) = &mut self.subscribe {
-                            let msg = subscribe(sub);
-                            update(parent_id, &(*msg));
-                            return false;
+                            return Some((subscribe(sub), parent_id));
                         }
                     }
                 }
             }
         } else {
+            let mut first_sub: Option<(Box<Any>, u128)> = None;
             for child in &mut self.children {
-                (*child).update(id, msg);
+                if let Some(sub) = (*child).update(id, msg.clone()) {
+                    if first_sub.is_none() {
+                        first_sub = Some(sub);
+                    }
+                }
+            }
+            if first_sub.is_some() {
+                return first_sub;
             }
         }
-        true
+        None
     }
 
     fn render(&mut self, id: Option<u128>) -> dom::Node {

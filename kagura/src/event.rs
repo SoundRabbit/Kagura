@@ -15,7 +15,7 @@ pub fn dispatch(id: u128, e: native::Event) {
         }
     });
     if let Some((component_id, msg)) = msg {
-        bin::update(component_id, &(*msg));
+        bin::update(component_id, msg);
     }
 }
 

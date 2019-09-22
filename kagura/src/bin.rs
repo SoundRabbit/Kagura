@@ -4,6 +4,7 @@ use crate::native;
 use crate::renderer::Renderer;
 use std::any::Any;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 thread_local!(static APP: RefCell<Option<App>> = RefCell::new(None));
 
@@ -22,21 +23,24 @@ where
     let root = native::get_element_by_id(id);
     let renderer = Renderer::new(node, root.into());
     let root_component: Box<Composable> = Box::new(root_component);
-    APP.with(|app|{
-        *app.borrow_mut() = Some(App{
+    APP.with(|app| {
+        *app.borrow_mut() = Some(App {
             root_component,
-            renderer
+            renderer,
         })
     });
 }
 
-pub fn update(id: u128, msg: &Any) {
-    APP.with(|app|{
+pub fn update(mut id: u128, mut msg: Box<Any>) {
+    APP.with(|app| {
         if let Some(app) = &mut (*app.borrow_mut()) {
-            if app.root_component.update(id, msg) {
-                let node = app.root_component.render(Some(id));
-                app.renderer.update(node);
+            while let Some((new_msg, new_id)) = app.root_component.update(id, Rc::from(msg)) {
+                msg = new_msg;
+                id = new_id;
+                native::console_log(&id.to_string());
             }
+            let node = app.root_component.render(Some(id));
+            app.renderer.update(node);
         }
     });
 }
