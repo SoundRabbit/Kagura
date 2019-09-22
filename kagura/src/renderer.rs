@@ -26,7 +26,6 @@ impl Renderer {
     }
 
     pub fn update(&mut self, after: dom::Node) {
-        native::console_log("renderer::update");
         let mut before = after.clone();
         mem::swap(&mut before, &mut self.before);
         if let Some(root) = render(after, Some(&before), Some(&self.root)) {
@@ -86,7 +85,6 @@ fn render(
     root: Option<&native::Node>,
 ) -> Option<native::Node> {
     use dom::Node;
-    native::console_log("renderer::render");
     match after {
         Node::Text(text) => Some(native::create_text_node(&text).into()),
         Node::Element(after) => {
@@ -94,22 +92,18 @@ fn render(
                 if let (Some(Node::Element(before)), Some(root)) = (before, root) {
                     if let Some(root) = root.dyn_ref::<native::Element>() {
                         if after.tag_name == before.tag_name {
-                            native::console_log("renderer::render_element_diff");
                             render_element_diff(after, before, root);
                             None
                         } else {
-                            native::console_log("renderer::render_element_force");
                             Some(render_element_force(after))
                         }
                     } else {
                         None
                     }
                 } else {
-                    native::console_log("renderer::render_element_force");
                     Some(render_element_force(after))
                 }
             } else {
-                native::console_log("renderer::render_element_lazy");
                 if let (Some(Node::Element(before)), Some(root)) = (before, root) {
                     render_element_lazy(after, before, root);
                     None
@@ -147,7 +141,6 @@ fn render_element_diff(after: dom::Element, before: &dom::Element, root: &native
     root.set_attribute_diff(&after.attributes, &before.attributes);
     root.set_event_all(after.events);
     let mut i = (before.children.len() as i64) - (after.children.len() as i64);
-    native::console_log(&after.children.len().to_string());
     while i > 0 {
         if let Some(node) = root.child_nodes().item(after.children.len() + (i as usize) - 1) {
             root.remove_child(&node);

@@ -32,20 +32,14 @@ where
 }
 
 pub fn update(mut id: u128, mut msg: Box<Any>) {
-    native::console_log("update");
     APP.with(|app| {
         if let Some(app) = &mut (*app.borrow_mut()) {
-            native::console_log("update-app");
             while let Some((new_msg, new_id)) = app.root_component.update(id, Rc::from(msg)) {
-                native::console_log("reupdate");
                 msg = new_msg;
                 id = new_id;
-                native::console_log(&id.to_string());
             }
             let node = app.root_component.render(Some(id));
-            native::console_log("render");
             app.renderer.update(node);
-            native::console_log("render-update");
         }
     });
 }
