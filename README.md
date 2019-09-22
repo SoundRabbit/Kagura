@@ -12,7 +12,7 @@ Frontend frame-work for wasm on Rust.
 
 ### In Japanese
 
-[[Kagura] Kagura + Rust でWebページを作成](https://qiita.com/drafts/0d8e33bad3aa7ec6d8fb/edit)
+[[Kagura] Kagura + Rust でWebページを作成](https://qiita.com/ne_no_usa/items/0d8e33bad3aa7ec6d8fb)
 
 ## Hello World
 
