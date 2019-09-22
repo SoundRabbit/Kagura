@@ -162,13 +162,13 @@ extern "C" {
     pub fn alt_key(this: &MouseEvent) -> bool;
 
     #[wasm_bindgen(method, getter = buttons)]
-    pub fn buttons(this: &MouseEvent) -> u64;
+    pub fn buttons(this: &MouseEvent) -> u32;
 
     #[wasm_bindgen(method, getter = clientX)]
-    pub fn client_x(this: &MouseEvent) -> i64;
+    pub fn client_x(this: &MouseEvent) -> i32;
 
     #[wasm_bindgen(method, getter = clientY)]
-    pub fn client_y(this: &MouseEvent) -> i64;
+    pub fn client_y(this: &MouseEvent) -> i32;
 
     #[wasm_bindgen(method, getter = ctrlKey)]
     pub fn ctrl_key(this: &MouseEvent) -> bool;
@@ -177,28 +177,28 @@ extern "C" {
     pub fn meta_key(this: &MouseEvent) -> bool;
 
     #[wasm_bindgen(method, getter = movementX)]
-    pub fn movement_x(this: &MouseEvent) -> i64;
+    pub fn movement_x(this: &MouseEvent) -> i32;
 
     #[wasm_bindgen(method, getter = movementY)]
-    pub fn movement_y(this: &MouseEvent) -> i64;
+    pub fn movement_y(this: &MouseEvent) -> i32;
 
     #[wasm_bindgen(method, getter = offsetX)]
-    pub fn offset_x(this: &MouseEvent) -> i64;
+    pub fn offset_x(this: &MouseEvent) -> i32;
 
     #[wasm_bindgen(method, getter = offsetY)]
-    pub fn offset_y(this: &MouseEvent) -> i64;
+    pub fn offset_y(this: &MouseEvent) -> i32;
 
     #[wasm_bindgen(method, getter = pageX)]
-    pub fn page_x(this: &MouseEvent) -> i64;
+    pub fn page_x(this: &MouseEvent) -> i32;
 
     #[wasm_bindgen(method, getter = pageY)]
-    pub fn page_y(this: &MouseEvent) -> i64;
+    pub fn page_y(this: &MouseEvent) -> i32;
 
     #[wasm_bindgen(method, getter = screenX)]
-    pub fn screen_x(this: &MouseEvent) -> i64;
+    pub fn screen_x(this: &MouseEvent) -> i32;
 
     #[wasm_bindgen(method, getter = screenY)]
-    pub fn screen_y(this: &MouseEvent) -> i64;
+    pub fn screen_y(this: &MouseEvent) -> i32;
 
     #[wasm_bindgen(method, getter = shiftKey)]
     pub fn shift_key(this: &MouseEvent) -> bool;

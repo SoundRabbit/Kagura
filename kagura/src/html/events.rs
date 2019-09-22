@@ -3,7 +3,6 @@ extern crate wasm_bindgen;
 use crate::native;
 use std::collections::HashMap;
 use std::convert::From;
-use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
 /// Events for Html<Msg>
@@ -13,21 +12,21 @@ pub struct Events<Msg> {
 
 /// Props of MouseEvent
 pub struct MouseEvent {
-    alt_key: bool,
-    buttons: u64,
-    client_x: i64,
-    client_y: i64,
-    ctrl_key: bool,
-    meta_key: bool,
-    movement_x: i64,
-    movement_y: i64,
-    offset_x: i64,
-    offset_y: i64,
-    page_x: i64,
-    page_y: i64,
-    screen_x: i64,
-    screen_y: i64,
-    shift_key: bool,
+    pub alt_key: bool,
+    pub buttons: u32,
+    pub client_x: i32,
+    pub client_y: i32,
+    pub ctrl_key: bool,
+    pub meta_key: bool,
+    pub movement_x: i32,
+    pub movement_y: i32,
+    pub offset_x: i32,
+    pub offset_y: i32,
+    pub page_x: i32,
+    pub page_y: i32,
+    pub screen_x: i32,
+    pub screen_y: i32,
+    pub shift_key: bool,
 }
 
 /// Props of DragEvent
@@ -35,14 +34,14 @@ pub struct DragEvent {}
 
 /// Props of KeyboardEvent
 pub struct KeyboardEvent {
-    alt_key: bool,
-    code: String,
-    key: String,
-    locale: String,
-    location: u64,
-    meta_key: bool,
-    repeat: bool,
-    shift_key: bool,
+    pub alt_key: bool,
+    pub code: String,
+    pub key: String,
+    pub locale: String,
+    pub location: u64,
+    pub meta_key: bool,
+    pub repeat: bool,
+    pub shift_key: bool,
 }
 
 impl<Msg> Events<Msg> {
@@ -164,51 +163,31 @@ impl<Msg> Events<Msg> {
     }
 
     pub fn on_drag(self, mut handler: impl FnMut(DragEvent) -> Msg + 'static) -> Self {
-        self.on("drag", move |e| handler(DragEvent::empty()))
+        self.on("drag", move |_| handler(DragEvent::empty()))
     }
 
     pub fn on_dragend(self, mut handler: impl FnMut(DragEvent) -> Msg + 'static) -> Self {
-        self.on("dragend", move |e| handler(DragEvent::empty()))
+        self.on("dragend", move |_| handler(DragEvent::empty()))
     }
 
     pub fn on_dragenter(self, mut handler: impl FnMut(DragEvent) -> Msg + 'static) -> Self {
-        self.on("dragenter", move |e| handler(DragEvent::empty()))
+        self.on("dragenter", move |_| handler(DragEvent::empty()))
     }
 
     pub fn on_dragstart(self, mut handler: impl FnMut(DragEvent) -> Msg + 'static) -> Self {
-        self.on("dragstart", move |e| handler(DragEvent::empty()))
+        self.on("dragstart", move |_| handler(DragEvent::empty()))
     }
 
     pub fn on_dragleave(self, mut handler: impl FnMut(DragEvent) -> Msg + 'static) -> Self {
-        self.on("dragleave", move |e| handler(DragEvent::empty()))
+        self.on("dragleave", move |_| handler(DragEvent::empty()))
     }
 
     pub fn on_dragover(self, mut handler: impl FnMut(DragEvent) -> Msg + 'static) -> Self {
-        self.on("dragover", move |e| handler(DragEvent::empty()))
+        self.on("dragover", move |_| handler(DragEvent::empty()))
     }
 
     pub fn on_drop(self, mut handler: impl FnMut(DragEvent) -> Msg + 'static) -> Self {
-        self.on("drop", move |e| handler(DragEvent::empty()))
-    }
-
-    pub fn on_keydown(self, mut handler: impl FnMut(KeyboardEvent) -> Msg + 'static) -> Self {
-        self.on("keydown", move |e| {
-            if let Ok(e) = e.dyn_into::<native::KeyboardEvent>() {
-                handler(KeyboardEvent::from(&e))
-            } else {
-                handler(KeyboardEvent::empty())
-            }
-        })
-    }
-
-    pub fn on_keydown(self, mut handler: impl FnMut(KeyboardEvent) -> Msg + 'static) -> Self {
-        self.on("keydown", move |e| {
-            if let Ok(e) = e.dyn_into::<native::KeyboardEvent>() {
-                handler(KeyboardEvent::from(&e))
-            } else {
-                handler(KeyboardEvent::empty())
-            }
-        })
+        self.on("drop", move |_| handler(DragEvent::empty()))
     }
 
     pub fn on_keydown(self, mut handler: impl FnMut(KeyboardEvent) -> Msg + 'static) -> Self {
@@ -318,7 +297,7 @@ impl KeyboardEvent {
 }
 
 impl From<&native::KeyboardEvent> for KeyboardEvent {
-    fn from(e : &native::KeyboardEvent) -> Self {
+    fn from(e: &native::KeyboardEvent) -> Self {
         KeyboardEvent {
             alt_key: e.alt_key(),
             code: e.code(),
