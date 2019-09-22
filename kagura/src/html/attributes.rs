@@ -72,6 +72,14 @@ impl Attributes {
         self.string("class", name)
     }
 
+    pub fn draggable(self, val: bool) -> Self {
+        if val {
+            self.string("draggable", "true")
+        }else{
+            self.string("draggable", "false")
+        }
+    }
+
     pub fn hidden(self) -> Self {
         self.flag("hidden")
     }
