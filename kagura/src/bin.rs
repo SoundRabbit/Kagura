@@ -5,30 +5,38 @@ use crate::renderer::Renderer;
 use std::any::Any;
 use std::cell::RefCell;
 
-static mut APP: Option<(Box<Composable>, Renderer)> = None;
+thread_local!(static APP: RefCell<Option<App>> = RefCell::new(None));
 
-pub fn run<M, S, B>(mut component: Component<M, S, B>, id: &str)
+struct App {
+    root_component: Box<Composable>,
+    renderer: Renderer,
+}
+
+pub fn run<M, S, B>(mut root_component: Component<M, S, B>, id: &str)
 where
     M: 'static,
     S: 'static,
     B: 'static,
 {
-    let node = component.render(None);
+    let node = root_component.render(None);
     let root = native::get_element_by_id(id);
     let renderer = Renderer::new(node, root.into());
-    let composable: Box<Composable> = Box::new(component);
-    unsafe {
-        APP = Some((composable, renderer));
-    }
+    let root_component: Box<Composable> = Box::new(root_component);
+    APP.with(|app|{
+        *app.borrow_mut() = Some(App{
+            root_component,
+            renderer
+        })
+    });
 }
 
 pub fn update(id: u128, msg: &Any) {
-    unsafe {
-        if let Some((app, renderer)) = &mut APP {
-            if app.update(id, msg) {
-                let node = app.render(Some(id));
-                renderer.update(node);
+    APP.with(|app|{
+        if let Some(app) = &mut (*app.borrow_mut()) {
+            if app.root_component.update(id, msg) {
+                let node = app.root_component.render(Some(id));
+                app.renderer.update(node);
             }
         }
-    }
+    });
 }
