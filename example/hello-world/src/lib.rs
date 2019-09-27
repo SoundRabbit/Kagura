@@ -12,7 +12,7 @@ struct State;
 
 struct Msg;
 
-fn update(_: &mut State, _: &Msg) -> Option<()> {None}
+fn update(_: &mut State, _: Msg) -> Option<()> {None}
 
 fn render(_: &State) -> kagura::Html<Msg> {
     use kagura::Html;
