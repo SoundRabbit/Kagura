@@ -7,10 +7,11 @@ use std::rc::Rc;
 
 /// Wrapper of Component
 pub trait Composable {
-    fn update(&mut self, id: u128, msg: Rc<Any>) -> Option<(Box<Any>, u128)>;
+    fn update(&mut self, id: u128, msg: Box<Any>) -> Option<(Box<Any>, u128)>;
     fn render(&mut self, id: Option<u128>) -> dom::Node;
     fn get_id(&self) -> u128;
     fn set_parent_id(&mut self, id: u128);
+    fn get_children_ids<'a>(&'a self) -> &'a HashSet<u128>;
 }
 
 /// Component constructed by State-update-render
@@ -21,13 +22,14 @@ where
     Sub: 'static,
 {
     state: State,
-    update: fn(&mut State, &Msg) -> Option<Sub>,
+    update: fn(&mut State, Msg) -> Option<Sub>,
     subscribe: Option<Box<FnMut(Sub) -> Box<Any>>>,
     render: fn(&State) -> Html<Msg>,
     children: Vec<Box<Composable>>,
     id: u128,
     parent_id: Option<u128>,
     events: HashSet<u128>,
+    children_ids: HashSet<u128>,
 }
 
 impl<Msg, State, Sub> Component<Msg, State, Sub> {
@@ -58,7 +60,7 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
     /// ```
     pub fn new(
         state: State,
-        update: fn(&mut State, &Msg) -> Option<Sub>,
+        update: fn(&mut State, Msg) -> Option<Sub>,
         render: fn(&State) -> Html<Msg>,
     ) -> Component<Msg, State, Sub> {
         let id = rand::random::<u128>();
@@ -71,11 +73,13 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
             subscribe: None,
             parent_id: None,
             events: HashSet::new(),
+            children_ids: HashSet::new(),
         }
     }
 
     fn append_composable(&mut self, mut composable: Box<Composable>) {
         composable.set_parent_id(self.id);
+        self.children_ids.insert(composable.get_id());
         self.children.push(composable);
     }
 
@@ -166,10 +170,10 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
 }
 
 impl<Msg, State, Sub> Composable for Component<Msg, State, Sub> {
-    fn update(&mut self, id: u128, msg: Rc<Any>) -> Option<(Box<Any>, u128)> {
+    fn update(&mut self, id: u128, msg: Box<Any>) -> Option<(Box<Any>, u128)> {
         if id == self.id {
-            if let Some(msg) = msg.downcast_ref::<Msg>() {
-                if let Some(sub) = (self.update)(&mut self.state, msg) {
+            if let Ok(msg) = msg.downcast::<Msg>() {
+                if let Some(sub) = (self.update)(&mut self.state, *msg) {
                     if let Some(parent_id) = self.parent_id {
                         if let Some(subscribe) = &mut self.subscribe {
                             return Some((subscribe(sub), parent_id));
@@ -178,16 +182,13 @@ impl<Msg, State, Sub> Composable for Component<Msg, State, Sub> {
                 }
             }
         } else {
-            let mut first_sub: Option<(Box<Any>, u128)> = None;
             for child in &mut self.children {
-                if let Some(sub) = (*child).update(id, msg.clone()) {
-                    if first_sub.is_none() {
-                        first_sub = Some(sub);
+                if child.get_children_ids().get(&id).is_some() {
+                    if let Some(sub) = (*child).update(id, msg) {
+                        return Some(sub);
                     }
+                    break;
                 }
-            }
-            if first_sub.is_some() {
-                return first_sub;
             }
         }
         None
@@ -217,5 +218,9 @@ impl<Msg, State, Sub> Composable for Component<Msg, State, Sub> {
 
     fn set_parent_id(&mut self, id: u128) {
         self.parent_id = Some(id);
+    }
+
+    fn get_children_ids<'a>(&'a self) -> &'a HashSet<u128> {
+        &self.children_ids
     }
 }

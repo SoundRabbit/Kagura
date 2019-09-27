@@ -34,7 +34,7 @@ where
 pub fn update(mut id: u128, mut msg: Box<Any>) {
     APP.with(|app| {
         if let Some(app) = &mut (*app.borrow_mut()) {
-            while let Some((new_msg, new_id)) = app.root_component.update(id, Rc::from(msg)) {
+            while let Some((new_msg, new_id)) = app.root_component.update(id, Box::new(msg)) {
                 msg = new_msg;
                 id = new_id;
             }
