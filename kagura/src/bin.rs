@@ -4,7 +4,6 @@ use crate::native;
 use crate::renderer::Renderer;
 use std::any::Any;
 use std::cell::RefCell;
-use std::rc::Rc;
 
 thread_local!(static APP: RefCell<Option<App>> = RefCell::new(None));
 
@@ -34,7 +33,7 @@ where
 pub fn update(mut id: u128, mut msg: Box<Any>) {
     APP.with(|app| {
         if let Some(app) = &mut (*app.borrow_mut()) {
-            while let Some((new_msg, new_id)) = app.root_component.update(id, Box::new(msg)) {
+            while let Some((new_msg, new_id)) = app.root_component.update(id, msg) {
                 msg = new_msg;
                 id = new_id;
             }

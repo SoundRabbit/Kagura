@@ -3,7 +3,6 @@ use crate::event;
 use crate::Html;
 use std::any::Any;
 use std::collections::hash_set::HashSet;
-use std::rc::Rc;
 
 /// Wrapper of Component
 pub trait Composable {
@@ -183,7 +182,7 @@ impl<Msg, State, Sub> Composable for Component<Msg, State, Sub> {
             }
         } else {
             for child in &mut self.children {
-                if child.get_children_ids().get(&id).is_some() {
+                if child.get_id() == id || child.get_children_ids().get(&id).is_some(){
                     if let Some(sub) = (*child).update(id, msg) {
                         return Some(sub);
                     }
