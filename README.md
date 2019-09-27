@@ -31,7 +31,7 @@ struct State;
 
 struct Msg;
 
-fn update(_: &mut State, _: &Msg) -> Option<()> {None}
+fn update(_: &mut State, _: Msg) -> Option<()> {None}
 
 fn render(_: &State) -> kagura::Html<Msg> {
     use kagura::Html;
@@ -58,7 +58,7 @@ kagura::Component::new(initial_state, update, render)
 `update` and `render` is function :
 
 ```rust
-update : fn(&mut State, &Msg) -> Option<Sub>
+update : fn(&mut State, Msg) -> Option<Sub>
 ```
 
 ```rust
