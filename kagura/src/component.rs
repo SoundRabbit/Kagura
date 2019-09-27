@@ -93,8 +93,11 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
     ///     }
     /// })
     /// ```
-    pub fn subscribe(mut self, sub: impl FnMut(Sub) -> Box<Any> + 'static) -> Self {
-        self.subscribe = Some(Box::new(sub));
+    pub fn subscribe<Msg_>(mut self, mut sub: impl FnMut(Sub) -> Msg_ + 'static) -> Self
+    where
+        Msg_: 'static,
+    {
+        self.subscribe = Some(Box::new(move |s| Box::new(sub(s))));
         self
     }
 
@@ -182,7 +185,7 @@ impl<Msg, State, Sub> Composable for Component<Msg, State, Sub> {
             }
         } else {
             for child in &mut self.children {
-                if child.get_id() == id || child.get_children_ids().get(&id).is_some(){
+                if child.get_id() == id || child.get_children_ids().get(&id).is_some() {
                     if let Some(sub) = (*child).update(id, msg) {
                         return Some(sub);
                     }

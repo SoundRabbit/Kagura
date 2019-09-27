@@ -75,7 +75,7 @@ impl Attributes {
     pub fn draggable(self, val: bool) -> Self {
         if val {
             self.string("draggable", "true")
-        }else{
+        } else {
             self.string("draggable", "false")
         }
     }

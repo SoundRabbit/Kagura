@@ -55,10 +55,10 @@ impl native::Element {
             if let Some(el) = self.dyn_ref::<native::HTMLInputElement>() {
                 el.set_value(&v);
             } else {
-                self.set_attribute(a, &v,);
+                self.set_attribute(a, &v);
             }
         } else {
-            self.set_attribute(a, &v,);
+            self.set_attribute(a, &v);
         }
     }
 
@@ -148,7 +148,10 @@ fn render_element_diff(after: dom::Element, before: &dom::Element, root: &native
     root.set_event_all(after.events);
     let mut i = (before.children.len() as i64) - (after.children.len() as i64);
     while i > 0 {
-        if let Some(node) = root.child_nodes().item(after.children.len() + (i as usize) - 1) {
+        if let Some(node) = root
+            .child_nodes()
+            .item(after.children.len() + (i as usize) - 1)
+        {
             root.remove_child(&node);
         }
         i -= 1;
