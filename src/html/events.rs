@@ -163,7 +163,7 @@ impl<Msg> Events<Msg> {
     pub fn on_load(self, mut handler: impl FnMut() -> Msg + 'static) -> Self {
         self.on("load", move |_| {
             handler()
-        });
+        })
     }
 
     pub fn on_mousedown(self, mut handler: impl FnMut(MouseEvent) -> Msg + 'static) -> Self {

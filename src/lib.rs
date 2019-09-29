@@ -72,3 +72,11 @@ where
 {
     bin::run(component, id);
 }
+
+pub mod prelude {
+    pub use crate::Attributes;
+    pub use crate::Cmd;
+    pub use crate::Component;
+    pub use crate::Events;
+    pub use crate::Html;
+}
