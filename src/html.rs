@@ -31,7 +31,7 @@ impl<Msg> Html<Msg> {
     }
 
     /// Creates Html<Msg> from a non-validated text
-    pub fn unsafe_text(text: impl Into<String>) -> Self {
+    pub fn text(text: impl Into<String>) -> Self {
         Html::TextNode(text.into())
     }
 
