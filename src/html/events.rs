@@ -92,6 +92,74 @@ impl<Msg> Events<Msg> {
         })
     }
 
+    pub fn on_drag(self, mut handler: impl FnMut(DragEvent) -> Msg + 'static) -> Self {
+        self.on("drag", move |_| handler(DragEvent::empty()))
+    }
+
+    pub fn on_dragend(self, mut handler: impl FnMut(DragEvent) -> Msg + 'static) -> Self {
+        self.on("dragend", move |_| handler(DragEvent::empty()))
+    }
+
+    pub fn on_dragenter(self, mut handler: impl FnMut(DragEvent) -> Msg + 'static) -> Self {
+        self.on("dragenter", move |_| handler(DragEvent::empty()))
+    }
+
+    pub fn on_dragstart(self, mut handler: impl FnMut(DragEvent) -> Msg + 'static) -> Self {
+        self.on("dragstart", move |_| handler(DragEvent::empty()))
+    }
+
+    pub fn on_dragleave(self, mut handler: impl FnMut(DragEvent) -> Msg + 'static) -> Self {
+        self.on("dragleave", move |_| handler(DragEvent::empty()))
+    }
+
+    pub fn on_dragover(self, mut handler: impl FnMut(DragEvent) -> Msg + 'static) -> Self {
+        self.on("dragover", move |_| handler(DragEvent::empty()))
+    }
+
+    pub fn on_drop(self, mut handler: impl FnMut(DragEvent) -> Msg + 'static) -> Self {
+        self.on("drop", move |_| handler(DragEvent::empty()))
+    }
+
+    pub fn on_input(self, mut handler: impl FnMut(String) -> Msg + 'static) -> Self {
+        self.on("input", move |e| {
+            if let Ok(target) = e.target().dyn_into::<native::HTMLInputElement>() {
+                handler(target.value())
+            } else {
+                handler("".to_string())
+            }
+        })
+    }
+
+    pub fn on_keydown(self, mut handler: impl FnMut(KeyboardEvent) -> Msg + 'static) -> Self {
+        self.on("keydown", move |e| {
+            if let Ok(e) = e.dyn_into::<native::KeyboardEvent>() {
+                handler(KeyboardEvent::from(&e))
+            } else {
+                handler(KeyboardEvent::empty())
+            }
+        })
+    }
+
+    pub fn on_keypress(self, mut handler: impl FnMut(KeyboardEvent) -> Msg + 'static) -> Self {
+        self.on("keypress", move |e| {
+            if let Ok(e) = e.dyn_into::<native::KeyboardEvent>() {
+                handler(KeyboardEvent::from(&e))
+            } else {
+                handler(KeyboardEvent::empty())
+            }
+        })
+    }
+
+    pub fn on_keyup(self, mut handler: impl FnMut(KeyboardEvent) -> Msg + 'static) -> Self {
+        self.on("keyup", move |e| {
+            if let Ok(e) = e.dyn_into::<native::KeyboardEvent>() {
+                handler(KeyboardEvent::from(&e))
+            } else {
+                handler(KeyboardEvent::empty())
+            }
+        })
+    }
+
     pub fn on_mousedown(self, mut handler: impl FnMut(MouseEvent) -> Msg + 'static) -> Self {
         self.on("mousedown", move |e| {
             if let Ok(e) = e.dyn_into::<native::MouseEvent>() {
@@ -158,74 +226,6 @@ impl<Msg> Events<Msg> {
                 handler(MouseEvent::from(&e))
             } else {
                 handler(MouseEvent::empty())
-            }
-        })
-    }
-
-    pub fn on_drag(self, mut handler: impl FnMut(DragEvent) -> Msg + 'static) -> Self {
-        self.on("drag", move |_| handler(DragEvent::empty()))
-    }
-
-    pub fn on_dragend(self, mut handler: impl FnMut(DragEvent) -> Msg + 'static) -> Self {
-        self.on("dragend", move |_| handler(DragEvent::empty()))
-    }
-
-    pub fn on_dragenter(self, mut handler: impl FnMut(DragEvent) -> Msg + 'static) -> Self {
-        self.on("dragenter", move |_| handler(DragEvent::empty()))
-    }
-
-    pub fn on_dragstart(self, mut handler: impl FnMut(DragEvent) -> Msg + 'static) -> Self {
-        self.on("dragstart", move |_| handler(DragEvent::empty()))
-    }
-
-    pub fn on_dragleave(self, mut handler: impl FnMut(DragEvent) -> Msg + 'static) -> Self {
-        self.on("dragleave", move |_| handler(DragEvent::empty()))
-    }
-
-    pub fn on_dragover(self, mut handler: impl FnMut(DragEvent) -> Msg + 'static) -> Self {
-        self.on("dragover", move |_| handler(DragEvent::empty()))
-    }
-
-    pub fn on_drop(self, mut handler: impl FnMut(DragEvent) -> Msg + 'static) -> Self {
-        self.on("drop", move |_| handler(DragEvent::empty()))
-    }
-
-    pub fn on_keydown(self, mut handler: impl FnMut(KeyboardEvent) -> Msg + 'static) -> Self {
-        self.on("keydown", move |e| {
-            if let Ok(e) = e.dyn_into::<native::KeyboardEvent>() {
-                handler(KeyboardEvent::from(&e))
-            } else {
-                handler(KeyboardEvent::empty())
-            }
-        })
-    }
-
-    pub fn on_keypress(self, mut handler: impl FnMut(KeyboardEvent) -> Msg + 'static) -> Self {
-        self.on("keypress", move |e| {
-            if let Ok(e) = e.dyn_into::<native::KeyboardEvent>() {
-                handler(KeyboardEvent::from(&e))
-            } else {
-                handler(KeyboardEvent::empty())
-            }
-        })
-    }
-
-    pub fn on_keyup(self, mut handler: impl FnMut(KeyboardEvent) -> Msg + 'static) -> Self {
-        self.on("keyup", move |e| {
-            if let Ok(e) = e.dyn_into::<native::KeyboardEvent>() {
-                handler(KeyboardEvent::from(&e))
-            } else {
-                handler(KeyboardEvent::empty())
-            }
-        })
-    }
-
-    pub fn on_input(self, mut handler: impl FnMut(String) -> Msg + 'static) -> Self {
-        self.on("input", move |e| {
-            if let Ok(target) = e.target().dyn_into::<native::HTMLInputElement>() {
-                handler(target.value())
-            } else {
-                handler("".to_string())
             }
         })
     }
