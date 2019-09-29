@@ -69,7 +69,7 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
     /// struct State;
     /// struct Sub;
     ///
-    /// fn update(_: &mut State, _: &Msg) -> Option<Sub> { None }
+    /// fn update(_: &mut State, _: &Msg) -> Cmd<Msg, Sub> { Cmd::none() }
     ///
     /// fn render(_: &State) -> Html<Msg> {
     ///     Html::h1(
@@ -100,16 +100,6 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
         }
     }
 
-    fn append_composable(&mut self, mut composable: Box<Composable>) {
-        composable.set_parent_id(self.id);
-        self.children_ids.insert(composable.get_id());
-        let child_children_ids = composable.get_children_ids();
-        for child_id in child_children_ids {
-            self.children_ids.insert(*child_id);
-        }
-        self.children.push(composable);
-    }
-
     /// Regists binder from child Sub to parent Msg
     ///
     /// #Example
@@ -127,6 +117,16 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
     {
         self.subscribe = Some(Box::new(move |s| Box::new(sub(s))));
         self
+    }
+
+    fn append_composable(&mut self, mut composable: Box<Composable>) {
+        composable.set_parent_id(self.id);
+        self.children_ids.insert(composable.get_id());
+        let child_children_ids = composable.get_children_ids();
+        for child_id in child_children_ids {
+            self.children_ids.insert(*child_id);
+        }
+        self.children.push(composable);
     }
 
     fn adapt_html_lazy(&mut self, html: Html<Msg>, child_index: &mut usize, id: u128) -> dom::Node {
