@@ -1,5 +1,6 @@
 use crate::dom;
 use crate::event;
+use crate::task;
 use crate::Html;
 use std::any::Any;
 use std::collections::hash_set::HashSet;
@@ -13,6 +14,15 @@ pub trait Composable {
     fn get_children_ids<'a>(&'a self) -> &'a HashSet<u128>;
 }
 
+pub type Dispatcher<Msg> = Box<FnMut(Msg) -> ()>;
+
+/// Cmd
+pub enum Cmd<Msg, Sub> {
+    None,
+    Sub(Sub),
+    Task(Box<FnOnce(Dispatcher<Msg>) -> ()>),
+}
+
 /// Component constructed by State-update-render
 pub struct Component<Msg, State, Sub>
 where
@@ -21,7 +31,7 @@ where
     Sub: 'static,
 {
     state: State,
-    update: fn(&mut State, Msg) -> Option<Sub>,
+    update: fn(&mut State, Msg) -> Cmd<Msg, Sub>,
     subscribe: Option<Box<FnMut(Sub) -> Box<Any>>>,
     render: fn(&State) -> Html<Msg>,
     children: Vec<Box<Composable>>,
@@ -29,6 +39,20 @@ where
     parent_id: Option<u128>,
     events: HashSet<u128>,
     children_ids: HashSet<u128>,
+}
+
+impl<Msg, Sub> Cmd<Msg, Sub> {
+    pub fn none() -> Self {
+        Cmd::None
+    }
+
+    pub fn sub(sub: Sub) -> Self {
+        Cmd::Sub(sub)
+    }
+
+    pub fn task(task: impl FnOnce(Dispatcher<Msg>) -> () + 'static) -> Self {
+        Cmd::Task(Box::new(task))
+    }
 }
 
 impl<Msg, State, Sub> Component<Msg, State, Sub> {
@@ -59,7 +83,7 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
     /// ```
     pub fn new(
         state: State,
-        update: fn(&mut State, Msg) -> Option<Sub>,
+        update: fn(&mut State, Msg) -> Cmd<Msg, Sub>,
         render: fn(&State) -> Html<Msg>,
     ) -> Component<Msg, State, Sub> {
         let id = rand::random::<u128>();
@@ -79,6 +103,10 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
     fn append_composable(&mut self, mut composable: Box<Composable>) {
         composable.set_parent_id(self.id);
         self.children_ids.insert(composable.get_id());
+        let child_children_ids = composable.get_children_ids();
+        for child_id in child_children_ids {
+            self.children_ids.insert(*child_id);
+        }
         self.children.push(composable);
     }
 
@@ -169,31 +197,44 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
             }
         }
     }
+
+    fn dispatch(&mut self, msg: Msg) -> Option<(Box<Any>, u128)> {
+        let cmd = (self.update)(&mut self.state, msg);
+        match cmd {
+            Cmd::None => None,
+            Cmd::Sub(sub) => {
+                if let (Some(parent_id), Some(subscribe)) = (self.parent_id, &mut self.subscribe) {
+                    Some((subscribe(sub), parent_id))
+                } else {
+                    None
+                }
+            }
+            Cmd::Task(worker) => {
+                let component_id = self.id;
+                let task_id = rand::random::<u128>();
+                task::add(task_id, move |msg| (component_id, msg));
+                worker(Box::new(move |msg| task::dispatch(task_id, Box::new(msg))));
+                None
+            }
+        }
+    }
 }
 
 impl<Msg, State, Sub> Composable for Component<Msg, State, Sub> {
     fn update(&mut self, id: u128, msg: Box<Any>) -> Option<(Box<Any>, u128)> {
         if id == self.id {
-            if let Ok(msg) = msg.downcast::<Msg>() {
-                if let Some(sub) = (self.update)(&mut self.state, *msg) {
-                    if let Some(parent_id) = self.parent_id {
-                        if let Some(subscribe) = &mut self.subscribe {
-                            return Some((subscribe(sub), parent_id));
-                        }
-                    }
-                }
+            match msg.downcast::<Msg>() {
+                Ok(msg) => self.dispatch(*msg),
+                Err(_) => None,
             }
         } else {
             for child in &mut self.children {
                 if child.get_id() == id || child.get_children_ids().get(&id).is_some() {
-                    if let Some(sub) = (*child).update(id, msg) {
-                        return Some(sub);
-                    }
-                    break;
+                    return (*child).update(id, msg);
                 }
             }
+            None
         }
-        None
     }
 
     fn render(&mut self, id: Option<u128>) -> dom::Node {

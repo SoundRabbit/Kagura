@@ -46,6 +46,7 @@ mod event;
 mod html;
 pub mod native;
 mod renderer;
+mod task;
 
 #[allow(unused_imports)]
 use rand::prelude::*;
