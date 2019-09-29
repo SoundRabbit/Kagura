@@ -31,7 +31,9 @@ struct State;
 
 struct Msg;
 
-fn update(_: &mut State, _: Msg) -> Option<()> {None}
+struct Sub;
+
+fn update(_: &mut State, _: Msg) -> kagura::Cmd<Msg, Sub> {kagura::Cmd::none()}
 
 fn render(_: &State) -> kagura::Html<Msg> {
     use kagura::Html;
@@ -58,7 +60,7 @@ kagura::Component::new(initial_state, update, render)
 `update` and `render` is function :
 
 ```rust
-update : fn(&mut State, Msg) -> Option<Sub>
+update : fn(&mut State, Msg) -> Cmd<Msg, Sub>
 ```
 
 ```rust
@@ -152,3 +154,17 @@ mod child_component {
     .
 }
 ```
+
+### Cmd
+
+#### `Cmd::none()`
+
+`Cmd::none()` means nothing to do. If you return Cmd::none(), kagura will render.
+
+#### `Cmd::sub(sub: Sub)`
+
+If you send sub-message to parent component, use this.
+
+#### `Cmd::task(|resolve| some_task)`
+
+This works like promise in JavaScript. When you give msg to resolve, resolve dispatch msg to update and rerender. It will be useful for setTimeout, some heavy task, and so on.
