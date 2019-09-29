@@ -153,7 +153,7 @@ impl Events {
 
 impl PartialEq for Events {
     fn eq(&self, _: &Self) -> bool {
-        false
+        true
     }
 }
 

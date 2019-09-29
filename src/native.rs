@@ -33,7 +33,7 @@ extern "C" {
 
     #[wasm_bindgen(extends = CanvasContext)]
     pub type CanvasRenderingContext2D;
-
+    
     pub type Event;
 
     #[wasm_bindgen(extends = Event)]

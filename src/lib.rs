@@ -51,6 +51,7 @@ mod task;
 #[allow(unused_imports)]
 use rand::prelude::*;
 
+pub use component::Cmd;
 pub use component::Component;
 pub use html::Attributes;
 pub use html::Events;

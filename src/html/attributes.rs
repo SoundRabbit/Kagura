@@ -1,6 +1,7 @@
 use crate::dom;
 
 /// Attributes for Html<Msg>
+#[derive(PartialEq)]
 pub struct Attributes {
     pub attributes: dom::Attributes,
     last_attribute: String,

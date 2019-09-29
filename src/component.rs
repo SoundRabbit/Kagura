@@ -14,13 +14,13 @@ pub trait Composable {
     fn get_children_ids<'a>(&'a self) -> &'a HashSet<u128>;
 }
 
-pub type Dispatcher<Msg> = Box<FnMut(Msg) -> ()>;
+pub type TaskResolver<Msg> = Box<FnMut(Msg) -> ()>;
 
 /// Cmd
 pub enum Cmd<Msg, Sub> {
     None,
     Sub(Sub),
-    Task(Box<FnOnce(Dispatcher<Msg>) -> ()>),
+    Task(Box<FnOnce(TaskResolver<Msg>) -> ()>),
 }
 
 /// Component constructed by State-update-render
@@ -50,7 +50,7 @@ impl<Msg, Sub> Cmd<Msg, Sub> {
         Cmd::Sub(sub)
     }
 
-    pub fn task(task: impl FnOnce(Dispatcher<Msg>) -> () + 'static) -> Self {
+    pub fn task(task: impl FnOnce(TaskResolver<Msg>) -> () + 'static) -> Self {
         Cmd::Task(Box::new(task))
     }
 }
