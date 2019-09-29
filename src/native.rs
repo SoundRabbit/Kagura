@@ -1,5 +1,4 @@
-extern crate wasm_bindgen;
-
+use wasm_bindgen;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -20,12 +19,20 @@ extern "C" {
     #[wasm_bindgen(extends = HTMLElement)]
     pub type HTMLInputElement;
 
+    #[wasm_bindgen(extends = HTMLElement)]
+    pub type HTMLCanvasElement;
+
     #[wasm_bindgen(extends = Node)]
     pub type Text;
 
     pub type HTMLCollection;
 
     pub type NodeList;
+
+    pub type CanvasContext;
+
+    #[wasm_bindgen(extends = CanvasContext)]
+    pub type CanvasRenderingContext2D;
 
     pub type Event;
 
@@ -114,6 +121,26 @@ extern "C" {
 
     #[wasm_bindgen(method, setter = value)]
     pub fn set_value(this: &HTMLInputElement, val: &str);
+
+    /* HTMLCanvasElementのメソッド */
+
+    #[wasm_bindgen(method, getter = height)]
+    pub fn height(this: &HTMLCanvasElement) -> u32;
+
+    #[wasm_bindgen(method, setter = height)]
+    pub fn set_height(this: &HTMLCanvasElement, pxl: u32);
+
+    #[wasm_bindgen(method, getter = height)]
+    pub fn width(this: &HTMLCanvasElement) -> u32;
+
+    #[wasm_bindgen(method, setter = height)]
+    pub fn set_width(this: &HTMLCanvasElement, pxl: u32);
+
+    #[wasm_bindgen(method, js_name = "getContext")]
+    pub fn get_context(this: &HTMLCanvasElement, context_type: &str) -> CanvasContext;
+
+    #[wasm_bindgen(method, js_name = "toDataURL")]
+    pub fn to_data_url(this: &HTMLCanvasElement) -> String;
 
     /* HTMLCollectionのメソッド */
 

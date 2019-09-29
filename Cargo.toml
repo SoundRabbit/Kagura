@@ -7,11 +7,14 @@ description = "Frontend frame-work for wasm on Rust."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/SoundRabbit/Kagura"
 homepage = "https://github.com/SoundRabbit/Kagura"
-readme = "../README.md"
-keywords = ["web", "wasm", "front-end"]
+readme = "./README.md"
+keywords = ["web", "wasm", "front-end", "kagura"]
 categories = ["gui", "web-programming"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+path = "./src/lib.rs"
 
 [dependencies]
 rand = { version = "0.7.0", features = ["wasm-bindgen"] }

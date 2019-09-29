@@ -1,5 +1,3 @@
-extern crate wasm_bindgen;
-
 use crate::native::Event;
 use std::collections::HashMap;
 use std::collections::HashSet;

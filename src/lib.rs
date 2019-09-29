@@ -37,6 +37,7 @@
 #[macro_use]
 extern crate serde_derive;
 extern crate rand;
+extern crate wasm_bindgen;
 
 mod bin;
 mod component;

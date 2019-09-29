@@ -1,5 +1,3 @@
-extern crate wasm_bindgen;
-
 use crate::dom;
 use crate::native;
 use std::collections::HashSet;
