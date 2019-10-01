@@ -5,6 +5,7 @@ use wasm_bindgen::prelude::*;
 extern "C" {
     /*型 */
 
+    #[derive(Debug)]
     pub type EventTarget;
 
     #[wasm_bindgen(extends = EventTarget)]
@@ -25,7 +26,7 @@ extern "C" {
     pub type HTMLCollection;
 
     pub type NodeList;
-    
+
     pub type Event;
 
     #[wasm_bindgen(extends = Event)]

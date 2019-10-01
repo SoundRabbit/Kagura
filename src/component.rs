@@ -61,24 +61,34 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
     /// # Example
     ///
     /// ```
+    /// use kagura::Attributes;
+    /// use kagura::Events;
+    /// use kagura::Html;
+    /// use kagura::Cmd;
+    /// use kagura::Component;
+    ///
     /// fn hello_world_component() -> Component<Msg, State, Sub> {
-    ///     Component::new(initial_state, update, render)
+    ///     Component::new(init(), update, render)
     /// }
     ///
-    /// struct Msg;
-    /// struct State;
-    /// struct Sub;
+    /// struct Msg();
+    /// struct State();
+    /// struct Sub();
     ///
-    /// fn update(_: &mut State, _: &Msg) -> Cmd<Msg, Sub> { Cmd::none() }
+    /// fn init() -> State {
+    ///     State()
+    /// }
+    ///
+    /// fn update(_: &mut State, _: Msg) -> Cmd<Msg, Sub> { Cmd::none() }
     ///
     /// fn render(_: &State) -> Html<Msg> {
     ///     Html::h1(
-    ///     Attributes::new(),
-    ///     Events::new(),
-    ///     vec![
-    ///         Html::unsafe_text("hello kagura"),
-    ///     ],
-    /// )
+    ///         Attributes::new(),
+    ///         Events::new(),
+    ///         vec![
+    ///             Html::text("hello kagura"),
+    ///         ],
+    ///     )
     /// }
     /// ```
     pub fn new(

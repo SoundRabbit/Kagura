@@ -7,28 +7,32 @@
 //! extern crate kagura;
 //! extern crate wasm_bindgen;
 //!
+//! use kagura::Attributes;
+//! use kagura::Cmd;
+//! use kagura::Component;
+//! use kagura::Events;
+//! use kagura::Html;
 //! use wasm_bindgen::prelude::*;
 //!
 //! #[wasm_bindgen(start)]
 //! pub fn main() {
-//!     kagura::run(kagura::Component::new(State, update, render), "app");
+//!     kagura::run(Component::new(State, update, render), "app");
 //! }
 //!
 //! struct State;
 //!
 //! struct Msg;
 //!
-//! fn update(_: &mut State, _: &Msg) -> Option<()> {None}
+//! struct Sub;
 //!
-//! fn render(_: &State) -> kagura::Html<Msg> {
-//!     use kagura::Html;
-//!     use kagura::Attributes;
-//!     use kagura::Events;
+//! fn update(_: &mut State, _: Msg) -> Cmd<Msg, Sub> {Cmd::none()}
+//!
+//! fn render(_: &State) -> Html<Msg> {
 //!     Html::h1(
 //!         Attributes::new(),
 //!         Events::new(),
 //!         vec![
-//!             Html::unsafe_text("hello kagura"),
+//!             Html::text("hello kagura"),
 //!         ],
 //!     )
 //! }
@@ -58,12 +62,6 @@ pub use html::Events;
 pub use html::Html;
 
 /// Starts application with component
-///
-/// # Examples
-///
-/// ```
-/// kagura::run(component, "id of entry point");
-/// ```
 pub fn run<Msg, State, Sub>(component: Component<Msg, State, Sub>, id: &str)
 where
     Msg: 'static,
