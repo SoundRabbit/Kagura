@@ -1,17 +1,10 @@
-//! # Kagura
-//! Kagura is a web-frontend framework for wasm on Rust.
-//!
-//! ## example for "hello-world"
+//! # Example
 //!
 //! ```
 //! extern crate kagura;
 //! extern crate wasm_bindgen;
 //!
-//! use kagura::Attributes;
-//! use kagura::Cmd;
-//! use kagura::Component;
-//! use kagura::Events;
-//! use kagura::Html;
+//! use kagura::prelude::*;
 //! use wasm_bindgen::prelude::*;
 //!
 //! #[wasm_bindgen(start)]

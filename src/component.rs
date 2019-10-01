@@ -109,18 +109,8 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
             children_ids: HashSet::new(),
         }
     }
-
-    /// Regists binder from child Sub to parent Msg
-    ///
-    /// #Example
-    ///
-    /// ```
-    /// create_a_child_component(props).subscribe(|sub| {
-    ///     match sub {
-    ///         ChildComponent::Sub::Input(value) => Box::new(Msg::Send(value))
-    ///     }
-    /// })
-    /// ```
+    
+    /// set subscription witch bind from child sub to parent msg
     pub fn subscribe<Msg_>(mut self, mut sub: impl FnMut(Sub) -> Msg_ + 'static) -> Self
     where
         Msg_: 'static,
