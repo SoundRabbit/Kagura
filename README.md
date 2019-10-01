@@ -10,6 +10,10 @@ Frontend frame-work for wasm on Rust.
 
 ## Tutorial
 
+### In English
+
+[tutorial](https://soundrabbit.github.io/Kagura/)
+
 ### In Japanese
 
 [[Kagura] Kagura + Rust でWebページを作成](https://qiita.com/ne_no_usa/items/0d8e33bad3aa7ec6d8fb)
