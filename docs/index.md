@@ -1,5 +1,9 @@
 # Index
 
+## Introduction
+
+1. [architecture](./introduction/architecture.md)
+
 ## Tutorial
 
 1. [Preparation](./tutorial/preparation.md)

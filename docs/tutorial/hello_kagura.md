@@ -1,6 +1,12 @@
 # Hello Kagura
 
-lib.rs:
+You can import all necessity by `use use kagura::prelude::*;`, and start application `kagura::run`. `kagura::run` need you a component and a id of entrypoint.
+
+Creating compoent, use `Component::new()`. `Component::new()` need you **initial state**, **update** and **render**. To create thease parameters, it is needed to define type of **state**, **message** and **subscription-message**. In this sample, thease types are defined as `State`, `Msg`, `Sub`.
+
+**update** and **render** will be called by Kagura at the right time.
+
+**src/lib.rs:**
 
 ```rs
 extern crate kagura;
@@ -11,14 +17,14 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(start)]
 pub fn main() {
-    kagura::run(Component::new(State, update, render), "app");
+    kagura::run(Component::new(State{}, update, render), "app");
 }
 
-struct State;
+struct State{}
 
-struct Msg;
+enum Msg{}
 
-struct Sub;
+enum Sub{}
 
 fn update(_: &mut State, _: Msg) -> Cmd<Msg, Sub> {Cmd::none()}
 
@@ -27,13 +33,13 @@ fn render(_: &State) -> Html<Msg> {
         Attributes::new(),
         Events::new(),
         vec![
-            Html::unsafe_text("hello kagura"),
+            Html::text("hello kagura"),
         ],
     )
 }
 ```
 
-start by:
+**start by:**
 
 ```shell
 $ npm start

@@ -45,7 +45,7 @@ fn render(_: &State) -> Html<Msg> {
         Attributes::new(),
         Events::new(),
         vec![
-            Html::unsafe_text("hello kagura"),
+            Html::text("hello kagura"),
         ],
     )
 }
