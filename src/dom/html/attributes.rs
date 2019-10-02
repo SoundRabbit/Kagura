@@ -49,17 +49,6 @@ impl Attributes {
     }
 
     /// Sets delimiter for last attribute
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// /* This is creation of attribute: foo="x, y, z" */
-    /// Attributes::new()
-    ///     .string("foo", "x")
-    ///     .string("foo", "y")
-    ///     .string("foo", "z")
-    ///     .delimit_with(",");
-    /// ```
     pub fn delimit_with(mut self, dlm: impl Into<String>) -> Self {
         self.attributes.delimit(&self.last_attribute, dlm);
         self
