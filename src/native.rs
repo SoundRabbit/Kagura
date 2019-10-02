@@ -25,7 +25,56 @@ extern "C" {
     pub type HTMLCollection;
 
     pub type NodeList;
-    
+
+    pub type AudioContext;
+
+    pub type AudioNode;
+
+    #[wasm_bindgen(extends = AudioNode)]
+    pub type AnalyserNode;
+
+    #[wasm_bindgen(extends = AudioNode)]
+    pub type AudioBufferSourceNode;
+
+    #[wasm_bindgen(extends = AudioNode)]
+    pub type BiquadFilterNode;
+
+    #[wasm_bindgen(extends = AudioNode)]
+    pub type ConstantSourceNode;
+
+    #[wasm_bindgen(extends = AudioNode)]
+    pub type ConvolverNode;
+
+    #[wasm_bindgen(extends = AudioNode)]
+    pub type DelayNode;
+
+    #[wasm_bindgen(extends = AudioNode)]
+    pub type DynamicsCompressorNode;
+
+    #[wasm_bindgen(extends = AudioNode)]
+    pub type GainNode;
+
+    #[wasm_bindgen(extends = AudioNode)]
+    pub type IIRFilterNode;
+
+    #[wasm_bindgen(extends = AudioNode)]
+    pub type MediaElementAudioSourceNode;
+
+    #[wasm_bindgen(extends = AudioNode)]
+    pub type MediaStreamAudioDestinationNode;
+
+    #[wasm_bindgen(extends = AudioNode)]
+    pub type MediaStreamAudioSourceNode;
+
+    #[wasm_bindgen(extends = AudioNode)]
+    pub type OscillatorNode;
+
+    #[wasm_bindgen(extends = AudioNode)]
+    pub type PannerNode;
+
+    #[wasm_bindgen(extends = AudioNode)]
+    pub type WaveShaperNode;
+
     pub type Event;
 
     #[wasm_bindgen(extends = Event)]

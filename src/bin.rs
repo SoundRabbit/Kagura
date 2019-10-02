@@ -1,7 +1,7 @@
 use crate::component::Component;
 use crate::component::Composable;
-use crate::native;
 use crate::dom::renderer::Renderer;
+use crate::native;
 use std::any::Any;
 use std::cell::RefCell;
 

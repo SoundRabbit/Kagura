@@ -39,6 +39,7 @@ extern crate serde_derive;
 extern crate rand;
 extern crate wasm_bindgen;
 
+mod audio;
 mod bin;
 mod component;
 mod dom;
