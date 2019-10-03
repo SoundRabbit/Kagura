@@ -27,7 +27,14 @@ features = ["serde-serialize"]
 
 [dependencies.web-sys]
 version = "0.3"
-features = []
+features = [
+    "Document",
+    "Element",
+    "HtmlInputElement",
+    "Node",
+    "Text",
+    "Window",
+]
 
 [dev-dependencies]
 wasm-bindgen-test = "0.2"

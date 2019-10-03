@@ -35,6 +35,7 @@
 extern crate serde_derive;
 extern crate rand;
 extern crate wasm_bindgen;
+extern crate web_sys;
 
 mod bin;
 mod component;

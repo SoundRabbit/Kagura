@@ -4,22 +4,23 @@ use std::collections::HashSet;
 use std::mem;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use web_sys;
 
 pub struct Renderer {
     before: dom::Node,
-    root: native::Node,
+    root: web_sys::Node,
 }
 
 impl Renderer {
-    pub fn new(virtual_node: dom::Node, root_node: native::Node) -> Self {
+    pub fn new(virtual_node: dom::Node, root_node: web_sys::Node) -> Self {
         let before = virtual_node.clone();
-        let mut root: native::Node;
+        let mut root: web_sys::Node;
         if let Some(node) = render(virtual_node, None, Some(&root_node)) {
             root = node;
         } else {
             root = native::create_text_node("").into();
         }
-        root_node.parent_node().replace_child(&root, &root_node);
+        root_node.parent_node().expect("no parent node of root").replace_child(&root, &root_node);
         Self { before, root }
     }
 
@@ -27,67 +28,62 @@ impl Renderer {
         let mut before = after.clone();
         mem::swap(&mut before, &mut self.before);
         if let Some(root) = render(after, Some(&before), Some(&self.root)) {
-            self.root.parent_node().replace_child(&root, &self.root);
+            self.root.parent_node().expect("no parent node of root").replace_child(&root, &self.root);
             self.root = root;
         }
     }
 }
 
-impl native::Element {
-    fn set_attribute_all(&self, attributes: &dom::Attributes) {
-        for (a, v) in &attributes.attributes {
-            if v.is_empty() {
-                self.set_attribute(&a, "");
-            } else if let Some(d) = attributes.delimiters.get(a) {
-                self.set_attribute_set(a, v, d);
-            } else {
-                self.set_attribute_set(a, v, "");
-            }
+fn set_attribute_all(&self, attributes: &dom::Attributes) {
+    for (a, v) in &attributes.attributes {
+        if v.is_empty() {
+            self.set_attribute(&a, "");
+        } else if let Some(d) = attributes.delimiters.get(a) {
+            self.set_attribute_set(a, v, d);
+        } else {
+            self.set_attribute_set(a, v, "");
         }
     }
+}
 
-    fn set_attribute_set(&self, a: &str, v: &HashSet<dom::Value>, d: &str) {
-        let v = v.iter().map(|v| v.into()).collect::<Vec<String>>();
-        let v = v.iter().map(|v| &v as &str).collect::<Vec<&str>>().join(d);
-        if String::from("value") == String::from(a) {
-            if let Some(el) = self.dyn_ref::<native::HTMLInputElement>() {
-                el.set_value(&v);
-            } else {
-                self.set_attribute(a, &v);
-            }
+fn set_attribute_set(&self, a: &str, v: &HashSet<dom::Value>, d: &str) {
+    let v = v.iter().map(|v| v.into()).collect::<Vec<String>>();
+    let v = v.iter().map(|v| &v as &str).collect::<Vec<&str>>().join(d);
+    if String::from("value") == String::from(a) {
+        if let Some(el) = self.dyn_ref::<web_sys::HtmlInputElement>() {
+            el.set_value(&v);
         } else {
             self.set_attribute(a, &v);
         }
+    } else {
+        self.set_attribute(a, &v);
     }
+}
 
-    fn set_event_all(&self, events: dom::Events) {
-        for (t, h) in events.handlers {
-            let h = Closure::wrap(h);
-            let option = native::EventOption::new().once(true);
-            if let Ok(option) = JsValue::from_serde(&option) {
-                self.add_event_listener(&t, &h, &option);
-                h.forget();
-            }
+fn set_event_all(&self, events: dom::Events) {
+    for (t, h) in events.handlers {
+        let h = Closure::wrap(h);
+        self.add_event_listener(&t, &h, &option);
+        h.forget();
+    }
+}
+
+fn set_attribute_diff(&self, after: &dom::Attributes, before: &dom::Attributes) {
+    for (a, _) in &before.attributes {
+        if let Some(_) = after.attributes.get(a) {
+
+        } else {
+            self.remove_attribute(a);
         }
     }
-
-    fn set_attribute_diff(&self, after: &dom::Attributes, before: &dom::Attributes) {
-        for (a, _) in &before.attributes {
-            if let Some(_) = after.attributes.get(a) {
-
-            } else {
-                self.remove_attribute(a);
-            }
-        }
-        self.set_attribute_all(after);
-    }
+    self.set_attribute_all(after);
 }
 
 fn render(
     after: dom::Node,
     before: Option<&dom::Node>,
-    root: Option<&native::Node>,
-) -> Option<native::Node> {
+    root: Option<&web_sys::Node>,
+) -> Option<web_sys::Node> {
     use dom::Node;
     match after {
         Node::Text(text) => Some(native::create_text_node(&text).into()),
