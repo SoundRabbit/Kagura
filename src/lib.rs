@@ -62,6 +62,8 @@ where
 }
 
 pub mod prelude {
+    #[cfg(feature = "WebAudioAPI")]
+    pub use crate::audio::audio_node::*;
     pub use crate::Attributes;
     pub use crate::Cmd;
     pub use crate::Component;
