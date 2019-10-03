@@ -25,5 +25,11 @@ serde_derive = "1.0.101"
 version = "^0.2"
 features = ["serde-serialize"]
 
+[dependencies.web-sys]
+version = "0.3"
+features = [
+    "Window"
+]
+
 [dev-dependencies]
 wasm-bindgen-test = "0.2"

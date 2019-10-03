@@ -199,6 +199,7 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
     }
 
     fn dispatch(&mut self, msg: Msg) -> Option<(Box<Any>, u128)> {
+        crate::native::console_log("compoent::dispatch");
         let cmd = (self.update)(&mut self.state, msg);
         match cmd {
             Cmd::None => None,
@@ -210,10 +211,9 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
                 }
             }
             Cmd::Task(worker) => {
+                crate::native::console_log("Cmd::Task");
                 let component_id = self.id;
-                let task_id = rand::random::<u128>();
-                task::add(task_id, move |msg| (component_id, msg));
-                worker(Box::new(move |msg| task::dispatch(task_id, Box::new(msg))));
+                worker(Box::new(move |msg| task::dispatch(component_id, Box::new(msg))));
                 None
             }
         }
