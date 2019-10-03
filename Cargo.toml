@@ -16,6 +16,9 @@ categories = ["gui", "web-programming"]
 [lib]
 path = "./src/lib.rs"
 
+[features]
+WebAudioAPI = []
+
 [dependencies]
 rand = { version = "0.7.0", features = ["wasm-bindgen"] }
 serde = "1.0.101"
@@ -29,6 +32,12 @@ features = ["serde-serialize"]
 version = "0.3.28"
 features = [
     "AddEventListenerOptions",
+    "AnalyserNode",
+    "AudioContext",
+    "AudioNode",
+    "AudioProcessingEvent",
+    "BiquadFilterNode",
+    "ConvolverNode",
     "Document",
     "DragEvent",
     "Element",

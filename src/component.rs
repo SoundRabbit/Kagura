@@ -33,7 +33,7 @@ where
     state: State,
     update: fn(&mut State, Msg) -> Cmd<Msg, Sub>,
     subscribe: Option<Box<FnMut(Sub) -> Box<Any>>>,
-    render: fn(&State) -> Html<Msg>,
+    view_render: fn(&State) -> Html<Msg>,
     children: Vec<Box<Composable>>,
     id: u128,
     parent_id: Option<u128>,
@@ -94,13 +94,13 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
     pub fn new(
         state: State,
         update: fn(&mut State, Msg) -> Cmd<Msg, Sub>,
-        render: fn(&State) -> Html<Msg>,
+        view_render: fn(&State) -> Html<Msg>,
     ) -> Component<Msg, State, Sub> {
         let id = rand::random::<u128>();
         Component {
             state,
             update,
-            render,
+            view_render,
             children: vec![],
             id: id,
             subscribe: None,
@@ -119,6 +119,7 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
         self
     }
 
+    /// append component to children components buffer
     fn append_composable(&mut self, mut composable: Box<Composable>) {
         composable.set_parent_id(self.id);
         self.children_ids.insert(composable.get_id());
@@ -129,6 +130,7 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
         self.children.push(composable);
     }
 
+    /// render on non-update
     fn adapt_html_lazy(&mut self, html: Html<Msg>, child_index: &mut usize, id: u128) -> dom::Node {
         match html {
             Html::Composable(mut composable) => {
@@ -163,6 +165,7 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
         }
     }
 
+    /// render on updated
     fn adapt_html_force(&mut self, html: Html<Msg>) -> dom::Node {
         match html {
             Html::Composable(mut composable) => {
@@ -198,6 +201,7 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
         }
     }
 
+    /// dispatch message to update
     fn dispatch(&mut self, msg: Msg) -> Option<(Box<Any>, u128)> {
         let cmd = (self.update)(&mut self.state, msg);
         match cmd {
@@ -238,7 +242,7 @@ impl<Msg, State, Sub> Composable for Component<Msg, State, Sub> {
     }
 
     fn render(&mut self, id: Option<u128>) -> dom::Node {
-        let html = (self.render)(&self.state);
+        let html = (self.view_render)(&self.state);
         if let Some(id) = id {
             if id == self.id {
                 self.children.clear();

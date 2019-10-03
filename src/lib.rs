@@ -36,6 +36,7 @@ extern crate serde_derive;
 extern crate wasm_bindgen;
 extern crate web_sys;
 
+#[cfg(feature = "WebAudioAPI")]
 mod audio;
 mod bin;
 mod component;
