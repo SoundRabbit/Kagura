@@ -1,7 +1,6 @@
 pub mod html;
 pub mod renderer;
 
-use crate::native::Event;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -34,7 +33,7 @@ pub enum Value {
 }
 
 pub struct Events {
-    pub handlers: HashMap<String, Box<FnMut(Event)>>,
+    pub handlers: HashMap<String, Box<FnMut(web_sys::Event)>>,
 }
 
 impl Node {
@@ -67,30 +66,17 @@ impl PartialEq for Element {
 
 impl Attributes {
     pub fn new() -> Self {
-        (Self {
+        let mut attr = Self {
             attributes: HashMap::new(),
             delimiters: HashMap::new(),
-        })
-        .delimiter("style", ";")
-        .delimiter("class", " ")
-        .delimiter("id", " ")
+        };
+        attr.delimit("style", ";");
+        attr.delimit("class", " ");
+        attr.delimit("id", " ");
+        attr
     }
 
-    pub fn attribute(mut self, name: impl Into<String>, value: Value) -> Self {
-        self.add(name, value);
-        self
-    }
-
-    pub fn flag(mut self, name: impl Into<String>) -> Self {
-        self.set(name);
-        self
-    }
-
-    pub fn delimiter(mut self, name: impl Into<String>, dlm: impl Into<String>) -> Self {
-        self.delimit(name, dlm);
-        self
-    }
-
+    /// add attribute with name-value pair
     pub fn add(&mut self, name: impl Into<String>, value: Value) {
         let name: String = name.into();
         if let Some(attr) = self.attributes.get_mut(&name) {
@@ -102,13 +88,15 @@ impl Attributes {
         }
     }
 
+    /// add empty attribute
     pub fn set(&mut self, name: impl Into<String>) {
         let name: String = name.into();
-        if let None = self.attributes.get(&name) {
+        if self.attributes.get(&name).is_none() {
             self.attributes.insert(name, HashSet::new());
         }
     }
 
+    /// set delimiter
     pub fn delimit(&mut self, name: impl Into<String>, dlm: impl Into<String>) {
         self.delimiters.insert(name.into(), dlm.into());
     }
@@ -149,7 +137,7 @@ impl Events {
         }
     }
 
-    pub fn add(&mut self, name: impl Into<String>, handler: impl FnMut(Event) + 'static) {
+    pub fn add(&mut self, name: impl Into<String>, handler: impl FnMut(web_sys::Event) + 'static) {
         self.handlers.insert(name.into(), Box::new(handler));
     }
 }

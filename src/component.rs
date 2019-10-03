@@ -61,24 +61,34 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
     /// # Example
     ///
     /// ```
+    /// use kagura::Attributes;
+    /// use kagura::Events;
+    /// use kagura::Html;
+    /// use kagura::Cmd;
+    /// use kagura::Component;
+    ///
     /// fn hello_world_component() -> Component<Msg, State, Sub> {
-    ///     Component::new(initial_state, update, render)
+    ///     Component::new(init(), update, render)
     /// }
     ///
-    /// struct Msg;
-    /// struct State;
-    /// struct Sub;
+    /// struct Msg();
+    /// struct State();
+    /// struct Sub();
     ///
-    /// fn update(_: &mut State, _: &Msg) -> Cmd<Msg, Sub> { Cmd::none() }
+    /// fn init() -> State {
+    ///     State()
+    /// }
+    ///
+    /// fn update(_: &mut State, _: Msg) -> Cmd<Msg, Sub> { Cmd::none() }
     ///
     /// fn render(_: &State) -> Html<Msg> {
     ///     Html::h1(
-    ///     Attributes::new(),
-    ///     Events::new(),
-    ///     vec![
-    ///         Html::unsafe_text("hello kagura"),
-    ///     ],
-    /// )
+    ///         Attributes::new(),
+    ///         Events::new(),
+    ///         vec![
+    ///             Html::text("hello kagura"),
+    ///         ],
+    ///     )
     /// }
     /// ```
     pub fn new(
@@ -100,17 +110,7 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
         }
     }
 
-    /// Regists binder from child Sub to parent Msg
-    ///
-    /// #Example
-    ///
-    /// ```
-    /// create_a_child_component(props).subscribe(|sub| {
-    ///     match sub {
-    ///         ChildComponent::Sub::Input(value) => Box::new(Msg::Send(value))
-    ///     }
-    /// })
-    /// ```
+    /// set subscription witch bind from child sub to parent msg
     pub fn subscribe<Msg_>(mut self, mut sub: impl FnMut(Sub) -> Msg_ + 'static) -> Self
     where
         Msg_: 'static,
@@ -211,9 +211,9 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
             }
             Cmd::Task(worker) => {
                 let component_id = self.id;
-                let task_id = rand::random::<u128>();
-                task::add(task_id, move |msg| (component_id, msg));
-                worker(Box::new(move |msg| task::dispatch(task_id, Box::new(msg))));
+                worker(Box::new(move |msg| {
+                    task::dispatch(component_id, Box::new(msg))
+                }));
                 None
             }
         }

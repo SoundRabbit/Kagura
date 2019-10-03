@@ -10,6 +10,10 @@ Frontend frame-work for wasm on Rust.
 
 ## Tutorial
 
+### In English
+
+[tutorial](https://soundrabbit.github.io/Kagura/)
+
 ### In Japanese
 
 [[Kagura] Kagura + Rust でWebページを作成](https://qiita.com/ne_no_usa/items/0d8e33bad3aa7ec6d8fb)
@@ -20,11 +24,12 @@ Frontend frame-work for wasm on Rust.
 extern crate kagura;
 extern crate wasm_bindgen;
 
+use kagura::prelude::*;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(start)]
 pub fn main() {
-    kagura::run(kagura::Component::new(State, update, render), "app");
+    kagura::run(Component::new(State, update, render), "app");
 }
 
 struct State;
@@ -33,17 +38,14 @@ struct Msg;
 
 struct Sub;
 
-fn update(_: &mut State, _: Msg) -> kagura::Cmd<Msg, Sub> {kagura::Cmd::none()}
+fn update(_: &mut State, _: Msg) -> Cmd<Msg, Sub> {Cmd::none()}
 
-fn render(_: &State) -> kagura::Html<Msg> {
-    use kagura::Html;
-    use kagura::Attributes;
-    use kagura::Events;
+fn render(_: &State) -> Html<Msg> {
     Html::h1(
         Attributes::new(),
         Events::new(),
         vec![
-            Html::unsafe_text("hello kagura"),
+            Html::text("hello kagura"),
         ],
     )
 }

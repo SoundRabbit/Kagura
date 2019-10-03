@@ -1,54 +1,48 @@
-//! # Kagura
-//! Kagura is a web-frontend framework for wasm on Rust.
-//!
-//! ## example for "hello-world"
+//! # Example
 //!
 //! ```
 //! extern crate kagura;
 //! extern crate wasm_bindgen;
 //!
+//! use kagura::prelude::*;
 //! use wasm_bindgen::prelude::*;
 //!
 //! #[wasm_bindgen(start)]
 //! pub fn main() {
-//!     kagura::run(kagura::Component::new(State, update, render), "app");
+//!     kagura::run(Component::new(State, update, render), "app");
 //! }
 //!
 //! struct State;
 //!
 //! struct Msg;
 //!
-//! fn update(_: &mut State, _: &Msg) -> Option<()> {None}
+//! struct Sub;
 //!
-//! fn render(_: &State) -> kagura::Html<Msg> {
-//!     use kagura::Html;
-//!     use kagura::Attributes;
-//!     use kagura::Events;
+//! fn update(_: &mut State, _: Msg) -> Cmd<Msg, Sub> {Cmd::none()}
+//!
+//! fn render(_: &State) -> Html<Msg> {
 //!     Html::h1(
 //!         Attributes::new(),
 //!         Events::new(),
 //!         vec![
-//!             Html::unsafe_text("hello kagura"),
+//!             Html::text("hello kagura"),
 //!         ],
 //!     )
 //! }
 //! ```
 
-#[macro_use]
-extern crate serde_derive;
 extern crate rand;
+extern crate serde_derive;
 extern crate wasm_bindgen;
+extern crate web_sys;
 
 mod audio;
 mod bin;
 mod component;
 mod dom;
 mod event;
-pub mod native;
+mod native;
 mod task;
-
-#[allow(unused_imports)]
-use rand::prelude::*;
 
 pub use component::Cmd;
 pub use component::Component;
@@ -57,12 +51,6 @@ pub use dom::html::Events;
 pub use dom::html::Html;
 
 /// Starts application with component
-///
-/// # Examples
-///
-/// ```
-/// kagura::run(component, "id of entry point");
-/// ```
 pub fn run<Msg, State, Sub>(component: Component<Msg, State, Sub>, id: &str)
 where
     Msg: 'static,
