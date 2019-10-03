@@ -41,7 +41,7 @@ mod bin;
 mod component;
 mod dom;
 mod event;
-pub mod native;
+mod native;
 mod task;
 
 #[allow(unused_imports)]
