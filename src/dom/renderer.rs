@@ -20,7 +20,7 @@ impl Renderer {
         } else {
             root = native::create_text_node("").into();
         }
-        root_node
+        let _ = root_node
             .parent_node()
             .expect("no parent node of root")
             .replace_child(&root, &root_node);
@@ -31,7 +31,8 @@ impl Renderer {
         let mut before = after.clone();
         mem::swap(&mut before, &mut self.before);
         if let Some(root) = render(after, Some(&before), Some(&self.root)) {
-            self.root
+            let _ = self
+                .root
                 .parent_node()
                 .expect("no parent node of root")
                 .replace_child(&root, &self.root);
@@ -43,7 +44,7 @@ impl Renderer {
 fn set_attribute_all(element: &web_sys::Element, attributes: &dom::Attributes) {
     for (a, v) in &attributes.attributes {
         if v.is_empty() {
-            element.set_attribute(a, "");
+            let _ = element.set_attribute(a, "");
         } else if let Some(d) = attributes.delimiters.get(a) {
             set_attribute_set(element, a, v, d);
         } else {
@@ -59,10 +60,10 @@ fn set_attribute_set(element: &web_sys::Element, a: &str, v: &HashSet<dom::Value
         if let Some(element) = element.dyn_ref::<web_sys::HtmlInputElement>() {
             element.set_value(&v);
         } else {
-            element.set_attribute(a, &v);
+            let _ = element.set_attribute(a, &v);
         }
     } else {
-        element.set_attribute(a, &v);
+        let _ = element.set_attribute(a, &v);
     }
 }
 
@@ -70,7 +71,7 @@ fn set_event_all(element: &web_sys::Element, events: dom::Events) {
     for (t, h) in events.handlers {
         let h = Closure::wrap(h);
         let event_target: &web_sys::EventTarget = element.as_ref();
-        event_target.add_event_listener_with_callback_and_add_event_listener_options(
+        let _ = event_target.add_event_listener_with_callback_and_add_event_listener_options(
             &t,
             h.as_ref().unchecked_ref(),
             web_sys::AddEventListenerOptions::new().once(true),
@@ -85,10 +86,8 @@ fn set_attribute_diff(
     before: &dom::Attributes,
 ) {
     for (a, _) in &before.attributes {
-        if let Some(_) = after.attributes.get(a) {
-
-        } else {
-            element.remove_attribute(a);
+        if after.attributes.get(a).is_none() {
+            let _ = element.remove_attribute(a);
         }
     }
     set_attribute_all(element, after);
@@ -135,7 +134,7 @@ fn render_element_lazy(after: dom::Element, before: &dom::Element, root: &web_sy
     for child in after.children {
         if let Some(b) = root.child_nodes().item(i as u32) {
             if let Some(a) = render(child, before.children.get(i), Some(&b)) {
-                root.replace_child(&a, &b);
+                let _ = root.replace_child(&a, &b);
             }
         }
         i += 1;
@@ -146,7 +145,7 @@ fn render_element_force(after: dom::Element) -> web_sys::Node {
     let el = new_element(&after.tag_name, &after.attributes, after.events);
     for child in after.children {
         if let Some(node) = render(child, None, None) {
-            el.append_child(&node);
+            let _ = el.append_child(&node);
         }
     }
     el.into()
@@ -161,7 +160,7 @@ fn render_element_diff(after: dom::Element, before: &dom::Element, root: &web_sy
             .child_nodes()
             .item((after.children.len() + i - 1) as u32)
         {
-            root.remove_child(&node);
+            let _ = root.remove_child(&node);
         }
         i -= 1;
     }
@@ -169,11 +168,11 @@ fn render_element_diff(after: dom::Element, before: &dom::Element, root: &web_sy
     for child in after.children {
         if let Some(old) = root.child_nodes().item(i as u32) {
             if let Some(new) = render(child, before.children.get(i), Some(&old)) {
-                root.replace_child(&new, &old);
+                let _ = root.replace_child(&new, &old);
             }
         } else {
             if let Some(new) = render(child, None, None) {
-                root.append_child(&new);
+                let _ = root.append_child(&new);
             }
         }
         i += 1;

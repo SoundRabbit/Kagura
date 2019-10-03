@@ -31,9 +31,8 @@
 //! }
 //! ```
 
-#[macro_use]
-extern crate serde_derive;
 extern crate rand;
+extern crate serde_derive;
 extern crate wasm_bindgen;
 extern crate web_sys;
 
@@ -43,9 +42,6 @@ mod dom;
 mod event;
 mod native;
 mod task;
-
-#[allow(unused_imports)]
-use rand::prelude::*;
 
 pub use component::Cmd;
 pub use component::Component;

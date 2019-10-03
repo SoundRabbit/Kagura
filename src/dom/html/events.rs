@@ -15,6 +15,7 @@ pub struct MouseEvent {
 
 /// Props of DragEvent
 pub struct DragEvent {
+    #[allow(dead_code)]
     implement: Option<web_sys::DragEvent>,
 }
 
@@ -139,6 +140,76 @@ impl<Msg> Events<Msg> {
     }
 }
 
+impl MouseEvent {
+    fn prop<T>(&self, default: T, mapper: impl FnOnce(&web_sys::MouseEvent) -> T) -> T {
+        if let Some(e) = &self.implement {
+            mapper(e)
+        } else {
+            default
+        }
+    }
+
+    pub fn screen_x(&self) -> i32 {
+        self.prop(0, |e| e.screen_x())
+    }
+
+    pub fn screen_y(&self) -> i32 {
+        self.prop(0, |e| e.screen_y())
+    }
+
+    pub fn client_x(&self) -> i32 {
+        self.prop(0, |e| e.client_x())
+    }
+
+    pub fn client_y(&self) -> i32 {
+        self.prop(0, |e| e.client_y())
+    }
+
+    pub fn x(&self) -> i32 {
+        self.prop(0, |e| e.x())
+    }
+
+    pub fn y(&self) -> i32 {
+        self.prop(0, |e| e.y())
+    }
+
+    pub fn offset_x(&self) -> i32 {
+        self.prop(0, |e| e.offset_x())
+    }
+
+    pub fn offset_y(&self) -> i32 {
+        self.prop(0, |e| e.offset_y())
+    }
+
+    pub fn ctrl_key(&self) -> bool {
+        self.prop(false, |e| e.ctrl_key())
+    }
+
+    pub fn shift_key(&self) -> bool {
+        self.prop(false, |e| e.shift_key())
+    }
+
+    pub fn meta_key(&self) -> bool {
+        self.prop(false, |e| e.meta_key())
+    }
+
+    pub fn button(&self) -> i16 {
+        self.prop(0, |e| e.button())
+    }
+
+    pub fn buttons(&self) -> u16 {
+        self.prop(0, |e| e.buttons())
+    }
+
+    pub fn movement_x(&self) -> i32 {
+        self.prop(0, |e| e.movement_x())
+    }
+
+    pub fn movement_y(&self) -> i32 {
+        self.prop(0, |e| e.movement_y())
+    }
+}
+
 impl From<web_sys::Event> for MouseEvent {
     fn from(e: web_sys::Event) -> Self {
         if let Ok(e) = e.dyn_into::<web_sys::MouseEvent>() {
@@ -156,6 +227,56 @@ impl From<web_sys::Event> for DragEvent {
         } else {
             Self { implement: None }
         }
+    }
+}
+
+impl KeyboardEvent {
+    fn prop<T>(&self, default: T, mapper: impl FnOnce(&web_sys::KeyboardEvent) -> T) -> T {
+        if let Some(e) = &self.implement {
+            mapper(e)
+        } else {
+            default
+        }
+    }
+
+    pub fn char_code(&self) -> u32 {
+        self.prop(0, |e| e.char_code())
+    }
+
+    pub fn key_code(&self) -> u32 {
+        self.prop(0, |e| e.key_code())
+    }
+
+    pub fn alt_key(&self) -> bool {
+        self.prop(false, |e| e.alt_key())
+    }
+
+    pub fn ctrl_key(&self) -> bool {
+        self.prop(false, |e| e.ctrl_key())
+    }
+
+    pub fn shift_key(&self) -> bool {
+        self.prop(false, |e| e.shift_key())
+    }
+
+    pub fn meta_key(&self) -> bool {
+        self.prop(false, |e| e.meta_key())
+    }
+
+    pub fn location(&self) -> u32 {
+        self.prop(0, |e| e.location())
+    }
+
+    pub fn repeat(&self) -> bool {
+        self.prop(false, |e| e.repeat())
+    }
+
+    pub fn key(&self) -> String {
+        self.prop(String::from(""), |e| e.key())
+    }
+
+    pub fn code(&self) -> String {
+        self.prop(String::from(""), |e| e.code())
     }
 }
 
