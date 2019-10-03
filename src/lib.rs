@@ -40,9 +40,7 @@ mod bin;
 mod component;
 mod dom;
 mod event;
-mod html;
 pub mod native;
-mod renderer;
 mod task;
 
 #[allow(unused_imports)]
@@ -50,9 +48,9 @@ use rand::prelude::*;
 
 pub use component::Cmd;
 pub use component::Component;
-pub use html::Attributes;
-pub use html::Events;
-pub use html::Html;
+pub use dom::html::Attributes;
+pub use dom::html::Events;
+pub use dom::html::Html;
 
 /// Starts application with component
 pub fn run<Msg, State, Sub>(component: Component<Msg, State, Sub>, id: &str)

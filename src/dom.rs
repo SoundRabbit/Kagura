@@ -1,3 +1,6 @@
+pub mod html;
+pub mod renderer;
+
 use crate::native::Event;
 use std::collections::HashMap;
 use std::collections::HashSet;
