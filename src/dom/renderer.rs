@@ -70,7 +70,11 @@ fn set_event_all(element: &web_sys::Element, events: dom::Events) {
     for (t, h) in events.handlers {
         let h = Closure::wrap(h);
         let event_target: &web_sys::EventTarget = element.as_ref();
-        event_target.add_event_listener_with_callback(t, h.as_ref().unchecked_ref());
+        event_target.add_event_listener_with_callback_and_add_event_listener_options(
+            &t,
+            h.as_ref().unchecked_ref(),
+            web_sys::AddEventListenerOptions::new().once(true),
+        );
         h.forget();
     }
 }
@@ -101,7 +105,7 @@ fn render(
         Node::Element(after) => {
             if after.need_rerendering {
                 if let (Some(Node::Element(before)), Some(root)) = (before, root) {
-                    if let Some(root) = root.dyn_ref::<native::Element>() {
+                    if let Some(root) = root.dyn_ref::<web_sys::Element>() {
                         if after.tag_name == before.tag_name {
                             render_element_diff(after, before, root);
                             None
@@ -126,10 +130,10 @@ fn render(
     }
 }
 
-fn render_element_lazy(after: dom::Element, before: &dom::Element, root: &native::Node) {
-    let mut i = 0;
+fn render_element_lazy(after: dom::Element, before: &dom::Element, root: &web_sys::Node) {
+    let mut i: usize = 0;
     for child in after.children {
-        if let Some(b) = root.child_nodes().item(i) {
+        if let Some(b) = root.child_nodes().item(i as u32) {
             if let Some(a) = render(child, before.children.get(i), Some(&b)) {
                 root.replace_child(&a, &b);
             }
@@ -138,7 +142,7 @@ fn render_element_lazy(after: dom::Element, before: &dom::Element, root: &native
     }
 }
 
-fn render_element_force(after: dom::Element) -> native::Node {
+fn render_element_force(after: dom::Element) -> web_sys::Node {
     let el = new_element(&after.tag_name, &after.attributes, after.events);
     for child in after.children {
         if let Some(node) = render(child, None, None) {
@@ -148,22 +152,22 @@ fn render_element_force(after: dom::Element) -> native::Node {
     el.into()
 }
 
-fn render_element_diff(after: dom::Element, before: &dom::Element, root: &native::Element) {
-    root.set_attribute_diff(&after.attributes, &before.attributes);
-    root.set_event_all(after.events);
-    let mut i = (before.children.len() as i64) - (after.children.len() as i64);
+fn render_element_diff(after: dom::Element, before: &dom::Element, root: &web_sys::Element) {
+    set_attribute_diff(&root, &after.attributes, &before.attributes);
+    set_event_all(&root, after.events);
+    let mut i = ((before.children.len() as i64) - (after.children.len() as i64)) as usize;
     while i > 0 {
         if let Some(node) = root
             .child_nodes()
-            .item(after.children.len() + (i as usize) - 1)
+            .item((after.children.len() + i - 1) as u32)
         {
             root.remove_child(&node);
         }
         i -= 1;
     }
-    let mut i = 0;
+    let mut i: usize = 0;
     for child in after.children {
-        if let Some(old) = root.child_nodes().item(i) {
+        if let Some(old) = root.child_nodes().item(i as u32) {
             if let Some(new) = render(child, before.children.get(i), Some(&old)) {
                 root.replace_child(&new, &old);
             }
@@ -180,9 +184,9 @@ fn new_element(
     tag_name: &str,
     attributes: &dom::Attributes,
     events: dom::Events,
-) -> native::Element {
+) -> web_sys::Element {
     let element = native::create_element(tag_name);
-    element.set_attribute_all(attributes);
-    element.set_event_all(events);
+    set_attribute_all(&element, attributes);
+    set_event_all(&element, events);
     element
 }

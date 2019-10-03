@@ -1,7 +1,6 @@
 pub mod html;
 pub mod renderer;
 
-use crate::native::Event;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -34,7 +33,7 @@ pub enum Value {
 }
 
 pub struct Events {
-    pub handlers: HashMap<String, Box<FnMut(Event)>>,
+    pub handlers: HashMap<String, Box<FnMut(web_sys::Event)>>,
 }
 
 impl Node {
@@ -138,7 +137,7 @@ impl Events {
         }
     }
 
-    pub fn add(&mut self, name: impl Into<String>, handler: impl FnMut(Event) + 'static) {
+    pub fn add(&mut self, name: impl Into<String>, handler: impl FnMut(web_sys::Event) + 'static) {
         self.handlers.insert(name.into(), Box::new(handler));
     }
 }

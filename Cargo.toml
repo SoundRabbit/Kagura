@@ -28,11 +28,17 @@ features = ["serde-serialize"]
 [dependencies.web-sys]
 version = "0.3.28"
 features = [
+    "AddEventListenerOptions",
     "Document",
+    "DragEvent",
     "Element",
+    "Event",
     "EventTarget",
     "HtmlInputElement",
+    "KeyboardEvent",
+    "MouseEvent",
     "Node",
+    "NodeList",
     "Text",
     "Window",
 ]
