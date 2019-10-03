@@ -25,7 +25,7 @@ $ npm init
 $ npm install -D @wasm-tool/wasm-pack-plugin html-webpack-plugin webpack webpack-cli webpack-dev-server
 ```
 
-## create `webpack.config.js`
+## create webpack.config.js
 
 Create `webpack.config.js` in root of crate, and write like this:
 
@@ -49,7 +49,7 @@ module.exports = {
 };
 ```
 
-## create `index.js` and `index.html`
+## create index.js and index.html
 
 Create `index.js` and `index.html` in root of crate.
 
@@ -77,7 +77,7 @@ index.html:
 </html>
 ```
 
-## modify `package.json`
+## modify package.json
 
 Add start script to `package.json` in root of crate.
 
@@ -87,7 +87,7 @@ Add start script to `package.json` in root of crate.
 },
 ```
 
-## modify `cargo.toml`
+## modify cargo.toml
 
 Add `[dependencies]` and `[lib]` to `crago.toml` in root of crate. like this:
 

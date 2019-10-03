@@ -1,6 +1,6 @@
 # Hello Kagura
 
-You can import all necessity by `use use kagura::prelude::*;`, and start application `kagura::run`. `kagura::run` need you a component and a id of entrypoint.
+You can import all necessities by `use kagura::prelude::*;`, and start your application by `kagura::run`. `kagura::run` need you a component and a id of entrypoint.
 
 Creating compoent, use `Component::new()`. `Component::new()` need you **initial state**, **update** and **render**. To create thease parameters, it is needed to define type of **state**, **message** and **subscription-message**. In this sample, thease types are defined as `State`, `Msg`, `Sub`.
 
@@ -28,6 +28,7 @@ enum Sub{}
 
 fn update(_: &mut State, _: Msg) -> Cmd<Msg, Sub> {Cmd::none()}
 
+//  <h1>hello kagura</h1>
 fn render(_: &State) -> Html<Msg> {
     Html::h1(
         Attributes::new(),
