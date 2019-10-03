@@ -74,7 +74,7 @@ pub struct PannerNode {
 
 pub struct WaveShaperNode {
     curve: Vec<f32>,
-    oversample: Option<OverSampleType>
+    oversample: Option<OverSampleType>,
 }
 
 pub enum BiquadFilterType {
@@ -94,7 +94,7 @@ pub enum DistanceModelType {
     Exponential,
 }
 
-pub enum OverSampleType{
+pub enum OverSampleType {
     None,
     N2x,
     N4x,
