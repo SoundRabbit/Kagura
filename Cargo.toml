@@ -26,10 +26,11 @@ version = "^0.2"
 features = ["serde-serialize"]
 
 [dependencies.web-sys]
-version = "0.3"
+version = "0.3.28"
 features = [
     "Document",
     "Element",
+    "EventTarget",
     "HtmlInputElement",
     "Node",
     "Text",

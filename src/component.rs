@@ -109,7 +109,7 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
             children_ids: HashSet::new(),
         }
     }
-    
+
     /// set subscription witch bind from child sub to parent msg
     pub fn subscribe<Msg_>(mut self, mut sub: impl FnMut(Sub) -> Msg_ + 'static) -> Self
     where

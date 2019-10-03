@@ -20,7 +20,10 @@ impl Renderer {
         } else {
             root = native::create_text_node("").into();
         }
-        root_node.parent_node().expect("no parent node of root").replace_child(&root, &root_node);
+        root_node
+            .parent_node()
+            .expect("no parent node of root")
+            .replace_child(&root, &root_node);
         Self { before, root }
     }
 
@@ -28,55 +31,63 @@ impl Renderer {
         let mut before = after.clone();
         mem::swap(&mut before, &mut self.before);
         if let Some(root) = render(after, Some(&before), Some(&self.root)) {
-            self.root.parent_node().expect("no parent node of root").replace_child(&root, &self.root);
+            self.root
+                .parent_node()
+                .expect("no parent node of root")
+                .replace_child(&root, &self.root);
             self.root = root;
         }
     }
 }
 
-fn set_attribute_all(&self, attributes: &dom::Attributes) {
+fn set_attribute_all(element: &web_sys::Element, attributes: &dom::Attributes) {
     for (a, v) in &attributes.attributes {
         if v.is_empty() {
-            self.set_attribute(&a, "");
+            element.set_attribute(a, "");
         } else if let Some(d) = attributes.delimiters.get(a) {
-            self.set_attribute_set(a, v, d);
+            set_attribute_set(element, a, v, d);
         } else {
-            self.set_attribute_set(a, v, "");
+            set_attribute_set(element, a, v, "");
         }
     }
 }
 
-fn set_attribute_set(&self, a: &str, v: &HashSet<dom::Value>, d: &str) {
+fn set_attribute_set(element: &web_sys::Element, a: &str, v: &HashSet<dom::Value>, d: &str) {
     let v = v.iter().map(|v| v.into()).collect::<Vec<String>>();
     let v = v.iter().map(|v| &v as &str).collect::<Vec<&str>>().join(d);
     if String::from("value") == String::from(a) {
-        if let Some(el) = self.dyn_ref::<web_sys::HtmlInputElement>() {
-            el.set_value(&v);
+        if let Some(element) = element.dyn_ref::<web_sys::HtmlInputElement>() {
+            element.set_value(&v);
         } else {
-            self.set_attribute(a, &v);
+            element.set_attribute(a, &v);
         }
     } else {
-        self.set_attribute(a, &v);
+        element.set_attribute(a, &v);
     }
 }
 
-fn set_event_all(&self, events: dom::Events) {
+fn set_event_all(element: &web_sys::Element, events: dom::Events) {
     for (t, h) in events.handlers {
         let h = Closure::wrap(h);
-        self.add_event_listener(&t, &h, &option);
+        let event_target: &web_sys::EventTarget = element.as_ref();
+        event_target.add_event_listener_with_callback(t, h.as_ref().unchecked_ref());
         h.forget();
     }
 }
 
-fn set_attribute_diff(&self, after: &dom::Attributes, before: &dom::Attributes) {
+fn set_attribute_diff(
+    element: &web_sys::Element,
+    after: &dom::Attributes,
+    before: &dom::Attributes,
+) {
     for (a, _) in &before.attributes {
         if let Some(_) = after.attributes.get(a) {
 
         } else {
-            self.remove_attribute(a);
+            element.remove_attribute(a);
         }
     }
-    self.set_attribute_all(after);
+    set_attribute_all(element, after);
 }
 
 fn render(
