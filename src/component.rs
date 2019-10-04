@@ -1,3 +1,5 @@
+#[cfg(feature = "WebAudioAPI")]
+use crate::audio::connection::Connection;
 use crate::dom;
 use crate::event;
 use crate::task;
@@ -8,7 +10,9 @@ use std::collections::hash_set::HashSet;
 /// Wrapper of Component
 pub trait Composable {
     fn update(&mut self, id: u128, msg: Box<Any>) -> Option<(Box<Any>, u128)>;
-    fn render(&mut self, id: Option<u128>) -> dom::Node;
+    fn render_dom(&mut self, id: Option<u128>) -> dom::Node;
+    #[cfg(feature = "WebAudioAPI")]
+    fn render_audio(&mut self, id: Option<u128>) -> Vec<(Connection, u128)>;
     fn get_id(&self) -> u128;
     fn set_parent_id(&mut self, id: u128);
     fn get_children_ids<'a>(&'a self) -> &'a HashSet<u128>;
@@ -24,6 +28,7 @@ pub enum Cmd<Msg, Sub> {
 }
 
 /// Component constructed by State-update-render
+#[cfg(not(feature = "WebAudioAPI"))]
 pub struct Component<Msg, State, Sub>
 where
     Msg: 'static,
@@ -33,7 +38,26 @@ where
     state: State,
     update: fn(&mut State, Msg) -> Cmd<Msg, Sub>,
     subscribe: Option<Box<FnMut(Sub) -> Box<Any>>>,
-    view_render: fn(&State) -> Html<Msg>,
+    dom_render: fn(&State) -> Html<Msg>,
+    children: Vec<Box<Composable>>,
+    id: u128,
+    parent_id: Option<u128>,
+    events: HashSet<u128>,
+    children_ids: HashSet<u128>,
+}
+
+#[cfg(feature = "WebAudioAPI")]
+pub struct Component<Msg, State, Sub>
+where
+    Msg: 'static,
+    State: 'static,
+    Sub: 'static,
+{
+    state: State,
+    update: fn(&mut State, Msg) -> Cmd<Msg, Sub>,
+    subscribe: Option<Box<FnMut(Sub) -> Box<Any>>>,
+    dom_render: fn(&State) -> Html<Msg>,
+    audio_render: fn(&State) -> Connection,
     children: Vec<Box<Composable>>,
     id: u128,
     parent_id: Option<u128>,
@@ -91,16 +115,39 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
     ///     )
     /// }
     /// ```
+    #[cfg(not(feature = "WebAudioAPI"))]
     pub fn new(
         state: State,
         update: fn(&mut State, Msg) -> Cmd<Msg, Sub>,
-        view_render: fn(&State) -> Html<Msg>,
+        dom_render: fn(&State) -> Html<Msg>,
     ) -> Component<Msg, State, Sub> {
         let id = rand::random::<u128>();
         Component {
             state,
             update,
-            view_render,
+            dom_render,
+            children: vec![],
+            id: id,
+            subscribe: None,
+            parent_id: None,
+            events: HashSet::new(),
+            children_ids: HashSet::new(),
+        }
+    }
+
+    #[cfg(feature = "WebAudioAPI")]
+    pub fn new(
+        state: State,
+        update: fn(&mut State, Msg) -> Cmd<Msg, Sub>,
+        dom_render: fn(&State) -> Html<Msg>,
+        audio_render: fn(&State) -> Connection,
+    ) -> Component<Msg, State, Sub> {
+        let id = rand::random::<u128>();
+        Component {
+            state,
+            update,
+            dom_render,
+            audio_render,
             children: vec![],
             id: id,
             subscribe: None,
@@ -136,9 +183,9 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
             Html::Composable(mut composable) => {
                 if let Some(child) = self.children.get_mut(*child_index) {
                     *child_index += 1;
-                    (*child).render(Some(id))
+                    (*child).render_dom(Some(id))
                 } else {
-                    let node = composable.render(Some(id));
+                    let node = composable.render_dom(Some(id));
                     self.append_composable(composable);
                     node
                 }
@@ -169,7 +216,7 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
     fn adapt_html_force(&mut self, html: Html<Msg>) -> dom::Node {
         match html {
             Html::Composable(mut composable) => {
-                let node = composable.render(None);
+                let node = composable.render_dom(None);
                 self.append_composable(composable);
                 node
             }
@@ -222,6 +269,25 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
             }
         }
     }
+
+    #[cfg(feature = "WebAudioAPI")]
+    fn render_audio_lazy(&mut self) -> Vec<(Connection, u128)> {
+        let mut connections: Vec<(Connection, u128)> = vec![];
+        for child in &mut self.children {
+            connections.append(&mut child.render_audio(None));
+        }
+        connections
+    }
+
+    #[cfg(feature = "WebAudioAPI")]
+    fn render_audio_fource(&mut self) -> Vec<(Connection, u128)> {
+        let connection = (self.audio_render)(&self.state);
+        let mut connections = vec![(connection, self.id)];
+        for child in &mut self.children {
+            connections.append(&mut child.render_audio(None));
+        }
+        connections
+    }
 }
 
 impl<Msg, State, Sub> Composable for Component<Msg, State, Sub> {
@@ -241,8 +307,8 @@ impl<Msg, State, Sub> Composable for Component<Msg, State, Sub> {
         }
     }
 
-    fn render(&mut self, id: Option<u128>) -> dom::Node {
-        let html = (self.view_render)(&self.state);
+    fn render_dom(&mut self, id: Option<u128>) -> dom::Node {
+        let html = (self.dom_render)(&self.state);
         if let Some(id) = id {
             if id == self.id {
                 self.children.clear();
@@ -256,6 +322,19 @@ impl<Msg, State, Sub> Composable for Component<Msg, State, Sub> {
             }
         } else {
             self.adapt_html_force(html)
+        }
+    }
+
+    #[cfg(feature = "WebAudioAPI")]
+    fn render_audio(&mut self, id: Option<u128>) -> Vec<(Connection, u128)> {
+        if let Some(id) = id {
+            if self.id == id {
+                self.render_audio_fource()
+            } else {
+                self.render_audio_lazy()
+            }
+        } else {
+            self.render_audio_fource()
         }
     }
 

@@ -6,12 +6,12 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys;
 
-pub struct Renderer {
+pub struct DomRenderer {
     before: dom::Node,
     root: web_sys::Node,
 }
 
-impl Renderer {
+impl DomRenderer {
     pub fn new(virtual_node: dom::Node, root_node: web_sys::Node) -> Self {
         let before = virtual_node.clone();
         let mut root: web_sys::Node;
