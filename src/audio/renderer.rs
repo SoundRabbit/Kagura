@@ -49,49 +49,49 @@ impl AudioContext {
     ) -> Option<&'a web_sys::AudioNode> {
         match after {
             ConnectionContext::Node(node_context) => {
-                match node_context.node {
+                match &node_context.node {
                     AudioNode::AnalyserNode(props) => {
-                        let node = context.create_analyser();
-                        after_nodes.insert(node_context.id, node.into::<web_sys::AudioNode>());
+                        let node = context.create_analyser().unwrap();
+                        after_nodes.insert(node_context.id, node.into());
                         after_nodes.get(&node_context.id)
                     }
                     AudioNode::AudioWorkletNode(props) => {
-                        let node = context.create_analyser();
+                        let node = context.create_analyser().unwrap();
                         after_nodes.insert(node_context.id, node.into());
                         after_nodes.get(&node_context.id)
                     }
                     AudioNode::BiquadFilterNode(props) => {
-                        let node = context.create_biquad_filter();
+                        let node = context.create_biquad_filter().unwrap();
                         after_nodes.insert(node_context.id, node.into());
                         after_nodes.get(&node_context.id)
                     }
                     AudioNode::ConvolverNode(props) => {
-                        let node = context.create_convolver();
+                        let node = context.create_convolver().unwrap();
                         after_nodes.insert(node_context.id, node.into());
                         after_nodes.get(&node_context.id)
                     }
                     AudioNode::DelayNode(props) => {
-                        let node = context.create_delay();
+                        let node = context.create_delay().unwrap();
                         after_nodes.insert(node_context.id, node.into());
                         after_nodes.get(&node_context.id)
                     }
                     AudioNode::DynamicsCompressorNode(props) => {
-                        let node = context.create_dynamics_compressor();
+                        let node = context.create_dynamics_compressor().unwrap();
                         after_nodes.insert(node_context.id, node.into());
                         after_nodes.get(&node_context.id)
                     }
                     AudioNode::GainNode(props) => {
-                        let node = context.create_gain();
+                        let node = context.create_gain().unwrap();
                         after_nodes.insert(node_context.id, node.into());
                         after_nodes.get(&node_context.id)
                     }
                     AudioNode::PannerNode(props) => {
-                        let node = context.create_panner();
+                        let node = context.create_panner().unwrap();
                         after_nodes.insert(node_context.id, node.into());
                         after_nodes.get(&node_context.id)
                     }
                     AudioNode::WaveShaperNode(props) => {
-                        let node = context.create_wave_shaper();
+                        let node = context.create_wave_shaper().unwrap();
                         after_nodes.insert(node_context.id, node.into());
                         after_nodes.get(&node_context.id)
                     }
@@ -100,10 +100,10 @@ impl AudioContext {
             ConnectionContext::Nodes(nodes) => {
                 match mode {
                     RenderMode::Parallel => {
-
+                        None
                     }
                     RenderMode::Serial => {
-
+                        None
                     }
                 }
             }
