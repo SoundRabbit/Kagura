@@ -1,4 +1,4 @@
-mod analyzer_node;
+mod analyser_node;
 mod audio_worklet_node;
 mod biquad_filter_node;
 mod convolver_node;
@@ -8,7 +8,7 @@ mod gain_node;
 mod panner_node;
 mod wave_shaper_node;
 
-pub use analyzer_node::*;
+pub use analyser_node::*;
 pub use audio_worklet_node::*;
 pub use biquad_filter_node::*;
 pub use convolver_node::*;
@@ -19,7 +19,7 @@ pub use panner_node::*;
 pub use wave_shaper_node::*;
 
 pub enum AudioNode {
-    AnalyzerNode(AnalyzerNode),
+    AnalyserNode(AnalyserNode),
     AudioWorkletNode(AudioWorkletNode),
     BiquadFilterNode(BiquadFilterNode),
     ConvolverNode(ConvolverNode),
@@ -30,9 +30,9 @@ pub enum AudioNode {
     WaveShaperNode(WaveShaperNode),
 }
 
-impl From<AnalyzerNode> for AudioNode {
-    fn from(node: AnalyzerNode) -> Self {
-        AudioNode::AnalyzerNode(node)
+impl From<AnalyserNode> for AudioNode {
+    fn from(node: AnalyserNode) -> Self {
+        AudioNode::AnalyserNode(node)
     }
 }
 

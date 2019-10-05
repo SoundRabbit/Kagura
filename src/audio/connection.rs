@@ -22,8 +22,8 @@ impl Connection {
     }
 }
 
-impl Connector<AnalyzerNode> for Connection {
-    fn connect(mut self, node: AnalyzerNode) -> Self {
+impl Connector<AnalyserNode> for Connection {
+    fn connect(mut self, node: AnalyserNode) -> Self {
         if let Connection::Nodes(connections) = &mut self {
             connections.push(Connection::Node(AudioNode::from(node)));
         }

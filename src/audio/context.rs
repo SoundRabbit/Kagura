@@ -16,8 +16,8 @@ pub enum ConnectionContext {
 }
 
 pub struct AudioNodeContext {
-    node: AudioNode,
-    id: u128,
+    pub node: AudioNode,
+    pub id: u128,
 }
 
 impl AudioContext {

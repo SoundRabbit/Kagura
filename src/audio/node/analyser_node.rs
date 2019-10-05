@@ -1,11 +1,11 @@
-pub struct AnalyzerNode {
+pub struct AnalyserNode {
     pub fft_size: Option<u64>,
     pub min_decibels: Option<f64>,
     pub max_decibels: Option<f64>,
     pub smoothing_time_constant: Option<f64>,
 }
 
-impl AnalyzerNode {
+impl AnalyserNode {
     pub fn new() -> Self {
         Self {
             fft_size: None,
