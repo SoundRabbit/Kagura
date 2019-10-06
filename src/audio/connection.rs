@@ -85,6 +85,24 @@ impl Connector<GainNode> for Connection {
     }
 }
 
+impl Connector<MediaStreamAudioDestinationNode> for Connection {
+    fn connect(mut self, node: MediaStreamAudioDestinationNode) -> Self {
+        if let Connection::Nodes(connections) = &mut self {
+            connections.push(Connection::Node(AudioNode::from(node)));
+        }
+        self
+    }
+}
+
+impl Connector<OscillatorNode> for Connection {
+    fn connect(mut self, node: OscillatorNode) -> Self {
+        if let Connection::Nodes(connections) = &mut self {
+            connections.push(Connection::Node(AudioNode::from(node)));
+        }
+        self
+    }
+}
+
 impl Connector<PannerNode> for Connection {
     fn connect(mut self, node: PannerNode) -> Self {
         if let Connection::Nodes(connections) = &mut self {

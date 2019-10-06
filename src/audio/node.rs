@@ -5,6 +5,8 @@ mod convolver_node;
 mod delay_node;
 mod dynamics_compressor_node;
 mod gain_node;
+mod media_stream_destination_node;
+mod oscillator_node;
 mod panner_node;
 mod wave_shaper_node;
 
@@ -15,6 +17,8 @@ pub use convolver_node::*;
 pub use delay_node::*;
 pub use dynamics_compressor_node::*;
 pub use gain_node::*;
+pub use media_stream_destination_node::*;
+pub use oscillator_node::*;
 pub use panner_node::*;
 pub use wave_shaper_node::*;
 
@@ -26,6 +30,8 @@ pub enum AudioNode {
     DelayNode(DelayNode),
     DynamicsCompressorNode(DynamicsCompressorNode),
     GainNode(GainNode),
+    MediaStreamAudioDestinationNode(MediaStreamAudioDestinationNode),
+    OscillatorNode(OscillatorNode),
     PannerNode(PannerNode),
     WaveShaperNode(WaveShaperNode),
 }
@@ -69,6 +75,18 @@ impl From<DynamicsCompressorNode> for AudioNode {
 impl From<GainNode> for AudioNode {
     fn from(node: GainNode) -> Self {
         AudioNode::GainNode(node)
+    }
+}
+
+impl From<MediaStreamAudioDestinationNode> for AudioNode {
+    fn from(node: MediaStreamAudioDestinationNode) -> Self{
+        AudioNode::MediaStreamAudioDestinationNode(node)
+    }
+}
+
+impl From<OscillatorNode> for AudioNode {
+    fn from(node: OscillatorNode) -> Self {
+        AudioNode::OscillatorNode(node)
     }
 }
 

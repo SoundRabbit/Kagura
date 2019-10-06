@@ -13,7 +13,7 @@ impl AudioRenderer {
         for (connection, component_id) in connections {
             let mut context = AudioContext::new();
             context.set_connection(connection);
-            let context = context.render();
+            context.render();
             contexts.insert(component_id, context);
         }
         Self { contexts }
@@ -21,107 +21,88 @@ impl AudioRenderer {
 }
 
 impl AudioContext {
-    fn render(mut self) -> Self {
-        let mut after_nodes: HashMap<u128, web_sys::AudioNode> = HashMap::new();
-        AudioContext::render_diff(
-            &self.context,
-            &mut after_nodes,
-            &mut self.nodes,
-            &self.connection,
-            &self.last_connection,
-            None,
-            RenderMode::Serial
-        );
-        self.last_connection = self.connection;
-        self.connection = ConnectionContext::None;
-        self.nodes = after_nodes;
-        self
+    fn render(&self) {
+        AudioContext::render_force(&self.context, &self.connection, &None, RenderMode::Serial);
     }
 
-    fn render_diff<'a> (
+    fn render_force(
         context: &web_sys::AudioContext,
-        after_nodes: &'a mut HashMap<u128, web_sys::AudioNode>,
-        before_nodes: &mut HashMap<u128, web_sys::AudioNode>,
-        after: &ConnectionContext,
-        before: &ConnectionContext,
-        prev: Option<Vec<&web_sys::AudioNode>>,
-        mode: RenderMode
-    ) -> Option<&'a web_sys::AudioNode> {
-        match after {
+        connection: &ConnectionContext,
+        prev: &Option<Vec<web_sys::AudioNode>>,
+        mode: RenderMode,
+    ) -> Option<Vec<web_sys::AudioNode>> {
+        match connection {
             ConnectionContext::Node(node_context) => {
-                match &node_context.node {
-                    AudioNode::AnalyserNode(props) => {
-                        let node = context.create_analyser().unwrap();
-                        after_nodes.insert(node_context.id, node.into());
-                        after_nodes.get(&node_context.id)
-                    }
-                    AudioNode::AudioWorkletNode(props) => {
-                        let node = context.create_analyser().unwrap();
-                        after_nodes.insert(node_context.id, node.into());
-                        after_nodes.get(&node_context.id)
-                    }
+                let node = match &node_context.node {
+                    AudioNode::AnalyserNode(props) => context.create_analyser().unwrap().into(),
+                    AudioNode::AudioWorkletNode(props) => context.create_analyser().unwrap().into(),
                     AudioNode::BiquadFilterNode(props) => {
-                        let node = context.create_biquad_filter().unwrap();
-                        after_nodes.insert(node_context.id, node.into());
-                        after_nodes.get(&node_context.id)
+                        context.create_biquad_filter().unwrap().into()
                     }
-                    AudioNode::ConvolverNode(props) => {
-                        let node = context.create_convolver().unwrap();
-                        after_nodes.insert(node_context.id, node.into());
-                        after_nodes.get(&node_context.id)
-                    }
-                    AudioNode::DelayNode(props) => {
-                        let node = context.create_delay().unwrap();
-                        after_nodes.insert(node_context.id, node.into());
-                        after_nodes.get(&node_context.id)
-                    }
+                    AudioNode::ConvolverNode(props) => context.create_convolver().unwrap().into(),
+                    AudioNode::DelayNode(props) => context.create_delay().unwrap().into(),
                     AudioNode::DynamicsCompressorNode(props) => {
-                        let node = context.create_dynamics_compressor().unwrap();
-                        after_nodes.insert(node_context.id, node.into());
-                        after_nodes.get(&node_context.id)
+                        context.create_dynamics_compressor().unwrap().into()
                     }
-                    AudioNode::GainNode(props) => {
-                        let node = context.create_gain().unwrap();
-                        after_nodes.insert(node_context.id, node.into());
-                        after_nodes.get(&node_context.id)
+                    AudioNode::GainNode(props) => context.create_gain().unwrap().into(),
+                    AudioNode::MediaStreamAudioDestinationNode(props) => context.create_media_stream_destination().unwrap().into(),
+                    AudioNode::OscillatorNode(props) => {
+                        let node = context.create_oscillator().unwrap();
+                        let _ = node.start();
+                        node.into()
                     }
-                    AudioNode::PannerNode(props) => {
-                        let node = context.create_panner().unwrap();
-                        after_nodes.insert(node_context.id, node.into());
-                        after_nodes.get(&node_context.id)
-                    }
+                    AudioNode::PannerNode(props) => context.create_panner().unwrap().into(),
                     AudioNode::WaveShaperNode(props) => {
-                        let node = context.create_wave_shaper().unwrap();
-                        after_nodes.insert(node_context.id, node.into());
-                        after_nodes.get(&node_context.id)
+                        context.create_wave_shaper().unwrap().into()
+                    }
+                };
+                if let Some(prev) = prev {
+                    for prev_node in prev {
+                        prev_node.connect_with_audio_node(&node);
                     }
                 }
+                Some(vec![node])
             }
-            ConnectionContext::Nodes(nodes) => {
-                match mode {
-                    RenderMode::Parallel => {
+            ConnectionContext::Nodes(connections) => match mode {
+                RenderMode::Parallel => {
+                    let mut nexts: Vec<web_sys::AudioNode> = vec![];
+                    for connection in connections {
+                        let next = AudioContext::render_force(context, &connection, &prev, mode.inv());
+                        if let Some(mut next) = next {
+                            nexts.append(&mut next);
+                        }
+                    }
+                    if nexts.len() > 0 {
+                        Some(nexts)
+                    } else {
                         None
                     }
-                    RenderMode::Serial => {
-                        None
+                },
+                RenderMode::Serial => {
+                    let mut prev = prev;
+                    let mut next: Option<Vec<web_sys::AudioNode>> = None;
+                    for connection in connections {
+                        next = AudioContext::render_force(context, &connection, prev, mode.inv());
+                        prev = &next;
                     }
-                }
-            }
-            ConnectionContext::None => None
+                    next
+                },
+            },
+            ConnectionContext::None => None,
         }
     }
 }
 
 enum RenderMode {
     Serial,
-    Parallel
+    Parallel,
 }
 
 impl RenderMode {
     fn inv(&self) -> Self {
         match self {
             RenderMode::Serial => RenderMode::Parallel,
-            RenderMode::Parallel => RenderMode::Serial
+            RenderMode::Parallel => RenderMode::Serial,
         }
     }
 }
