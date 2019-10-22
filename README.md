@@ -175,7 +175,7 @@ If you send sub-message to parent component, use this.
 
 You can use this feature like callback function in JavaScript. like this:
 
-```Rust
+```rust
 fn update(state: &mut State, msg: Msg) -> kagura::Cmd<Msg, Sub> {
     use kagura::Cmd;
     match msg {
