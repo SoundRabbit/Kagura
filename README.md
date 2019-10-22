@@ -166,7 +166,3 @@ mod child_component {
 #### `Cmd::sub(sub: Sub)`
 
 If you send sub-message to parent component, use this.
-
-#### `Cmd::task(|resolve| some_task)`
-
-This works like promise in JavaScript. When you give msg to resolve, resolve dispatch msg to update and rerender. It will be useful for setTimeout, some heavy task, and so on.
