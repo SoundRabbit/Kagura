@@ -36,17 +36,12 @@ extern crate serde_derive;
 extern crate wasm_bindgen;
 extern crate web_sys;
 
-#[cfg(feature = "WebAudioAPI")]
-mod audio;
-mod bin;
-mod component;
 mod dom;
-mod event;
 mod native;
-mod task;
+mod state;
 
-pub use component::Cmd;
-pub use component::Component;
+pub use dom::component::Cmd;
+pub use dom::component::Component;
 pub use dom::html::Attributes;
 pub use dom::html::Events;
 pub use dom::html::Html;
@@ -58,12 +53,10 @@ where
     State: 'static,
     Sub: 'static,
 {
-    bin::run(component, id);
+    state::init(component, id);
 }
 
 pub mod prelude {
-    #[cfg(feature = "WebAudioAPI")]
-    pub use crate::audio::connection::*;
     pub use crate::Attributes;
     pub use crate::Cmd;
     pub use crate::Component;

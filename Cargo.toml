@@ -38,6 +38,7 @@ features = [
     "AudioWorkletNode",
     "BiquadFilterNode",
     "ConvolverNode",
+    "console",
     "DelayNode",
     "Document",
     "DragEvent",

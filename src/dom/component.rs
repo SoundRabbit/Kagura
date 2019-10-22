@@ -1,8 +1,5 @@
-#[cfg(feature = "WebAudioAPI")]
-use crate::audio::connection::Connection;
 use crate::dom;
-use crate::event;
-use crate::task;
+use crate::state;
 use crate::Html;
 use std::any::Any;
 use std::collections::hash_set::HashSet;
@@ -11,8 +8,6 @@ use std::collections::hash_set::HashSet;
 pub trait Composable {
     fn update(&mut self, id: u128, msg: Box<Any>) -> Option<(Box<Any>, u128)>;
     fn render_dom(&mut self, id: Option<u128>) -> dom::Node;
-    #[cfg(feature = "WebAudioAPI")]
-    fn render_audio(&mut self, id: Option<u128>) -> Vec<(Connection, u128)>;
     fn get_id(&self) -> u128;
     fn set_parent_id(&mut self, id: u128);
     fn get_children_ids<'a>(&'a self) -> &'a HashSet<u128>;
@@ -28,7 +23,6 @@ pub enum Cmd<Msg, Sub> {
 }
 
 /// Component constructed by State-update-render
-#[cfg(not(feature = "WebAudioAPI"))]
 pub struct Component<Msg, State, Sub>
 where
     Msg: 'static,
@@ -42,26 +36,6 @@ where
     children: Vec<Box<Composable>>,
     id: u128,
     parent_id: Option<u128>,
-    events: HashSet<u128>,
-    children_ids: HashSet<u128>,
-}
-
-#[cfg(feature = "WebAudioAPI")]
-pub struct Component<Msg, State, Sub>
-where
-    Msg: 'static,
-    State: 'static,
-    Sub: 'static,
-{
-    state: State,
-    update: fn(&mut State, Msg) -> Cmd<Msg, Sub>,
-    subscribe: Option<Box<FnMut(Sub) -> Box<Any>>>,
-    dom_render: fn(&State) -> Html<Msg>,
-    audio_render: fn(&State) -> Connection,
-    children: Vec<Box<Composable>>,
-    id: u128,
-    parent_id: Option<u128>,
-    events: HashSet<u128>,
     children_ids: HashSet<u128>,
 }
 
@@ -79,7 +53,12 @@ impl<Msg, Sub> Cmd<Msg, Sub> {
     }
 }
 
-impl<Msg, State, Sub> Component<Msg, State, Sub> {
+impl<Msg, State, Sub> Component<Msg, State, Sub>
+where
+    Msg: 'static,
+    State: 'static,
+    Sub: 'static,
+{
     /// Creates new component ftom initial state, update, render
     ///
     /// # Example
@@ -115,7 +94,6 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
     ///     )
     /// }
     /// ```
-    #[cfg(not(feature = "WebAudioAPI"))]
     pub fn new(
         state: State,
         update: fn(&mut State, Msg) -> Cmd<Msg, Sub>,
@@ -130,29 +108,6 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
             id: id,
             subscribe: None,
             parent_id: None,
-            events: HashSet::new(),
-            children_ids: HashSet::new(),
-        }
-    }
-
-    #[cfg(feature = "WebAudioAPI")]
-    pub fn new(
-        state: State,
-        update: fn(&mut State, Msg) -> Cmd<Msg, Sub>,
-        dom_render: fn(&State) -> Html<Msg>,
-        audio_render: fn(&State) -> Connection,
-    ) -> Component<Msg, State, Sub> {
-        let id = rand::random::<u128>();
-        Component {
-            state,
-            update,
-            dom_render,
-            audio_render,
-            children: vec![],
-            id: id,
-            subscribe: None,
-            parent_id: None,
-            events: HashSet::new(),
             children_ids: HashSet::new(),
         }
     }
@@ -231,18 +186,14 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
                     .into_iter()
                     .map(|child| self.adapt_html_force(child))
                     .collect::<Vec<dom::Node>>();
-                let component_id = self.id;
                 let mut dom_events = dom::Events::new();
-
-                for (name, mut handler) in events.handlers {
-                    let event_id = rand::random::<u128>();
-                    event::add(event_id, move |e| (component_id, Box::new(handler(e))));
+                for (name, handler) in events.handlers {
+                    let component_id = self.id.clone();
                     dom_events.add(name, move |e| {
-                        event::dispatch(event_id, e);
+                        let msg = handler(e);
+                        state::update(component_id, Box::new(msg));
                     });
-                    self.events.insert(event_id);
                 }
-
                 dom::Node::element(tag_name, attributes.attributes, dom_events, children, true)
             }
         }
@@ -260,33 +211,11 @@ impl<Msg, State, Sub> Component<Msg, State, Sub> {
                     None
                 }
             }
-            Cmd::Task(worker) => {
+            Cmd::Task(_) => {
                 let component_id = self.id;
-                worker(Box::new(move |msg| {
-                    task::dispatch(component_id, Box::new(msg))
-                }));
                 None
             }
         }
-    }
-
-    #[cfg(feature = "WebAudioAPI")]
-    fn render_audio_lazy(&mut self) -> Vec<(Connection, u128)> {
-        let mut connections: Vec<(Connection, u128)> = vec![];
-        for child in &mut self.children {
-            connections.append(&mut child.render_audio(None));
-        }
-        connections
-    }
-
-    #[cfg(feature = "WebAudioAPI")]
-    fn render_audio_fource(&mut self) -> Vec<(Connection, u128)> {
-        let connection = (self.audio_render)(&self.state);
-        let mut connections = vec![(connection, self.id)];
-        for child in &mut self.children {
-            connections.append(&mut child.render_audio(None));
-        }
-        connections
     }
 }
 
@@ -307,34 +236,17 @@ impl<Msg, State, Sub> Composable for Component<Msg, State, Sub> {
         }
     }
 
-    fn render_dom(&mut self, id: Option<u128>) -> dom::Node {
+    fn render_dom(&mut self, parent_id: Option<u128>) -> dom::Node {
         let html = (self.dom_render)(&self.state);
-        if let Some(id) = id {
-            if id == self.id {
+        if let Some(parent_id) = parent_id {
+            if parent_id == self.id {
                 self.children.clear();
-                for event_id in &self.events {
-                    event::remove(*event_id);
-                }
-                self.events.clear();
                 self.adapt_html_force(html)
             } else {
-                self.adapt_html_lazy(html, &mut 0, id)
+                self.adapt_html_lazy(html, &mut 0, parent_id)
             }
         } else {
             self.adapt_html_force(html)
-        }
-    }
-
-    #[cfg(feature = "WebAudioAPI")]
-    fn render_audio(&mut self, id: Option<u128>) -> Vec<(Connection, u128)> {
-        if let Some(id) = id {
-            if self.id == id {
-                self.render_audio_fource()
-            } else {
-                self.render_audio_lazy()
-            }
-        } else {
-            self.render_audio_fource()
         }
     }
 

@@ -4,8 +4,8 @@ pub mod events;
 pub use attributes::Attributes;
 pub use events::Events;
 
-use crate::component::Component;
-use crate::component::Composable;
+use super::component::Component;
+use super::component::Composable;
 
 /// viritual html element
 pub enum Html<Msg> {

@@ -1,6 +1,6 @@
-use crate::component::Component;
-use crate::component::Composable;
-use crate::dom::renderer::DomRenderer;
+use crate::dom;
+use crate::dom::component::Component;
+use crate::dom::component::Composable;
 use crate::native;
 use std::any::Any;
 use std::cell::RefCell;
@@ -9,10 +9,10 @@ thread_local!(static APP: RefCell<Option<App>> = RefCell::new(None));
 
 struct App {
     root_component: Box<Composable>,
-    dom_renderer: DomRenderer,
+    dom_renderer: dom::Renderer,
 }
 
-pub fn run<M, S, B>(mut root_component: Component<M, S, B>, id: &str)
+pub fn init<M, S, B>(mut root_component: Component<M, S, B>, id: &str)
 where
     M: 'static,
     S: 'static,
@@ -20,7 +20,7 @@ where
 {
     let node = root_component.render_dom(None);
     let root = native::get_element_by_id(id);
-    let dom_renderer = DomRenderer::new(node, root.into());
+    let dom_renderer = dom::Renderer::new(node, root.into());
     let root_component: Box<Composable> = Box::new(root_component);
     APP.with(|app| {
         *app.borrow_mut() = Some(App {

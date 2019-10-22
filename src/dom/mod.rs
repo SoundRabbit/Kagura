@@ -1,16 +1,18 @@
+pub mod component;
 pub mod html;
 pub mod renderer;
 
+use renderer::event;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-#[derive(Clone, PartialEq)]
+pub use renderer::Renderer;
+
 pub enum Node {
     Element(Element),
     Text(String),
 }
 
-#[derive(Clone)]
 pub struct Element {
     pub tag_name: String,
     pub attributes: Attributes,
@@ -19,7 +21,6 @@ pub struct Element {
     pub need_rerendering: bool,
 }
 
-#[derive(Clone)]
 pub struct Attributes {
     pub attributes: HashMap<String, HashSet<Value>>,
     pub delimiters: HashMap<String, String>,
@@ -33,7 +34,7 @@ pub enum Value {
 }
 
 pub struct Events {
-    pub handlers: HashMap<String, Box<FnMut(web_sys::Event)>>,
+    pub handlers: HashMap<String, event::HandlerId>,
 }
 
 impl Node {
@@ -137,19 +138,8 @@ impl Events {
         }
     }
 
-    pub fn add(&mut self, name: impl Into<String>, handler: impl FnMut(web_sys::Event) + 'static) {
-        self.handlers.insert(name.into(), Box::new(handler));
-    }
-}
-
-impl PartialEq for Events {
-    fn eq(&self, _: &Self) -> bool {
-        true
-    }
-}
-
-impl Clone for Events {
-    fn clone(&self) -> Self {
-        Self::new()
+    pub fn add(&mut self, name: impl Into<String>, handler: impl FnOnce(web_sys::Event) + 'static) {
+        let handler_id = event::add(handler);
+        self.handlers.insert(name.into(), handler_id);
     }
 }
