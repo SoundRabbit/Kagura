@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 pub type HandlerId = u128;
 
-thread_local!(static HANDLERS: RefCell<HashMap<u128, Box<FnOnce(web_sys::Event)>>> = RefCell::new(HashMap::new()));
+thread_local!(static HANDLERS: RefCell<HashMap<u128, Box<dyn FnOnce(web_sys::Event)>>> = RefCell::new(HashMap::new()));
 
 pub fn dispatch(handler_id: HandlerId, e: web_sys::Event) {
     let handler = HANDLERS.with(|handlers| handlers.borrow_mut().remove(&handler_id));

@@ -5,7 +5,7 @@ use web_sys;
 
 /// Events for Html<Msg>
 pub struct Events<Msg> {
-    pub handlers: HashMap<String, Box<FnOnce(web_sys::Event) -> Msg>>,
+    pub handlers: HashMap<String, Box<dyn FnOnce(web_sys::Event) -> Msg>>,
 }
 
 /// Props of MouseEvent
@@ -119,7 +119,7 @@ impl<Msg> Events<Msg> {
         self.on("mouseenter", |e| handler(MouseEvent::from(e)))
     }
 
-    pub fn on_mouseleave(self, mut handler: impl FnOnce(MouseEvent) -> Msg + 'static) -> Self {
+    pub fn on_mouseleave(self, handler: impl FnOnce(MouseEvent) -> Msg + 'static) -> Self {
         self.on("mouseleave", |e| handler(MouseEvent::from(e)))
     }
 

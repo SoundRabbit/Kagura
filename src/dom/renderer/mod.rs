@@ -14,7 +14,7 @@ pub struct Renderer {
 
 impl Renderer {
     pub fn new(virtual_node: dom::Node, root_node: web_sys::Node) -> Self {
-        let mut root: web_sys::Node;
+        let root: web_sys::Node;
         if let Some(node) = render(&virtual_node, None, Some(&root_node)) {
             root = node;
         } else {

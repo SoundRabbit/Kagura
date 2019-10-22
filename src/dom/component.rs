@@ -6,20 +6,20 @@ use std::collections::hash_set::HashSet;
 
 /// Wrapper of Component
 pub trait Composable {
-    fn update(&mut self, id: u128, msg: Box<Any>) -> Option<(Box<Any>, u128)>;
+    fn update(&mut self, id: u128, msg: Box<dyn Any>) -> Option<(Box<dyn Any>, u128)>;
     fn render_dom(&mut self, id: Option<u128>) -> dom::Node;
     fn get_id(&self) -> u128;
     fn set_parent_id(&mut self, id: u128);
     fn get_children_ids<'a>(&'a self) -> &'a HashSet<u128>;
 }
 
-pub type TaskResolver<Msg> = Box<FnMut(Msg) -> ()>;
+type Resolver<Msg> = Box<dyn FnOnce(Msg)>;
 
 /// Cmd
 pub enum Cmd<Msg, Sub> {
     None,
     Sub(Sub),
-    Task(Box<FnOnce(TaskResolver<Msg>) -> ()>),
+    Task(Box<dyn FnOnce(Resolver<Msg>)>),
 }
 
 /// Component constructed by State-update-render
@@ -31,9 +31,9 @@ where
 {
     state: State,
     update: fn(&mut State, Msg) -> Cmd<Msg, Sub>,
-    subscribe: Option<Box<FnMut(Sub) -> Box<Any>>>,
+    subscribe: Option<Box<dyn FnMut(Sub) -> Box<dyn Any>>>,
     dom_render: fn(&State) -> Html<Msg>,
-    children: Vec<Box<Composable>>,
+    children: Vec<Box<dyn Composable>>,
     id: u128,
     parent_id: Option<u128>,
     children_ids: HashSet<u128>,
@@ -48,7 +48,7 @@ impl<Msg, Sub> Cmd<Msg, Sub> {
         Cmd::Sub(sub)
     }
 
-    pub fn task(task: impl FnOnce(TaskResolver<Msg>) -> () + 'static) -> Self {
+    pub fn task(task: impl FnOnce(Resolver<Msg>) + 'static) -> Self {
         Cmd::Task(Box::new(task))
     }
 }
@@ -122,7 +122,7 @@ where
     }
 
     /// append component to children components buffer
-    fn append_composable(&mut self, mut composable: Box<Composable>) {
+    fn append_composable(&mut self, mut composable: Box<dyn Composable>) {
         composable.set_parent_id(self.id);
         self.children_ids.insert(composable.get_id());
         let child_children_ids = composable.get_children_ids();
@@ -200,7 +200,7 @@ where
     }
 
     /// dispatch message to update
-    fn dispatch(&mut self, msg: Msg) -> Option<(Box<Any>, u128)> {
+    fn dispatch(&mut self, msg: Msg) -> Option<(Box<dyn Any>, u128)> {
         let cmd = (self.update)(&mut self.state, msg);
         match cmd {
             Cmd::None => None,
@@ -211,8 +211,12 @@ where
                     None
                 }
             }
-            Cmd::Task(_) => {
+            Cmd::Task(task) => {
                 let component_id = self.id;
+                let resolver = Box::new(move |msg: Msg| {
+                    state::update(component_id, Box::new(msg));
+                });
+                task(resolver);
                 None
             }
         }
@@ -220,7 +224,7 @@ where
 }
 
 impl<Msg, State, Sub> Composable for Component<Msg, State, Sub> {
-    fn update(&mut self, id: u128, msg: Box<Any>) -> Option<(Box<Any>, u128)> {
+    fn update(&mut self, id: u128, msg: Box<dyn Any>) -> Option<(Box<dyn Any>, u128)> {
         if id == self.id {
             match msg.downcast::<Msg>() {
                 Ok(msg) => self.dispatch(*msg),

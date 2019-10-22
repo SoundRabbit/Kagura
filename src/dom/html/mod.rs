@@ -9,7 +9,7 @@ use super::component::Composable;
 
 /// viritual html element
 pub enum Html<Msg> {
-    Composable(Box<Composable>),
+    Composable(Box<dyn Composable>),
     TextNode(String),
     ElementNode {
         tag_name: String,

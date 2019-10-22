@@ -8,7 +8,7 @@ use std::cell::RefCell;
 thread_local!(static APP: RefCell<Option<App>> = RefCell::new(None));
 
 struct App {
-    root_component: Box<Composable>,
+    root_component: Box<dyn Composable>,
     dom_renderer: dom::Renderer,
 }
 
@@ -21,7 +21,7 @@ where
     let node = root_component.render_dom(None);
     let root = native::get_element_by_id(id);
     let dom_renderer = dom::Renderer::new(node, root.into());
-    let root_component: Box<Composable> = Box::new(root_component);
+    let root_component: Box<dyn Composable> = Box::new(root_component);
     APP.with(|app| {
         *app.borrow_mut() = Some(App {
             root_component,
@@ -30,7 +30,7 @@ where
     });
 }
 
-pub fn update(mut id: u128, mut msg: Box<Any>) {
+pub fn update(mut id: u128, mut msg: Box<dyn Any>) {
     APP.with(|app| {
         if let Some(app) = &mut (*app.borrow_mut()) {
             while let Some((new_msg, new_id)) = app.root_component.update(id, msg) {
