@@ -8,6 +8,10 @@ Frontend frame-work for wasm on Rust.
 
 </div>
 
+## Big changes
+
+Supporting web_sys::Event.
+
 ## Tutorial
 
 ### In English
@@ -166,3 +170,29 @@ mod child_component {
 #### `Cmd::sub(sub: Sub)`
 
 If you send sub-message to parent component, use this.
+
+#### `Cmd::task(task: impl FnOnce(Resolver<Msg>) + 'static)`
+
+You can use this feature like callback function in JavaScript. like this:
+
+```Rust
+fn update(state: &mut State, msg: Msg) -> kagura::Cmd<Msg, Sub> {
+    use kagura::Cmd;
+    match msg {
+        Msg::ChangeMessage(message) => {
+            state.message = message;
+            Cmd::none()
+        }
+        Msg::ChangeMessageTask(message) => Cmd::task(|resolver| {
+            let resolver = Closure::once(|| resolver(Msg::ChangeMessage(message)));
+            web_sys::window()
+                .unwrap()
+                .set_timeout_with_callback_and_timeout_and_arguments_0(
+                    resolver.as_ref().unchecked_ref(),
+                    1000,
+                );
+            resolver.forget();
+        }),
+    }
+}
+```
