@@ -1,6 +1,6 @@
 # Add attributes
 
-Attributes of an element are presented by `Attributes` structure. `Attributes` is initialize by `Attributes.new()`. You can add an attribute to `Attributes by method chain.
+Attributes of an element are presented by `Attributes` structure. `Attributes` is initialize by `Attributes.new()`. You can add an attribute to `Attributes` by method chain.
 
 like this:
 
