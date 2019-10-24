@@ -42,6 +42,7 @@ mod dom;
 mod event;
 mod native;
 mod state;
+mod task;
 
 pub use dom::component::Cmd;
 pub use dom::component::Component;
