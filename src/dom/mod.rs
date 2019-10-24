@@ -2,7 +2,7 @@ pub mod component;
 pub mod html;
 pub mod renderer;
 
-use renderer::event;
+use crate::event;
 use std::collections::HashMap;
 use std::collections::HashSet;
 

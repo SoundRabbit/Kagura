@@ -1,6 +1,5 @@
-pub mod event;
-
 use crate::dom;
+use crate::event;
 use crate::native;
 use std::collections::HashSet;
 use wasm_bindgen::prelude::*;

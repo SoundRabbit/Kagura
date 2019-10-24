@@ -39,6 +39,7 @@ extern crate wasm_bindgen_futures;
 extern crate web_sys;
 
 mod dom;
+mod event;
 mod native;
 mod state;
 
