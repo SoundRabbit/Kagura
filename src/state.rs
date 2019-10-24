@@ -2,6 +2,7 @@ use crate::dom;
 use crate::dom::component::Component;
 use crate::dom::component::Composable;
 use crate::native;
+use crate::task;
 use std::any::Any;
 use std::cell::RefCell;
 
@@ -41,4 +42,5 @@ pub fn update(mut id: u128, mut msg: Box<dyn Any>) {
             app.dom_renderer.update(node);
         }
     });
+    task::dispatch();
 }

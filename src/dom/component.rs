@@ -1,5 +1,6 @@
 use crate::dom;
 use crate::state;
+use crate::task;
 use crate::Html;
 use std::any::Any;
 use std::collections::hash_set::HashSet;
@@ -216,7 +217,7 @@ where
                 let resolver = Box::new(move |msg: Msg| {
                     state::update(component_id, Box::new(msg));
                 });
-                task(resolver);
+                task::add(|| task(resolver));
                 None
             }
         }
