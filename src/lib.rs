@@ -38,6 +38,8 @@ extern crate wasm_bindgen;
 extern crate wasm_bindgen_futures;
 extern crate web_sys;
 
+#[cfg(feature = "WebAudioAPI")]
+mod audio;
 mod dom;
 mod event;
 mod native;
