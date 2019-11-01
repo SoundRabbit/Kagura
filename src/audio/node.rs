@@ -1,3 +1,3 @@
 pub struct Oscillator {}
 
-pub struct  Destination{}
+pub struct Destination {}
