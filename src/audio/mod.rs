@@ -5,13 +5,13 @@ pub enum Node {
     Destination(node::Destination),
 }
 
-pub enum Spliter{
+pub enum Spliter {
     None,
     Only(u64),
     Equally,
 }
 
-pub enum Merger{
+pub enum Merger {
     None,
     Only(u64),
     Equally,
@@ -20,6 +20,5 @@ pub enum Merger{
 pub enum Connection {
     Pipeline(Vec<Connection>),
     Branch(Spliter, Vec<Connection>, Merger),
-    LoopBack(Merger, Vec<Connection>, Spliter),
-    Node(Node)
+    Node(Node),
 }
