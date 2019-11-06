@@ -4,7 +4,7 @@
 
 # Kagura
 
-Frontend frame-work for wasm on Rust.
+A front-end framework that runs on WebAssembly written in Rust.
 
 </div>
 
