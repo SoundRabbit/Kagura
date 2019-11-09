@@ -1,4 +1,3 @@
-use crate::dom;
 use crate::event;
 use crate::native;
 use std::collections::HashSet;
@@ -7,12 +6,12 @@ use wasm_bindgen::JsCast;
 use web_sys;
 
 pub struct Renderer {
-    before: dom::Node,
+    before: super::Node,
     root: web_sys::Node,
 }
 
 impl Renderer {
-    pub fn new(virtual_node: dom::Node, root_node: web_sys::Node) -> Self {
+    pub fn new(virtual_node: super::Node, root_node: web_sys::Node) -> Self {
         let root: web_sys::Node;
         if let Some(node) = render(&virtual_node, None, Some(&root_node)) {
             root = node;
@@ -29,7 +28,7 @@ impl Renderer {
         }
     }
 
-    pub fn update(&mut self, after: dom::Node) {
+    pub fn update(&mut self, after: super::Node) {
         if let Some(root) = render(&after, Some(&self.before), Some(&self.root)) {
             let _ = self
                 .root
@@ -42,7 +41,7 @@ impl Renderer {
     }
 }
 
-fn set_attribute_all(element: &web_sys::Element, attributes: &dom::Attributes) {
+fn set_attribute_all(element: &web_sys::Element, attributes: &super::Attributes) {
     for (a, v) in &attributes.attributes {
         if v.is_empty() {
             let _ = element.set_attribute(a, "");
@@ -54,7 +53,7 @@ fn set_attribute_all(element: &web_sys::Element, attributes: &dom::Attributes) {
     }
 }
 
-fn set_attribute_set(element: &web_sys::Element, a: &str, v: &HashSet<dom::Value>, d: &str) {
+fn set_attribute_set(element: &web_sys::Element, a: &str, v: &HashSet<super::Value>, d: &str) {
     let v = v.iter().map(|v| v.into()).collect::<Vec<String>>();
     let v = v.iter().map(|v| &v as &str).collect::<Vec<&str>>().join(d);
     if String::from("value") == String::from(a) {
@@ -68,7 +67,7 @@ fn set_attribute_set(element: &web_sys::Element, a: &str, v: &HashSet<dom::Value
     }
 }
 
-fn set_event_all(element: &web_sys::Element, events: &dom::Events) {
+fn set_event_all(element: &web_sys::Element, events: &super::Events) {
     for (t, hid) in &events.handlers {
         let hid = *hid;
         let h = Closure::once(move |e| {
@@ -86,8 +85,8 @@ fn set_event_all(element: &web_sys::Element, events: &dom::Events) {
 
 fn set_attribute_diff(
     element: &web_sys::Element,
-    after: &dom::Attributes,
-    before: &dom::Attributes,
+    after: &super::Attributes,
+    before: &super::Attributes,
 ) {
     for (a, _) in &before.attributes {
         if after.attributes.get(a).is_none() {
@@ -98,11 +97,11 @@ fn set_attribute_diff(
 }
 
 fn render(
-    after: &dom::Node,
-    before: Option<&dom::Node>,
+    after: &super::Node,
+    before: Option<&super::Node>,
     root: Option<&web_sys::Node>,
 ) -> Option<web_sys::Node> {
-    use dom::Node;
+    use super::Node;
     match after {
         Node::Text(text) => Some(native::create_text_node(&text).into()),
         Node::Element(after) => {
@@ -133,7 +132,7 @@ fn render(
     }
 }
 
-fn render_element_lazy(after: &dom::Element, before: &dom::Element, root: &web_sys::Node) {
+fn render_element_lazy(after: &super::Element, before: &super::Element, root: &web_sys::Node) {
     let mut i: usize = 0;
     for child in &after.children {
         if let Some(b) = root.child_nodes().item(i as u32) {
@@ -145,7 +144,7 @@ fn render_element_lazy(after: &dom::Element, before: &dom::Element, root: &web_s
     }
 }
 
-fn render_element_force(after: &dom::Element) -> web_sys::Node {
+fn render_element_force(after: &super::Element) -> web_sys::Node {
     let el = new_element(&after.tag_name, &after.attributes, &after.events);
     for child in &after.children {
         if let Some(node) = render(&child, None, None) {
@@ -155,7 +154,7 @@ fn render_element_force(after: &dom::Element) -> web_sys::Node {
     el.into()
 }
 
-fn render_element_diff(after: &dom::Element, before: &dom::Element, root: &web_sys::Element) {
+fn render_element_diff(after: &super::Element, before: &super::Element, root: &web_sys::Element) {
     for (_, hid) in &before.events.handlers {
         event::remove(hid);
     }
@@ -188,8 +187,8 @@ fn render_element_diff(after: &dom::Element, before: &dom::Element, root: &web_s
 
 fn new_element(
     tag_name: &str,
-    attributes: &dom::Attributes,
-    events: &dom::Events,
+    attributes: &super::Attributes,
+    events: &super::Events,
 ) -> web_sys::Element {
     let element = native::create_element(tag_name);
     set_attribute_all(&element, attributes);

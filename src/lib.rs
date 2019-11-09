@@ -38,17 +38,15 @@ extern crate wasm_bindgen;
 extern crate wasm_bindgen_futures;
 extern crate web_sys;
 
+#[cfg(feature = "WebAudioAPI")]
+mod audio;
 mod dom;
 mod event;
 mod native;
 mod state;
 mod task;
 
-pub use dom::component::Cmd;
-pub use dom::component::Component;
-pub use dom::html::Attributes;
-pub use dom::html::Events;
-pub use dom::html::Html;
+use dom::component::Component;
 
 /// Starts application with component
 pub fn run<Msg, State, Sub>(component: Component<Msg, State, Sub>, id: &str)
@@ -61,9 +59,9 @@ where
 }
 
 pub mod prelude {
-    pub use crate::Attributes;
-    pub use crate::Cmd;
-    pub use crate::Component;
-    pub use crate::Events;
-    pub use crate::Html;
+    pub use crate::dom::component::Cmd;
+    pub use crate::dom::component::Component;
+    pub use crate::dom::html::Attributes;
+    pub use crate::dom::html::Events;
+    pub use crate::dom::html::Html;
 }
