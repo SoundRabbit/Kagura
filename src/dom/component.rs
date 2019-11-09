@@ -1,7 +1,7 @@
+use super::html::Html;
 use crate::dom;
 use crate::state;
 use crate::task;
-use crate::Html;
 use std::any::Any;
 use std::collections::hash_set::HashSet;
 
