@@ -1,17 +1,22 @@
 use super::html::Html;
+use crate::component;
 use crate::dom;
 use crate::state;
 use crate::task;
 use std::any::Any;
 use std::collections::hash_set::HashSet;
+use std::rc::Rc;
+use std::rc::Weak;
 
 /// Wrapper of Component
-pub trait Composable {
-    fn update(&mut self, id: u128, msg: Box<dyn Any>) -> Option<(Box<dyn Any>, u128)>;
-    fn render_dom(&mut self, id: Option<u128>) -> dom::Node;
-    fn get_id(&self) -> u128;
-    fn set_parent_id(&mut self, id: u128);
-    fn get_children_ids<'a>(&'a self) -> &'a HashSet<u128>;
+pub trait Composable: component::Composable<dom::Node> {
+    fn dispatch_msg(&mut self, msg: Box<dyn Any>);
+    fn set_parent(&mut self, parent: Weak<dyn Composable>, me: Weak<dyn Composable>);
+}
+
+enum Message<Msg> {
+    None,
+    Changed(Msg),
 }
 
 type Resolver<Msg> = Box<dyn FnOnce(Msg)>;
@@ -31,13 +36,12 @@ where
     Sub: 'static,
 {
     state: State,
-    update: fn(&mut State, Msg) -> Cmd<Msg, Sub>,
-    subscribe: Option<Box<dyn FnMut(Sub) -> Box<dyn Any>>>,
-    dom_render: fn(&State) -> Html<Msg>,
-    children: Vec<Box<dyn Composable>>,
-    id: u128,
-    parent_id: Option<u128>,
-    children_ids: HashSet<u128>,
+    update: Box<dyn Fn(&mut State, Msg) -> Cmd<Msg, Sub>>,
+    render: Box<dyn Fn(&State) -> Html<Msg>>,
+    subscribe: Option<Box<dyn Fn(Sub) -> Box<dyn Any>>>,
+    children: Vec<Rc<dyn Composable>>,
+    me: Weak<dyn Composable>,
+    parent: Weak<dyn Composable>,
 }
 
 impl<Msg, Sub> Cmd<Msg, Sub> {
@@ -60,57 +64,24 @@ where
     State: 'static,
     Sub: 'static,
 {
-    /// Creates new component ftom initial state, update, render
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use kagura::Attributes;
-    /// use kagura::Events;
-    /// use kagura::Html;
-    /// use kagura::Cmd;
-    /// use kagura::Component;
-    ///
-    /// fn hello_world_component() -> Component<Msg, State, Sub> {
-    ///     Component::new(init(), update, render)
-    /// }
-    ///
-    /// struct Msg();
-    /// struct State();
-    /// struct Sub();
-    ///
-    /// fn init() -> State {
-    ///     State()
-    /// }
-    ///
-    /// fn update(_: &mut State, _: Msg) -> Cmd<Msg, Sub> { Cmd::none() }
-    ///
-    /// fn render(_: &State) -> Html<Msg> {
-    ///     Html::h1(
-    ///         Attributes::new(),
-    ///         Events::new(),
-    ///         vec![
-    ///             Html::text("hello kagura"),
-    ///         ],
-    ///     )
-    /// }
-    /// ```
     pub fn new(
-        state: State,
-        update: fn(&mut State, Msg) -> Cmd<Msg, Sub>,
-        dom_render: fn(&State) -> Html<Msg>,
-    ) -> Component<Msg, State, Sub> {
-        let id = rand::random::<u128>();
-        Component {
-            state,
-            update,
-            dom_render,
-            children: vec![],
-            id: id,
+        init: impl FnOnce() -> (State, Msg),
+        update: impl Fn(&mut State, Msg) -> Cmd<Msg, Sub> + 'static,
+        render: impl Fn(&State) -> Html<Msg> + 'static,
+    ) -> Rc<dyn Composable> {
+        let (state, msg) = init();
+        let component = Component {
+            state: state,
+            update: Box::new(update),
+            render: Box::new(render),
             subscribe: None,
-            parent_id: None,
-            children_ids: HashSet::new(),
-        }
+            children: vec![],
+            me: Weak::new(),
+            parent: Weak::new(),
+        };
+        let mut component = Rc::new(component);
+        component.me = component.downgrade();
+        component
     }
 
     /// set subscription witch bind from child sub to parent msg
@@ -134,7 +105,7 @@ where
     }
 
     /// render on non-update
-    fn adapt_html_lazy(&mut self, html: Html<Msg>, child_index: &mut usize, id: u128) -> dom::Node {
+    fn render_lazy(&mut self, html: Html<Msg>, child_index: &mut usize, id: u128) -> dom::Node {
         match html {
             Html::Composable(mut composable) => {
                 if let Some(child) = self.children.get_mut(*child_index) {
@@ -169,7 +140,7 @@ where
     }
 
     /// render on updated
-    fn adapt_html_force(&mut self, html: Html<Msg>) -> dom::Node {
+    fn render_force(&mut self, html: Html<Msg>) -> dom::Node {
         match html {
             Html::Composable(mut composable) => {
                 let node = composable.render_dom(None);
@@ -200,70 +171,45 @@ where
         }
     }
 
-    /// dispatch message to update
-    fn dispatch(&mut self, msg: Msg) -> Option<(Box<dyn Any>, u128)> {
+    fn update(&mut self, msg: Msg) {
         let cmd = (self.update)(&mut self.state, msg);
         match cmd {
-            Cmd::None => None,
+            Cmd::None => (),
             Cmd::Sub(sub) => {
-                if let (Some(parent_id), Some(subscribe)) = (self.parent_id, &mut self.subscribe) {
-                    Some((subscribe(sub), parent_id))
-                } else {
-                    None
+                if let (Some(subscribe), Some(parent)) =
+                    (&mut self.subscribe, self.parent.upgrade())
+                {
+                    parent.dispatch_msg(subscribe(sub));
                 }
             }
             Cmd::Task(task) => {
-                let component_id = self.id;
+                let me = Weak::clone(&self.me);
                 let resolver = Box::new(move |msg: Msg| {
-                    state::update(component_id, Box::new(msg));
+                    if let Some(me) = me.upgrade() {
+                        me.dispatch_msg(Box::new(msg));
+                    }
                 });
                 task::add(|| task(resolver));
-                None
             }
         }
     }
 }
 
 impl<Msg, State, Sub> Composable for Component<Msg, State, Sub> {
-    fn update(&mut self, id: u128, msg: Box<dyn Any>) -> Option<(Box<dyn Any>, u128)> {
-        if id == self.id {
-            match msg.downcast::<Msg>() {
-                Ok(msg) => self.dispatch(*msg),
-                Err(_) => None,
-            }
-        } else {
-            for child in &mut self.children {
-                if child.get_id() == id || child.get_children_ids().get(&id).is_some() {
-                    return (*child).update(id, msg);
-                }
-            }
-            None
+    fn dispatch_msg(&mut self, msg: Box<dyn Any>) {
+        if let Ok(msg) = msg.downcast::<Msg>() {
+            self.update(*msg);
         }
     }
+}
 
-    fn render_dom(&mut self, parent_id: Option<u128>) -> dom::Node {
-        let html = (self.dom_render)(&self.state);
-        if let Some(parent_id) = parent_id {
-            if parent_id == self.id {
-                self.children.clear();
-                self.adapt_html_force(html)
-            } else {
-                self.adapt_html_lazy(html, &mut 0, parent_id)
-            }
+impl<Msg, State, Sub> component::Composable<dom::Node> for Component<Msg, State, Sub> {
+    fn render(&mut self) -> dom::Node {
+        let html = (self.render)(&self.state);
+        if let Message::Changed(msg) = self.message {
+            self.render_force(html)
         } else {
-            self.adapt_html_force(html)
+            self.render_lazy(html, 0)
         }
-    }
-
-    fn get_id(&self) -> u128 {
-        self.id
-    }
-
-    fn set_parent_id(&mut self, id: u128) {
-        self.parent_id = Some(id);
-    }
-
-    fn get_children_ids<'a>(&'a self) -> &'a HashSet<u128> {
-        &self.children_ids
     }
 }

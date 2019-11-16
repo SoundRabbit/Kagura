@@ -40,6 +40,7 @@ extern crate web_sys;
 
 #[cfg(feature = "WebAudioAPI")]
 mod audio;
+mod component;
 mod dom;
 mod event;
 mod native;
