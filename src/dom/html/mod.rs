@@ -1,16 +1,17 @@
 pub mod attributes;
 pub mod events;
-pub mod component;
 
 pub use attributes::Attributes;
 pub use events::Events;
 
 use super::component::Component;
 use super::component::Composable;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 /// viritual html element
 pub enum Html<Msg> {
-    Composable(Box<dyn Composable>),
+    Composable(Rc<RefCell<Box<dyn Composable>>>),
     TextNode(String),
     ElementNode {
         tag_name: String,
@@ -28,7 +29,7 @@ impl<Msg> Html<Msg> {
         S: 'static,
         B: 'static,
     {
-        Html::Composable(Box::new(component))
+        Html::Composable(component.into())
     }
 
     /// Creates Html<Msg> from a non-validated text

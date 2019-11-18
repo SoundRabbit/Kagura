@@ -1,22 +1,22 @@
 use super::html::Html;
-use crate::component;
+use super::Attributes;
+use super::Events;
 use super::Node;
+use crate::component;
 use crate::state;
 use crate::task;
 use std::any::Any;
-use std::collections::hash_set::HashSet;
+use std::cell::RefCell;
 use std::rc::Rc;
 use std::rc::Weak;
+use wasm_bindgen::JsCast;
+use wasm_bindgen::JsValue;
 
 /// Wrapper of Component
 pub trait Composable: component::Composable<Node> {
-    fn dispatch_msg(&mut self, msg: Box<dyn Any>);
-    fn set_parent(&mut self, parent: Weak<dyn Composable>);
-}
-
-enum Message<Msg> {
-    None,
-    Changed(Msg),
+    fn set_me(&mut self, me: Weak<RefCell<Box<dyn Composable>>>);
+    fn set_parent(&mut self, parent: Weak<RefCell<Box<dyn Composable>>>);
+    fn update(&mut self, msg: Box<dyn Any>);
 }
 
 type Resolver<Msg> = Box<dyn FnOnce(Msg)>;
@@ -38,10 +38,11 @@ where
     state: State,
     update: Box<dyn Fn(&mut State, Msg) -> Cmd<Msg, Sub>>,
     render: Box<dyn Fn(&State) -> Html<Msg>>,
-    subscribe: Option<Box<dyn Fn(Sub) -> Box<dyn Any>>>,
-    children: Vec<Rc<dyn Composable>>,
-    me: Weak<dyn Composable>,
-    parent: Weak<dyn Composable>,
+    subscribe: Option<Box<dyn FnMut(Sub) -> Box<dyn Any>>>,
+    children: Vec<Rc<RefCell<Box<dyn Composable>>>>,
+    me: Weak<RefCell<Box<dyn Composable>>>,
+    parent: Weak<RefCell<Box<dyn Composable>>>,
+    is_changed: bool,
 }
 
 impl<Msg, Sub> Cmd<Msg, Sub> {
@@ -65,24 +66,20 @@ where
     Sub: 'static,
 {
     pub fn new(
-        init: impl FnOnce() -> (State, Msg),
+        init: impl FnOnce() -> State,
         update: impl Fn(&mut State, Msg) -> Cmd<Msg, Sub> + 'static,
         render: impl Fn(&State) -> Html<Msg> + 'static,
-    ) -> Rc<dyn Composable> {
-        let (state, msg) = init();
-        let component = Component {
-            state: state,
+    ) -> Self {
+        Component {
+            state: init(),
             update: Box::new(update),
             render: Box::new(render),
             subscribe: None,
             children: vec![],
             me: Weak::new(),
             parent: Weak::new(),
-        };
-        let mut component = Rc::new(component);
-        let me = Rc::downgrade(&component);
-        component.me = me;
-        component
+            is_changed: true,
+        }
     }
 
     /// set subscription witch bind from child sub to parent msg
@@ -95,25 +92,28 @@ where
     }
 
     /// append component to children components buffer
-    fn append_composable(&mut self, mut composable: Rc<dyn Composable>) {
-        composable.set_parent(Weak::clone(&self.me));
+    fn append_composable(&mut self, composable: Rc<RefCell<Box<dyn Composable>>>) {
+        web_sys::console::log_1(&JsValue::from("0"));
+        composable.borrow_mut().set_parent(Weak::clone(&self.me));
         self.children.push(composable);
     }
 
     /// render on non-update
-    fn render_lazy(&mut self, html: Html<Msg>, child_index: &mut usize, id: u128) -> dom::Node {
+    fn render_lazy(&mut self, html: Html<Msg>, child_index: &mut usize) -> Node {
         match html {
-            Html::Composable(mut composable) => {
+            Html::Composable(composable) => {
                 if let Some(child) = self.children.get_mut(*child_index) {
                     *child_index += 1;
-                    (*child).render_dom(Some(id))
+                    web_sys::console::log_1(&JsValue::from("1"));
+                    (*child).borrow_mut().render()
                 } else {
-                    let node = composable.render_dom(Some(id));
+                    web_sys::console::log_1(&JsValue::from("2"));
+                    let node = composable.borrow_mut().render();
                     self.append_composable(composable);
                     node
                 }
             }
-            Html::TextNode(text) => dom::Node::Text(text),
+            Html::TextNode(text) => Node::Text(text),
             Html::ElementNode {
                 tag_name,
                 attributes: _,
@@ -122,28 +122,23 @@ where
             } => {
                 let children = children
                     .into_iter()
-                    .map(|child| self.adapt_html_lazy(child, child_index, id))
-                    .collect::<Vec<dom::Node>>();
-                dom::Node::element(
-                    tag_name,
-                    dom::Attributes::new(),
-                    dom::Events::new(),
-                    children,
-                    false,
-                )
+                    .map(|child| self.render_lazy(child, child_index))
+                    .collect::<Vec<Node>>();
+                Node::element(tag_name, Attributes::new(), Events::new(), children, false)
             }
         }
     }
 
     /// render on updated
-    fn render_force(&mut self, html: Html<Msg>) -> dom::Node {
+    fn render_force(&mut self, html: Html<Msg>) -> Node {
         match html {
-            Html::Composable(mut composable) => {
-                let node = composable.render_dom(None);
+            Html::Composable(composable) => {
+                web_sys::console::log_1(&JsValue::from("3"));
+                let node = composable.borrow_mut().render();
                 self.append_composable(composable);
                 node
             }
-            Html::TextNode(text) => dom::Node::Text(text),
+            Html::TextNode(text) => Node::Text(text),
             Html::ElementNode {
                 tag_name,
                 attributes,
@@ -152,60 +147,80 @@ where
             } => {
                 let children = children
                     .into_iter()
-                    .map(|child| self.adapt_html_force(child))
-                    .collect::<Vec<dom::Node>>();
-                let mut dom_events = dom::Events::new();
+                    .map(|child| self.render_force(child))
+                    .collect::<Vec<Node>>();
+                let mut dom_events = Events::new();
                 for (name, handler) in events.handlers {
-                    let component_id = self.id.clone();
+                    let me = Weak::clone(&self.me);
                     dom_events.add(name, move |e| {
-                        let msg = handler(e);
-                        state::update(component_id, Box::new(msg));
+                        if let Some(me) = me.upgrade() {
+                            web_sys::console::log_1(&JsValue::from("4"));
+                            me.borrow_mut().update(Box::new(handler(e)));
+                        }
                     });
                 }
-                dom::Node::element(tag_name, attributes.attributes, dom_events, children, true)
-            }
-        }
-    }
-
-    fn update(&mut self, msg: Msg) {
-        let cmd = (self.update)(&mut self.state, msg);
-        match cmd {
-            Cmd::None => (),
-            Cmd::Sub(sub) => {
-                if let (Some(subscribe), Some(parent)) =
-                    (&mut self.subscribe, self.parent.upgrade())
-                {
-                    parent.dispatch_msg(subscribe(sub));
-                }
-            }
-            Cmd::Task(task) => {
-                let me = Weak::clone(&self.me);
-                let resolver = Box::new(move |msg: Msg| {
-                    if let Some(me) = me.upgrade() {
-                        me.dispatch_msg(Box::new(msg));
-                    }
-                });
-                task::add(|| task(resolver));
+                Node::element(tag_name, attributes.attributes, dom_events, children, true)
             }
         }
     }
 }
 
 impl<Msg, State, Sub> Composable for Component<Msg, State, Sub> {
-    fn dispatch_msg(&mut self, msg: Box<dyn Any>) {
+    fn set_me(&mut self, me: Weak<RefCell<Box<dyn Composable>>>) {
+        self.me = me;
+    }
+
+    fn set_parent(&mut self, parent: Weak<RefCell<Box<dyn Composable>>>) {
+        self.parent = parent;
+    }
+
+    fn update(&mut self, msg: Box<dyn Any>) {
         if let Ok(msg) = msg.downcast::<Msg>() {
-            self.update(*msg);
+            let cmd = (self.update)(&mut self.state, *msg);
+            self.is_changed = true;
+            match cmd {
+                Cmd::None => (),
+                Cmd::Sub(sub) => {
+                    if let (Some(subscribe), Some(parent)) =
+                        (&mut self.subscribe, &self.parent.upgrade())
+                    {
+                        web_sys::console::log_1(&JsValue::from("5"));
+                        parent.borrow_mut().update(subscribe(sub));
+                    }
+                }
+                Cmd::Task(task) => {
+                    let me = Weak::clone(&self.me);
+                    let resolver = Box::new(move |msg: Msg| {
+                        if let Some(me) = me.upgrade() {
+                            web_sys::console::log_1(&JsValue::from("6"));
+                            me.borrow_mut().update(Box::new(msg));
+                            state::render();
+                        }
+                    });
+                    task::add(|| task(resolver));
+                }
+            };
         }
     }
 }
 
-impl<Msg, State, Sub> component::Composable<dom::Node> for Component<Msg, State, Sub> {
-    fn render(&mut self) -> dom::Node {
+impl<Msg, State, Sub> component::Composable<Node> for Component<Msg, State, Sub> {
+    fn render(&mut self) -> Node {
         let html = (self.render)(&self.state);
-        if let Message::Changed(msg) = self.message {
+        if self.is_changed {
+            self.is_changed = false;
             self.render_force(html)
         } else {
-            self.render_lazy(html, 0)
+            self.render_lazy(html, &mut 0)
         }
+    }
+}
+
+impl<Msg, State, Sub> Into<Rc<RefCell<Box<dyn Composable>>>> for Component<Msg, State, Sub> {
+    fn into(self) -> Rc<RefCell<Box<dyn Composable>>> {
+        let component: Rc<RefCell<Box<dyn Composable>>> = Rc::new(RefCell::new(Box::new(self)));
+        web_sys::console::log_1(&JsValue::from("7"));
+        component.borrow_mut().set_me(Rc::downgrade(&component));
+        component
     }
 }
