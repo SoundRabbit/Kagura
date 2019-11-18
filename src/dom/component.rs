@@ -1,6 +1,6 @@
 use super::html::Html;
 use crate::component;
-use crate::dom;
+use super::Node;
 use crate::state;
 use crate::task;
 use std::any::Any;
@@ -9,9 +9,9 @@ use std::rc::Rc;
 use std::rc::Weak;
 
 /// Wrapper of Component
-pub trait Composable: component::Composable<dom::Node> {
+pub trait Composable: component::Composable<Node> {
     fn dispatch_msg(&mut self, msg: Box<dyn Any>);
-    fn set_parent(&mut self, parent: Weak<dyn Composable>, me: Weak<dyn Composable>);
+    fn set_parent(&mut self, parent: Weak<dyn Composable>);
 }
 
 enum Message<Msg> {
@@ -80,7 +80,8 @@ where
             parent: Weak::new(),
         };
         let mut component = Rc::new(component);
-        component.me = component.downgrade();
+        let me = Rc::downgrade(&component);
+        component.me = me;
         component
     }
 
@@ -94,13 +95,8 @@ where
     }
 
     /// append component to children components buffer
-    fn append_composable(&mut self, mut composable: Box<dyn Composable>) {
-        composable.set_parent_id(self.id);
-        self.children_ids.insert(composable.get_id());
-        let child_children_ids = composable.get_children_ids();
-        for child_id in child_children_ids {
-            self.children_ids.insert(*child_id);
-        }
+    fn append_composable(&mut self, mut composable: Rc<dyn Composable>) {
+        composable.set_parent(Weak::clone(&self.me));
         self.children.push(composable);
     }
 
