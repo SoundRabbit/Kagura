@@ -1,5 +1,6 @@
 pub mod attributes;
 pub mod events;
+pub mod component;
 
 pub use attributes::Attributes;
 pub use events::Events;
