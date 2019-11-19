@@ -1,3 +1,3 @@
-pub trait Composable<T> {
+pub trait BasicComponent<T> {
     fn render(&mut self) -> T;
 }

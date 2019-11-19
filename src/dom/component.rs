@@ -2,7 +2,7 @@ use super::html::Html;
 use super::Attributes;
 use super::Events;
 use super::Node;
-use crate::component;
+use crate::basic_component::BasicComponent;
 use crate::state;
 use crate::task;
 use std::any::Any;
@@ -13,9 +13,9 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
 
 /// Wrapper of Component
-pub trait Composable: component::Composable<Node> {
-    fn set_me(&mut self, me: Weak<RefCell<Box<dyn Composable>>>);
-    fn set_parent(&mut self, parent: Weak<RefCell<Box<dyn Composable>>>);
+pub trait DomComponent: BasicComponent<Node> {
+    fn set_me(&mut self, me: Weak<RefCell<Box<dyn DomComponent>>>);
+    fn set_parent(&mut self, parent: Weak<RefCell<Box<dyn DomComponent>>>);
     fn update(&mut self, msg: Box<dyn Any>);
 }
 
@@ -39,9 +39,9 @@ where
     update: Box<dyn Fn(&mut State, Msg) -> Cmd<Msg, Sub>>,
     render: Box<dyn Fn(&State) -> Html<Msg>>,
     subscribe: Option<Box<dyn FnMut(Sub) -> Box<dyn Any>>>,
-    children: Vec<Rc<RefCell<Box<dyn Composable>>>>,
-    me: Weak<RefCell<Box<dyn Composable>>>,
-    parent: Weak<RefCell<Box<dyn Composable>>>,
+    children: Vec<Rc<RefCell<Box<dyn DomComponent>>>>,
+    me: Weak<RefCell<Box<dyn DomComponent>>>,
+    parent: Weak<RefCell<Box<dyn DomComponent>>>,
     is_changed: bool,
 }
 
@@ -92,16 +92,16 @@ where
     }
 
     /// append component to children components buffer
-    fn append_composable(&mut self, composable: Rc<RefCell<Box<dyn Composable>>>) {
+    fn append_component(&mut self, component: Rc<RefCell<Box<dyn DomComponent>>>) {
         web_sys::console::log_1(&JsValue::from("0"));
-        composable.borrow_mut().set_parent(Weak::clone(&self.me));
-        self.children.push(composable);
+        component.borrow_mut().set_parent(Weak::clone(&self.me));
+        self.children.push(component);
     }
 
     /// render on non-update
     fn render_lazy(&mut self, html: Html<Msg>, child_index: &mut usize) -> Node {
         match html {
-            Html::Composable(composable) => {
+            Html::ComponentNode(composable) => {
                 if let Some(child) = self.children.get_mut(*child_index) {
                     *child_index += 1;
                     web_sys::console::log_1(&JsValue::from("1"));
@@ -109,7 +109,7 @@ where
                 } else {
                     web_sys::console::log_1(&JsValue::from("2"));
                     let node = composable.borrow_mut().render();
-                    self.append_composable(composable);
+                    self.append_component(composable);
                     node
                 }
             }
@@ -132,10 +132,10 @@ where
     /// render on updated
     fn render_force(&mut self, html: Html<Msg>) -> Node {
         match html {
-            Html::Composable(composable) => {
+            Html::ComponentNode(composable) => {
                 web_sys::console::log_1(&JsValue::from("3"));
                 let node = composable.borrow_mut().render();
-                self.append_composable(composable);
+                self.append_component(composable);
                 node
             }
             Html::TextNode(text) => Node::Text(text),
@@ -165,12 +165,12 @@ where
     }
 }
 
-impl<Msg, State, Sub> Composable for Component<Msg, State, Sub> {
-    fn set_me(&mut self, me: Weak<RefCell<Box<dyn Composable>>>) {
+impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
+    fn set_me(&mut self, me: Weak<RefCell<Box<dyn DomComponent>>>) {
         self.me = me;
     }
 
-    fn set_parent(&mut self, parent: Weak<RefCell<Box<dyn Composable>>>) {
+    fn set_parent(&mut self, parent: Weak<RefCell<Box<dyn DomComponent>>>) {
         self.parent = parent;
     }
 
@@ -204,7 +204,7 @@ impl<Msg, State, Sub> Composable for Component<Msg, State, Sub> {
     }
 }
 
-impl<Msg, State, Sub> component::Composable<Node> for Component<Msg, State, Sub> {
+impl<Msg, State, Sub> BasicComponent<Node> for Component<Msg, State, Sub> {
     fn render(&mut self) -> Node {
         let html = (self.render)(&self.state);
         if self.is_changed {
@@ -216,9 +216,9 @@ impl<Msg, State, Sub> component::Composable<Node> for Component<Msg, State, Sub>
     }
 }
 
-impl<Msg, State, Sub> Into<Rc<RefCell<Box<dyn Composable>>>> for Component<Msg, State, Sub> {
-    fn into(self) -> Rc<RefCell<Box<dyn Composable>>> {
-        let component: Rc<RefCell<Box<dyn Composable>>> = Rc::new(RefCell::new(Box::new(self)));
+impl<Msg, State, Sub> Into<Rc<RefCell<Box<dyn DomComponent>>>> for Component<Msg, State, Sub> {
+    fn into(self) -> Rc<RefCell<Box<dyn DomComponent>>> {
+        let component: Rc<RefCell<Box<dyn DomComponent>>> = Rc::new(RefCell::new(Box::new(self)));
         web_sys::console::log_1(&JsValue::from("7"));
         component.borrow_mut().set_me(Rc::downgrade(&component));
         component

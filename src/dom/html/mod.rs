@@ -5,13 +5,13 @@ pub use attributes::Attributes;
 pub use events::Events;
 
 use super::component::Component;
-use super::component::Composable;
+use super::component::DomComponent;
 use std::cell::RefCell;
 use std::rc::Rc;
 
 /// viritual html element
 pub enum Html<Msg> {
-    Composable(Rc<RefCell<Box<dyn Composable>>>),
+    ComponentNode(Rc<RefCell<Box<dyn DomComponent>>>),
     TextNode(String),
     ElementNode {
         tag_name: String,
@@ -29,7 +29,7 @@ impl<Msg> Html<Msg> {
         S: 'static,
         B: 'static,
     {
-        Html::Composable(component.into())
+        Html::ComponentNode(component.into())
     }
 
     /// Creates Html<Msg> from a non-validated text

@@ -1,6 +1,6 @@
-use crate::component::Composable;
 use crate::dom;
-use crate::dom::component;
+use crate::basic_component::BasicComponent;
+use crate::dom::component::DomComponent;
 use crate::dom::component::Component;
 use crate::native;
 use crate::task;
@@ -10,7 +10,7 @@ use wasm_bindgen::JsValue;
 thread_local!(static APP: RefCell<Option<App>> = RefCell::new(None));
 
 struct App {
-    root_component: Box<dyn component::Composable>,
+    root_component: Box<dyn DomComponent>,
     dom_renderer: dom::Renderer,
 }
 
@@ -23,7 +23,7 @@ where
     let node = root_component.render();
     let root = native::get_element_by_id(id);
     let dom_renderer = dom::Renderer::new(node, root.into());
-    let root_component: Box<dyn component::Composable> = Box::new(root_component);
+    let root_component: Box<dyn DomComponent> = Box::new(root_component);
     web_sys::console::log_1(&JsValue::from("00"));
     APP.with(|app| {
         *app.borrow_mut() = Some(App {
