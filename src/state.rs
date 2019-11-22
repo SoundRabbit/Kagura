@@ -6,8 +6,6 @@ use crate::native;
 use crate::task;
 use std::cell::RefCell;
 use std::rc::Rc;
-use wasm_bindgen::JsValue;
-
 thread_local!(static APP: RefCell<Option<App>> = RefCell::new(None));
 
 struct App {
@@ -30,25 +28,20 @@ where
     let node = root_component.borrow_mut().render();
     let root = native::get_element_by_id(id);
     let dom_renderer = dom::Renderer::new(node, root.into());
-    web_sys::console::log_1(&JsValue::from("00"));
     APP.with(|app| {
         *app.borrow_mut() = Some(App {
             root_component,
             dom_renderer,
         })
     });
-    web_sys::console::log_1(&JsValue::from("01"));
 }
 
 pub fn render() {
-    web_sys::console::log_1(&JsValue::from("02"));
     APP.with(|app| {
         if let Some(app) = &mut (*app.borrow_mut()) {
             let node = app.root_component.borrow_mut().render();
-            web_sys::console::log_1(&JsValue::from("02-2"));
             app.dom_renderer.update(node);
         }
     });
-    web_sys::console::log_1(&JsValue::from("03"));
     task::dispatch();
 }
