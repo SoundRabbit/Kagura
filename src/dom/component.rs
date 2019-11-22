@@ -180,6 +180,18 @@ where
 
 impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
     fn set_me(&mut self, me: Weak<RefCell<Box<dyn DomComponent>>>) {
+        if let BatchHandlers::Uninitialized(handlers) = &mut self.batch_handlers {
+            for handler in handlers {
+                let me = Weak::clone(&self.me);
+                let messenger: Messenger<Msg> = Box::new(move |msg| {
+                    if let Some(me) = me.upgrade() {
+                        me.borrow_mut().update(Box::new(msg));
+                        state::render();
+                    }
+                });
+                handler(messenger);
+            }
+        }
         self.me = me;
     }
 
