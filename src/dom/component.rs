@@ -38,6 +38,7 @@ where
     update: Box<dyn Fn(&mut State, Msg) -> Cmd<Msg, Sub>>,
     render: Box<dyn Fn(&State) -> Html<Msg>>,
     subscribe: Option<Box<dyn FnMut(Sub) -> Box<dyn Any>>>,
+    batch_handlers: Vec<Box<dyn FnMut(Messenger<Msg>)>>,
     children: Vec<Rc<RefCell<Box<dyn DomComponent>>>>,
     me: Weak<RefCell<Box<dyn DomComponent>>>,
     parent: Weak<RefCell<Box<dyn DomComponent>>>,
@@ -74,6 +75,7 @@ where
             update: Box::new(update),
             render: Box::new(render),
             subscribe: None,
+            batch_handlers: vec![],
             children: vec![],
             me: Weak::new(),
             parent: Weak::new(),
@@ -91,15 +93,8 @@ where
     }
 
     /// append batch handler
-    pub fn batch(self, mut handler: impl FnMut(Messenger<Msg>)) -> Self {
-        let me = Weak::clone(&self.me);
-        let messenger: Messenger<Msg> = Box::new(move |msg: Msg| {
-            if let Some(me) = me.upgrade() {
-                me.borrow_mut().update(Box::new(msg));
-                state::render();
-            }
-        });
-        handler(messenger);
+    pub fn batch(mut self, handler: impl FnMut(Messenger<Msg>) + 'static) -> Self {
+        self.batch_handlers.push(Box::new(handler));
         self
     }
 
