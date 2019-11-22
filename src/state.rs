@@ -13,7 +13,7 @@ struct App {
     dom_renderer: dom::Renderer,
 }
 
-pub fn init<M, S, B>(mut root_component: Component<M, S, B>, id: &str)
+pub fn init<M, S, B>(root_component: Component<M, S, B>, id: &str)
 where
     M: 'static,
     S: 'static,
