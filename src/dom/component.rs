@@ -163,6 +163,7 @@ where
                     dom_events.add(name, move |e| {
                         if let Some(me) = me.upgrade() {
                             me.borrow_mut().update(Box::new(handler(e)));
+                            state::render();
                         }
                     });
                 }
