@@ -9,6 +9,7 @@ pub fn dispatch(handler_id: HandlerId, e: web_sys::Event) {
     let handler = HANDLERS.with(|handlers| handlers.borrow_mut().remove(&handler_id));
     if let Some(handler) = handler {
         handler(e);
+        crate::state::render();
     }
 }
 
