@@ -27,9 +27,9 @@ pub enum Cmd<Msg, Sub> {
     Task(Box<dyn FnOnce(Resolver<Msg>)>),
 }
 
-enum BatchHandlers<Msg> {
-    Uninitialized(Vec<Box<dyn FnMut(Messenger<Msg>)>>),
-    Initialized(Vec<Box<dyn FnMut(Messenger<Msg>)>>),
+struct BatchHandlers<Msg> {
+    handlers: Vec<Box<dyn FnMut(Messenger<Msg>)>>,
+    is_initialized: bool,
 }
 
 /// Component constructed by State-update-render
@@ -80,7 +80,10 @@ where
             update: Box::new(update),
             render: Box::new(render),
             subscribe: None,
-            batch_handlers: BatchHandlers::Uninitialized(vec![]),
+            batch_handlers: BatchHandlers {
+                handlers: vec![],
+                is_initialized: false,
+            },
             children: vec![],
             me: Weak::new(),
             parent: Weak::new(),
@@ -99,11 +102,8 @@ where
 
     /// append batch handler
     pub fn batch(mut self, handler: impl FnMut(Messenger<Msg>) + 'static) -> Self {
-        match &mut self.batch_handlers {
-            BatchHandlers::Uninitialized(handlers) => {
-                handlers.push(Box::new(handler));
-            }
-            BatchHandlers::Initialized(_) => (),
+        if !self.batch_handlers.is_initialized {
+            self.batch_handlers.handlers.push(Box::new(handler));
         }
         self
     }
@@ -180,9 +180,9 @@ where
 
 impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
     fn set_me(&mut self, me: Weak<RefCell<Box<dyn DomComponent>>>) {
-        if let BatchHandlers::Uninitialized(handlers) = &mut self.batch_handlers {
-            for handler in handlers {
-                let me = Weak::clone(&self.me);
+        if !self.batch_handlers.is_initialized {
+            for handler in &mut self.batch_handlers.handlers {
+                let me = Weak::clone(&me);
                 let messenger: Messenger<Msg> = Box::new(move |msg| {
                     if let Some(me) = me.upgrade() {
                         me.borrow_mut().update(Box::new(msg));
@@ -191,6 +191,7 @@ impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
                 });
                 handler(messenger);
             }
+            self.batch_handlers.is_initialized = true;
         }
         self.me = me;
     }
