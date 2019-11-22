@@ -156,6 +156,8 @@ where
                         if let Some(me) = me.upgrade() {
                             web_sys::console::log_1(&JsValue::from("4"));
                             me.borrow_mut().update(Box::new(handler(e)));
+                        } else {
+                            panic!("");
                         }
                     });
                 }
@@ -179,8 +181,11 @@ impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
             let cmd = (self.update)(&mut self.state, *msg);
             self.is_changed = true;
             match cmd {
-                Cmd::None => (),
+                Cmd::None => {
+                    web_sys::console::log_1(&JsValue::from("Component::update on Cmd::None"));
+                }
                 Cmd::Sub(sub) => {
+                    web_sys::console::log_1(&JsValue::from("Component::update on Cmd::Sub"));
                     if let (Some(subscribe), Some(parent)) =
                         (&mut self.subscribe, &self.parent.upgrade())
                     {
@@ -189,6 +194,7 @@ impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
                     }
                 }
                 Cmd::Task(task) => {
+                    web_sys::console::log_1(&JsValue::from("Component::update on Cmd::Task"));
                     let me = Weak::clone(&self.me);
                     let resolver = Box::new(move |msg: Msg| {
                         if let Some(me) = me.upgrade() {
