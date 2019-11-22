@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::convert::From;
+use std::ops::Deref;
 use wasm_bindgen::JsCast;
 use web_sys;
 
@@ -22,6 +23,17 @@ pub struct DragEvent {
 /// Props of KeyboardEvent
 pub struct KeyboardEvent {
     implement: Option<web_sys::KeyboardEvent>,
+}
+
+impl Deref for MouseEvent {
+    type Target = web_sys::MouseEvent;
+    fn deref(&self) -> &web_sys::MouseEvent {
+        if let Some(implement) = &self.implement {
+            implement
+        } else {
+            panic!("no event object");
+        }
+    }
 }
 
 impl<Msg> Events<Msg> {
