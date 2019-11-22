@@ -15,6 +15,12 @@ impl Deref for Attributes {
     }
 }
 
+impl Into<dom::Attributes> for Attributes {
+    fn into(self) -> dom::Attributes {
+        self.attributes
+    }
+}
+
 impl Attributes {
     /// Creates new empty Attributs
     pub fn new() -> Self {
