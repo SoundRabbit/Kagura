@@ -9,8 +9,6 @@ use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::rc::Weak;
-use wasm_bindgen::JsCast;
-use wasm_bindgen::JsValue;
 
 /// Wrapper of Component
 pub trait DomComponent: BasicComponent<Node> {
@@ -93,7 +91,6 @@ where
 
     /// append component to children components buffer
     fn append_component(&mut self, component: Rc<RefCell<Box<dyn DomComponent>>>) {
-        web_sys::console::log_1(&JsValue::from("0"));
         component.borrow_mut().set_parent(Weak::clone(&self.me));
         self.children.push(component);
     }
@@ -104,10 +101,8 @@ where
             Html::ComponentNode(composable) => {
                 if let Some(child) = self.children.get_mut(*child_index) {
                     *child_index += 1;
-                    web_sys::console::log_1(&JsValue::from("1"));
                     (*child).borrow_mut().render()
                 } else {
-                    web_sys::console::log_1(&JsValue::from("2"));
                     let node = composable.borrow_mut().render();
                     self.append_component(composable);
                     node
@@ -133,7 +128,6 @@ where
     fn render_force(&mut self, html: Html<Msg>) -> Node {
         match html {
             Html::ComponentNode(composable) => {
-                web_sys::console::log_1(&JsValue::from("3"));
                 let node = composable.borrow_mut().render();
                 self.append_component(composable);
                 node
@@ -154,8 +148,9 @@ where
                     let me = Weak::clone(&self.me);
                     dom_events.add(name, move |e| {
                         if let Some(me) = me.upgrade() {
-                            web_sys::console::log_1(&JsValue::from("4"));
                             me.borrow_mut().update(Box::new(handler(e)));
+                        } else {
+                            panic!("");
                         }
                     });
                 }
@@ -179,12 +174,11 @@ impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
             let cmd = (self.update)(&mut self.state, *msg);
             self.is_changed = true;
             match cmd {
-                Cmd::None => (),
+                Cmd::None => {}
                 Cmd::Sub(sub) => {
                     if let (Some(subscribe), Some(parent)) =
                         (&mut self.subscribe, &self.parent.upgrade())
                     {
-                        web_sys::console::log_1(&JsValue::from("5"));
                         parent.borrow_mut().update(subscribe(sub));
                     }
                 }
@@ -192,7 +186,6 @@ impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
                     let me = Weak::clone(&self.me);
                     let resolver = Box::new(move |msg: Msg| {
                         if let Some(me) = me.upgrade() {
-                            web_sys::console::log_1(&JsValue::from("6"));
                             me.borrow_mut().update(Box::new(msg));
                             state::render();
                         }
@@ -219,7 +212,6 @@ impl<Msg, State, Sub> BasicComponent<Node> for Component<Msg, State, Sub> {
 impl<Msg, State, Sub> Into<Rc<RefCell<Box<dyn DomComponent>>>> for Component<Msg, State, Sub> {
     fn into(self) -> Rc<RefCell<Box<dyn DomComponent>>> {
         let component: Rc<RefCell<Box<dyn DomComponent>>> = Rc::new(RefCell::new(Box::new(self)));
-        web_sys::console::log_1(&JsValue::from("7"));
         component.borrow_mut().set_me(Rc::downgrade(&component));
         component
     }
