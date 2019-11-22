@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use wasm_bindgen::JsValue;
 
 thread_local!(static TASKS: RefCell<Vec<Box<dyn FnOnce()>>> = RefCell::new(vec![]));
 
