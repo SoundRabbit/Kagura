@@ -1,10 +1,24 @@
 use crate::dom;
+use std::ops::Deref;
 
 /// Attributes for Html<Msg>
 #[derive(PartialEq)]
 pub struct Attributes {
     pub attributes: dom::Attributes,
     last_attribute: String,
+}
+
+impl Deref for Attributes {
+    type Target = dom::Attributes;
+    fn deref(&self) -> &dom::Attributes {
+        &self.attributes
+    }
+}
+
+impl Into<dom::Attributes> for Attributes {
+    fn into(self) -> dom::Attributes {
+        self.attributes
+    }
 }
 
 impl Attributes {

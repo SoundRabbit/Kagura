@@ -154,7 +154,7 @@ where
                         }
                     });
                 }
-                Node::element(tag_name, attributes.attributes, dom_events, children, true)
+                Node::element(tag_name, attributes.into(), dom_events, children, true)
             }
         }
     }
