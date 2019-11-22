@@ -27,6 +27,11 @@ pub enum Cmd<Msg, Sub> {
     Task(Box<dyn FnOnce(Resolver<Msg>)>),
 }
 
+enum BatchHandlers<Msg> {
+    Uninitialized(Vec<Box<dyn FnMut(Messenger<Msg>)>>),
+    Initialized(Vec<Box<dyn FnMut(Messenger<Msg>)>>),
+}
+
 /// Component constructed by State-update-render
 pub struct Component<Msg, State, Sub>
 where
@@ -38,7 +43,7 @@ where
     update: Box<dyn Fn(&mut State, Msg) -> Cmd<Msg, Sub>>,
     render: Box<dyn Fn(&State) -> Html<Msg>>,
     subscribe: Option<Box<dyn FnMut(Sub) -> Box<dyn Any>>>,
-    batch_handlers: Vec<Box<dyn FnMut(Messenger<Msg>)>>,
+    batch_handlers: BatchHandlers<Msg>,
     children: Vec<Rc<RefCell<Box<dyn DomComponent>>>>,
     me: Weak<RefCell<Box<dyn DomComponent>>>,
     parent: Weak<RefCell<Box<dyn DomComponent>>>,
@@ -75,7 +80,7 @@ where
             update: Box::new(update),
             render: Box::new(render),
             subscribe: None,
-            batch_handlers: vec![],
+            batch_handlers: BatchHandlers::Uninitialized(vec![]),
             children: vec![],
             me: Weak::new(),
             parent: Weak::new(),
@@ -94,7 +99,12 @@ where
 
     /// append batch handler
     pub fn batch(mut self, handler: impl FnMut(Messenger<Msg>) + 'static) -> Self {
-        self.batch_handlers.push(Box::new(handler));
+        match &mut self.batch_handlers {
+            BatchHandlers::Uninitialized(handlers) => {
+                handlers.push(Box::new(handler));
+            }
+            BatchHandlers::Initialized(_) => (),
+        }
         self
     }
 
