@@ -36,6 +36,17 @@ impl Deref for MouseEvent {
     }
 }
 
+impl Deref for KeyboardEvent {
+    type Target = web_sys::KeyboardEvent;
+    fn deref(&self) -> &web_sys::KeyboardEvent {
+        if let Some(implement) = &self.implement {
+            implement
+        } else {
+            panic!("no event object");
+        }
+    }
+}
+
 impl<Msg> Events<Msg> {
     /// Creates new empty Events
     pub fn new() -> Self {
