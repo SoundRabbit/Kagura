@@ -90,6 +90,19 @@ where
         self
     }
 
+    /// append batch handler
+    pub fn batch(self, mut handler: impl FnMut(Messenger<Msg>) + 'static) -> Self {
+        let me = Weak::clone(&self.me);
+        let messenger: Messenger<Msg> = Box::new(move |msg: Msg| {
+            if let Some(me) = me.upgrade() {
+                me.borrow_mut().update(Box::new(msg));
+                state::render();
+            }
+        });
+        handler(messenger);
+        self
+    }
+
     /// append component to children components buffer
     fn append_component(&mut self, component: Rc<RefCell<Box<dyn DomComponent>>>) {
         component.borrow_mut().set_parent(Weak::clone(&self.me));
