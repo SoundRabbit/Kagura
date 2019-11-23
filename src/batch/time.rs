@@ -2,14 +2,16 @@ use crate::dom::component::Messenger;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
-pub fn tick<Msg>(interval: i32, mut msg: Box<dyn FnMut() -> Msg>) -> Box<dyn FnMut(Messenger<Msg>)>
+pub fn tick<Msg>(
+    interval: i32,
+    mut msg_gen: Box<dyn FnMut() -> Msg>,
+) -> Box<dyn FnOnce(Messenger<Msg>)>
 where
     Msg: 'static,
 {
     Box::new(move |mut messenger: Messenger<Msg>| {
-        let msg = msg;
         let a = Closure::wrap(Box::new(move || {
-            messenger(msg());
+            messenger(msg_gen());
         }) as Box<dyn FnMut()>);
 
         web_sys::window()
