@@ -29,7 +29,7 @@ pub enum Cmd<Msg, Sub> {
 
 enum BatchHandlers<Msg> {
     Handlers(Vec<Box<dyn FnOnce(Messenger<Msg>)>>),
-    Binded()
+    Binded(),
 }
 
 /// Component constructed by State-update-render
@@ -98,7 +98,7 @@ where
     }
 
     /// append batch handler
-    pub fn batch(mut self, handler: impl FnMut(Messenger<Msg>) + 'static) -> Self {
+    pub fn batch(mut self, handler: impl FnOnce(Messenger<Msg>) + 'static) -> Self {
         if let BatchHandlers::Handlers(handlers) = &mut self.batch_handlers {
             handlers.push(Box::new(handler));
         }
