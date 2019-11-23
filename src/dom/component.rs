@@ -177,9 +177,9 @@ where
 
 impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
     fn set_me(&mut self, me: Weak<RefCell<Box<dyn DomComponent>>>) {
-        if !self.batch_handlers.is_initialized {
-            let mut handlers = vec![];
-            std::mem::swap(&mut self.batch_handlers.handlers, &mut handlers);
+        let mut batch_handlers = BatchHandlers::Binded();
+        std::mem::swap(&mut self.batch_handlers, &mut batch_handlers);
+        if let BatchHandlers::Handlers(handlers) = batch_handlers {
             for handler in handlers {
                 let me = Weak::clone(&me);
                 let messenger: Messenger<Msg> = Box::new(move |msg| {
@@ -190,7 +190,6 @@ impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
                 });
                 handler(messenger);
             }
-            self.batch_handlers.is_initialized = true;
         }
         self.me = me;
     }
