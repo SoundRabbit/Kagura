@@ -41,6 +41,7 @@ extern crate web_sys;
 #[cfg(feature = "WebAudioAPI")]
 mod audio;
 mod basic_component;
+pub mod batch;
 mod dom;
 mod event;
 mod native;
@@ -60,6 +61,7 @@ where
 }
 
 pub mod prelude {
+    pub use crate::batch;
     pub use crate::dom::component::Cmd;
     pub use crate::dom::component::Component;
     pub use crate::dom::html::Attributes;

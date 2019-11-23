@@ -18,7 +18,7 @@ pub trait DomComponent: BasicComponent<Node> {
 }
 
 type Resolver<Msg> = Box<dyn FnOnce(Msg)>;
-type Messenger<Msg> = Box<dyn FnMut(Msg)>;
+pub type Messenger<Msg> = Box<dyn FnMut(Msg)>;
 
 /// Cmd
 pub enum Cmd<Msg, Sub> {
@@ -27,9 +27,9 @@ pub enum Cmd<Msg, Sub> {
     Task(Box<dyn FnOnce(Resolver<Msg>)>),
 }
 
-struct BatchHandlers<Msg> {
-    handlers: Vec<Box<dyn FnMut(Messenger<Msg>)>>,
-    is_initialized: bool,
+enum BatchHandlers<Msg> {
+    Handlers(Vec<Box<dyn FnOnce(Messenger<Msg>)>>),
+    Binded(),
 }
 
 /// Component constructed by State-update-render
@@ -80,10 +80,7 @@ where
             update: Box::new(update),
             render: Box::new(render),
             subscribe: None,
-            batch_handlers: BatchHandlers {
-                handlers: vec![],
-                is_initialized: false,
-            },
+            batch_handlers: BatchHandlers::Handlers(vec![]),
             children: vec![],
             me: Weak::new(),
             parent: Weak::new(),
@@ -101,9 +98,9 @@ where
     }
 
     /// append batch handler
-    pub fn batch(mut self, handler: impl FnMut(Messenger<Msg>) + 'static) -> Self {
-        if !self.batch_handlers.is_initialized {
-            self.batch_handlers.handlers.push(Box::new(handler));
+    pub fn batch(mut self, handler: impl FnOnce(Messenger<Msg>) + 'static) -> Self {
+        if let BatchHandlers::Handlers(handlers) = &mut self.batch_handlers {
+            handlers.push(Box::new(handler));
         }
         self
     }
@@ -180,8 +177,10 @@ where
 
 impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
     fn set_me(&mut self, me: Weak<RefCell<Box<dyn DomComponent>>>) {
-        if !self.batch_handlers.is_initialized {
-            for handler in &mut self.batch_handlers.handlers {
+        let mut batch_handlers = BatchHandlers::Binded();
+        std::mem::swap(&mut self.batch_handlers, &mut batch_handlers);
+        if let BatchHandlers::Handlers(handlers) = batch_handlers {
+            for handler in handlers {
                 let me = Weak::clone(&me);
                 let messenger: Messenger<Msg> = Box::new(move |msg| {
                     if let Some(me) = me.upgrade() {
@@ -191,7 +190,6 @@ impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
                 });
                 handler(messenger);
             }
-            self.batch_handlers.is_initialized = true;
         }
         self.me = me;
     }
