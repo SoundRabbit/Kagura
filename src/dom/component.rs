@@ -28,7 +28,7 @@ pub enum Cmd<Msg, Sub> {
 }
 
 struct BatchHandlers<Msg> {
-    handlers: Vec<Box<dyn FnMut(Messenger<Msg>)>>,
+    handlers: Vec<Box<dyn FnOnce(Messenger<Msg>)>>,
     is_initialized: bool,
 }
 
@@ -181,7 +181,9 @@ where
 impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
     fn set_me(&mut self, me: Weak<RefCell<Box<dyn DomComponent>>>) {
         if !self.batch_handlers.is_initialized {
-            for handler in &mut self.batch_handlers.handlers {
+            let mut handlers = vec![];
+            std::mem::swap(&mut self.batch_handlers.handlers, &mut handlers);
+            for handler in handlers {
                 let me = Weak::clone(&me);
                 let messenger: Messenger<Msg> = Box::new(move |msg| {
                     if let Some(me) = me.upgrade() {
