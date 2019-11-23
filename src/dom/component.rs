@@ -27,9 +27,9 @@ pub enum Cmd<Msg, Sub> {
     Task(Box<dyn FnOnce(Resolver<Msg>)>),
 }
 
-struct BatchHandlers<Msg> {
-    handlers: Vec<Box<dyn FnOnce(Messenger<Msg>)>>,
-    is_initialized: bool,
+enum BatchHandlers<Msg> {
+    Handlers(Vec<Box<dyn FnOnce(Messenger<Msg>)>>),
+    Binded()
 }
 
 /// Component constructed by State-update-render
