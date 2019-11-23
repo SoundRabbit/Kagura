@@ -18,7 +18,7 @@ pub trait DomComponent: BasicComponent<Node> {
 }
 
 type Resolver<Msg> = Box<dyn FnOnce(Msg)>;
-type Messenger<Msg> = Box<dyn FnMut(Msg)>;
+pub type Messenger<Msg> = Box<dyn FnMut(Msg)>;
 
 /// Cmd
 pub enum Cmd<Msg, Sub> {
