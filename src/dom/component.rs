@@ -80,10 +80,7 @@ where
             update: Box::new(update),
             render: Box::new(render),
             subscribe: None,
-            batch_handlers: BatchHandlers {
-                handlers: vec![],
-                is_initialized: false,
-            },
+            batch_handlers: BatchHandlers::Handlers(vec![]),
             children: vec![],
             me: Weak::new(),
             parent: Weak::new(),
