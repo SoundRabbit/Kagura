@@ -99,8 +99,8 @@ where
 
     /// append batch handler
     pub fn batch(mut self, handler: impl FnMut(Messenger<Msg>) + 'static) -> Self {
-        if !self.batch_handlers.is_initialized {
-            self.batch_handlers.handlers.push(Box::new(handler));
+        if let BatchHandlers::Handlers(handlers) = &mut self.batch_handlers {
+            handlers.push(Box::new(handler));
         }
         self
     }
