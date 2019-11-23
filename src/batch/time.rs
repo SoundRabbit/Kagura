@@ -4,7 +4,7 @@ use wasm_bindgen::JsCast;
 
 pub fn tick<Msg>(
     interval: i32,
-    mut msg_gen: Box<dyn FnMut() -> Msg>,
+    mut msg_gen: impl FnMut() -> Msg + 'static,
 ) -> Box<dyn FnOnce(Messenger<Msg>)>
 where
     Msg: 'static,
