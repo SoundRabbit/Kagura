@@ -17,7 +17,7 @@ pub trait DomComponent: BasicComponent<Node> {
     fn update(&mut self, msg: Box<dyn Any>);
 }
 
-type Resolver<Msg> = Box<dyn FnOnce(Msg)>;
+pub type Resolver<Msg> = Box<dyn FnOnce(Msg)>;
 pub type Messenger<Msg> = Box<dyn FnMut(Msg)>;
 
 /// Cmd
