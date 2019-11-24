@@ -33,7 +33,7 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(start)]
 pub fn main() {
-    kagura::run(Component::new(State, update, render), "app");
+    kagura::run(Component::new(init, update, render), "app");
 }
 
 struct State;
@@ -41,6 +41,10 @@ struct State;
 struct Msg;
 
 struct Sub;
+
+fn init() -> State {
+    State
+}
 
 fn update(_: &mut State, _: Msg) -> Cmd<Msg, Sub> {Cmd::none()}
 
@@ -60,10 +64,15 @@ fn render(_: &State) -> Html<Msg> {
 ### Create component
 
 ```rust
-kagura::Component::new(initial_state, update, render)
+kagura::Component::new(init, update, render)
 ```
 
-`update` and `render` is function :
+`init`, `update` and `render` is function :
+
+
+```rust
+init : fn() -> State
+```
 
 ```rust
 update : fn(&mut State, Msg) -> Cmd<Msg, Sub>
