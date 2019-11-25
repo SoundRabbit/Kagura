@@ -26,6 +26,10 @@ enum Msg{}
 
 enum Sub{}
 
+fn init() -> State {
+    State{}
+}
+
 fn update(_: &mut State, _: Msg) -> Cmd<Msg, Sub> {Cmd::none()}
 
 //  <h1>hello kagura</h1>
