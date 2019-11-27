@@ -20,41 +20,69 @@ fn web_socket(url: &'static str) -> Rc<web_sys::WebSocket> {
 }
 
 pub fn on_close<Msg>(
-    url: &str,
+    url: &'static str,
     mut msg_gen: impl FnMut() -> Msg + 'static,
 ) -> Box<dyn FnOnce(Messenger<Msg>)>
 where
     Msg: 'static,
 {
-    Box::new(move |mut messenger: Messenger<Msg>| {})
+    Box::new(move |mut messenger: Messenger<Msg>| {
+        let socket = web_socket(url);
+        let a = Closure::wrap(Box::new(move || {
+            messenger(msg_gen());
+        }) as Box<dyn FnMut()>);
+        socket.set_onclose(Some(a.as_ref().unchecked_ref()));
+        a.forget();
+    })
 }
 
 pub fn on_error<Msg>(
-    url: &str,
+    url: &'static str,
     mut msg_gen: impl FnMut() -> Msg + 'static,
 ) -> Box<dyn FnOnce(Messenger<Msg>)>
 where
     Msg: 'static,
 {
-    Box::new(move |mut messenger: Messenger<Msg>| {})
+    Box::new(move |mut messenger: Messenger<Msg>| {
+        let socket = web_socket(url);
+        let a = Closure::wrap(Box::new(move || {
+            messenger(msg_gen());
+        }) as Box<dyn FnMut()>);
+        socket.set_onerror(Some(a.as_ref().unchecked_ref()));
+        a.forget();
+    })
 }
 
 pub fn on_message<Msg>(
-    url: &str,
+    url: &'static str,
     mut msg_gen: impl FnMut() -> Msg + 'static,
 ) -> Box<dyn FnOnce(Messenger<Msg>)>
 where
     Msg: 'static,
 {
-    Box::new(move |mut messenger: Messenger<Msg>| {})
+    Box::new(move |mut messenger: Messenger<Msg>| {
+        let socket = web_socket(url);
+        let a = Closure::wrap(Box::new(move || {
+            messenger(msg_gen());
+        }) as Box<dyn FnMut()>);
+        socket.set_onmessage(Some(a.as_ref().unchecked_ref()));
+        a.forget();
+    })
 }
 
 pub fn on_open<Msg>(
-    url: &str,
+    url: &'static str,
     mut msg_gen: impl FnMut() -> Msg + 'static,
 ) -> Box<dyn FnOnce(Messenger<Msg>)>
 where
     Msg: 'static,
 {
-    Box::new(move |mut messenger: Messenger<Msg>| {})
+    Box::new(move |mut messenger: Messenger<Msg>| {
+        let socket = web_socket(url);
+        let a = Closure::wrap(Box::new(move || {
+            messenger(msg_gen());
+        }) as Box<dyn FnMut()>);
+        socket.set_onopen(Some(a.as_ref().unchecked_ref()));
+        a.forget();
+    })
 }
