@@ -38,7 +38,7 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(start)]
 pub fn main() {
-    kagura::run(Component::new(State{}, update, render), "app");
+    kagura::run(Component::new(init, update, render), "app");
 }
 
 struct State{}
@@ -46,6 +46,10 @@ struct State{}
 enum Msg{}
 
 enum Sub{}
+
+fn init() -> State {
+    State{}
+}
 
 fn update(_: &mut State, _: Msg) -> Cmd<Msg, Sub> {Cmd::none()}
 

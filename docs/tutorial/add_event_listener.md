@@ -20,7 +20,7 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(start)]
 pub fn main() {
-    kagura::run(Component::new(init(), update, render), "app");
+    kagura::run(Component::new(init, update, render), "app");
 }
 
 struct State {
