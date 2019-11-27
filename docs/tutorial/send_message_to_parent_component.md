@@ -50,7 +50,9 @@ mod child {
     use kagura::prelude::*;
 
     fn new(value: String) -> Component<Msg, State, Sub> {
-
+        Component::new(|| State{
+            value: value
+        }, update, render)
     }
 
     struct State {
@@ -64,12 +66,6 @@ mod child {
 
     enum Sub {
         ValueIsChanged(String),
-    }
-
-    fn init() -> State {
-        State {
-            value: ""
-        }
     }
 
     fn update(state: &mut State, msg: Msg) -> Cmd<Msg, Sub> {
