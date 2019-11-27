@@ -14,7 +14,7 @@ where
             messenger(msg_gen());
         }) as Box<dyn FnMut()>);
 
-        web_sys::window()
+        let _ = web_sys::window()
             .unwrap()
             .set_interval_with_callback_and_timeout_and_arguments_0(
                 a.as_ref().unchecked_ref(),

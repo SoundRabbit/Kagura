@@ -63,6 +63,7 @@ features = [
     "PannerNode",
     "Text",
     "WaveShaperNode",
+    "WebSocket",
     "Window",
 ]
 
