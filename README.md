@@ -10,7 +10,7 @@ Frontend frame-work for wasm on Rust.
 
 ## Big changes
 
-Supporting web_sys::Event.
+Supporting a batch process.
 
 ## Tutorial
 
@@ -204,4 +204,13 @@ fn update(state: &mut State, msg: Msg) -> kagura::Cmd<Msg, Sub> {
         }),
     }
 }
+```
+
+### Batch
+
+You can set a batch process to component like this:
+
+```rust
+Component::new(init, update, render)
+    .batch(batch::time::tick(1000, || Msg::SomeMsg))
 ```
