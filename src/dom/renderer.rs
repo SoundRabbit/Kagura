@@ -160,11 +160,11 @@ fn render_element_diff(after: &super::Element, before: &super::Element, root: &w
     }
     set_attribute_diff(&root, &after.attributes, &before.attributes);
     set_event_all(&root, &after.events);
-    let mut i = ((before.children.len() as i64) - (after.children.len() as i64)) as usize;
+    let mut i = (root.child_nodes().length() as i64) - (after.children.len() as i64);
     while i > 0 {
         if let Some(node) = root
             .child_nodes()
-            .item((after.children.len() + i - 1) as u32)
+            .item((after.children.len() as i64 + i - 1) as u32)
         {
             let _ = root.remove_child(&node);
         }
