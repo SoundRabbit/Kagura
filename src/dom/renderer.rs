@@ -67,7 +67,10 @@ fn set_attribute_set(element: &web_sys::Element, a: &str, v: &HashSet<super::Val
     }
 }
 
-fn set_event_all(element: &web_sys::Element, events: &super::Events) {
+fn set_event_all(element: &web_sys::Element, events: &super::Events, before: &super::Events) {
+    for (_, hid) in &before.handlers {
+        event::remove(&hid);
+    }
     for (t, hid) in &events.handlers {
         let hid = *hid;
         let h = Closure::once(move |e| {
@@ -159,7 +162,7 @@ fn render_element_diff(after: &super::Element, before: &super::Element, root: &w
         event::remove(hid);
     }
     set_attribute_diff(&root, &after.attributes, &before.attributes);
-    set_event_all(&root, &after.events);
+    set_event_all(&root, &after.events, &before.events);
     let mut i = (root.child_nodes().length() as i64) - (after.children.len() as i64);
     while i > 0 {
         if let Some(node) = root
@@ -192,6 +195,6 @@ fn new_element(
 ) -> web_sys::Element {
     let element = native::create_element(tag_name);
     set_attribute_all(&element, attributes);
-    set_event_all(&element, events);
+    set_event_all(&element, events, &super::Events::new());
     element
 }
