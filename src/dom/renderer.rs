@@ -35,9 +35,9 @@ impl Renderer {
                 .parent_node()
                 .expect("no parent node of root")
                 .replace_child(&root, &self.root);
-            self.before = after;
             self.root = root;
         }
+        self.before = after;
     }
 }
 
