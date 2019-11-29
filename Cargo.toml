@@ -65,6 +65,8 @@ features = [
     "WaveShaperNode",
     "WebSocket",
     "Window",
+    "XmlHttpRequest",
+    "XmlHttpRequestResponseType",
 ]
 
 [dev-dependencies]
