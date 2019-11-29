@@ -45,54 +45,58 @@ where
 {
     let method = method.into();
     let url = url.into();
-    Box::new(move |resolver: Resolver<Msg>| {
+    Box::new(move |mut resolver: Resolver<Msg>| {
         match web_sys::XmlHttpRequest::new() {
             Err(e) => {
                 resolver(handler(Err(e)));
             }
-            Ok(xhr) => {
-                if let Err(e) = xhr.open(&method, &url) {
+            Ok(xhr) => match xhr.open(&method, &url) {
+                Err(e) => {
                     resolver(handler(Err(e)));
-                    return;
                 }
-                xhr.set_timeout(props.timeout);
-                for header in props.header {
-                    let (header, value) = header;
-                    if let Err(e) = xhr.set_request_header(&header, &value) {
-                        resolver(handler(Err(e)));
-                        return;
-                    }
-                }
-                let xhr = Rc::new(xhr);
-                let xhr_ = Rc::clone(&xhr);
-                let h = Closure::once(Box::new(move || {
-                    if xhr.ready_state() == 4 {
-                        let text = xhr.response_text();
-                        let status = xhr.status();
-                        match text {
-                            Err(e) => {
-                                resolver(handler(Err(e)));
-                            }
-                            Ok(text) => match status {
-                                Err(e) => {
-                                    resolver(handler(Err(e)));
-                                }
-                                Ok(status) => {
-                                    let response = Response {
-                                        type_: xhr.response_type(),
-                                        text: text,
-                                        url: xhr.response_url(),
-                                        status: status,
-                                    };
-                                    resolver(handler(Ok(response)));
-                                }
-                            },
+                Ok(e) => {
+                    xhr.set_timeout(props.timeout);
+                    for header in props.header {
+                        let (header, value) = header;
+                        if let Err(e) = xhr.set_request_header(&header, &value) {
+                            resolver(handler(Err(e)));
+                            return;
                         }
                     }
-                }) as Box<dyn FnOnce()>);
-                xhr_.set_onreadystatechange(Some(h.as_ref().unchecked_ref()));
-                xhr_.send();
-            }
+                    let xhr = Rc::new(xhr);
+                    let xhr_ = Rc::clone(&xhr);
+                    let h = Closure::wrap(Box::new(move || {
+                        if xhr.ready_state() == 4 {
+                            let text = xhr.response_text();
+                            let status = xhr.status();
+                            let mut r: Resolver<Msg> = Box::new(|_| {});
+                            std::mem::swap(&mut resolver, &mut r);
+                            match text {
+                                Err(e) => {
+                                    r(handler(Err(e)));
+                                }
+                                Ok(text) => match status {
+                                    Err(e) => {
+                                        r(handler(Err(e)));
+                                    }
+                                    Ok(status) => {
+                                        let response = Response {
+                                            type_: xhr.response_type(),
+                                            text: text,
+                                            url: xhr.response_url(),
+                                            status: status,
+                                        };
+                                        r(handler(Ok(response)));
+                                    }
+                                },
+                            }
+                        }
+                    }) as Box<dyn FnMut()>);
+                    xhr_.set_onreadystatechange(Some(h.as_ref().unchecked_ref()));
+                    h.forget();
+                    xhr_.send();
+                }
+            },
         };
     }) as Box<dyn FnOnce(Resolver<Msg>)>
 }
