@@ -1,7 +1,7 @@
 mod node;
 
-use std::collections::HashSet;
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 pub enum AudioNode {
     Oscillator(node::Oscillator),

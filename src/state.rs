@@ -33,6 +33,7 @@ where
             dom_renderer,
         })
     });
+    task::dispatch();
 }
 
 pub fn render() {

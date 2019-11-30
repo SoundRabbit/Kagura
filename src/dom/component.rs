@@ -71,12 +71,13 @@ where
     Sub: 'static,
 {
     pub fn new(
-        init: impl FnOnce() -> State,
+        init: impl FnOnce() -> (State, Cmd<Msg, Sub>),
         update: impl Fn(&mut State, Msg) -> Cmd<Msg, Sub> + 'static,
         render: impl Fn(&State) -> Html<Msg> + 'static,
     ) -> Self {
-        Component {
-            state: init(),
+        let (state, cmd) = init();
+        let mut component = Component {
+            state: state,
             update: Box::new(update),
             render: Box::new(render),
             subscribe: None,
@@ -85,7 +86,9 @@ where
             me: Weak::new(),
             parent: Weak::new(),
             is_changed: true,
-        }
+        };
+        component.deal_cmd(cmd);
+        component
     }
 
     /// set subscription witch bind from child sub to parent msg
@@ -103,6 +106,29 @@ where
             handlers.push(Box::new(handler));
         }
         self
+    }
+
+    fn deal_cmd(&mut self, cmd: Cmd<Msg, Sub>) {
+        match cmd {
+            Cmd::None => {}
+            Cmd::Sub(sub) => {
+                if let (Some(subscribe), Some(parent)) =
+                    (&mut self.subscribe, &self.parent.upgrade())
+                {
+                    parent.borrow_mut().update(subscribe(sub));
+                }
+            }
+            Cmd::Task(task) => {
+                let me = Weak::clone(&self.me);
+                let resolver = Box::new(move |msg: Msg| {
+                    if let Some(me) = me.upgrade() {
+                        me.borrow_mut().update(Box::new(msg));
+                        state::render();
+                    }
+                });
+                task::add(|| task(resolver));
+            }
+        };
     }
 
     /// append component to children components buffer
@@ -202,26 +228,7 @@ impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
         if let Ok(msg) = msg.downcast::<Msg>() {
             let cmd = (self.update)(&mut self.state, *msg);
             self.is_changed = true;
-            match cmd {
-                Cmd::None => {}
-                Cmd::Sub(sub) => {
-                    if let (Some(subscribe), Some(parent)) =
-                        (&mut self.subscribe, &self.parent.upgrade())
-                    {
-                        parent.borrow_mut().update(subscribe(sub));
-                    }
-                }
-                Cmd::Task(task) => {
-                    let me = Weak::clone(&self.me);
-                    let resolver = Box::new(move |msg: Msg| {
-                        if let Some(me) = me.upgrade() {
-                            me.borrow_mut().update(Box::new(msg));
-                            state::render();
-                        }
-                    });
-                    task::add(|| task(resolver));
-                }
-            };
+            self.deal_cmd(cmd);
         }
     }
 }
@@ -231,6 +238,7 @@ impl<Msg, State, Sub> BasicComponent<Node> for Component<Msg, State, Sub> {
         let html = (self.render)(&self.state);
         if self.is_changed {
             self.is_changed = false;
+            self.children.clear();
             self.render_force(html)
         } else {
             self.render_lazy(html, &mut 0)
