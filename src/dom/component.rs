@@ -9,6 +9,7 @@ use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::rc::Weak;
+use wasm_bindgen::prelude::*;
 
 /// Wrapper of Component
 pub trait DomComponent: BasicComponent<Node> {
@@ -44,6 +45,7 @@ where
     render: Box<dyn Fn(&State) -> Html<Msg>>,
     subscribe: Option<Box<dyn FnMut(Sub) -> Box<dyn Any>>>,
     batch_handlers: BatchHandlers<Msg>,
+    initial_cmd: Option<Cmd<Msg, Sub>>,
     children: Vec<Rc<RefCell<Box<dyn DomComponent>>>>,
     me: Weak<RefCell<Box<dyn DomComponent>>>,
     parent: Weak<RefCell<Box<dyn DomComponent>>>,
@@ -76,18 +78,18 @@ where
         render: impl Fn(&State) -> Html<Msg> + 'static,
     ) -> Self {
         let (state, cmd) = init();
-        let mut component = Component {
+        let component = Component {
             state: state,
             update: Box::new(update),
             render: Box::new(render),
             subscribe: None,
             batch_handlers: BatchHandlers::Handlers(vec![]),
+            initial_cmd: Some(cmd),
             children: vec![],
             me: Weak::new(),
             parent: Weak::new(),
             is_changed: true,
         };
-        component.deal_cmd(cmd);
         component
     }
 
@@ -218,6 +220,11 @@ impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
             }
         }
         self.me = me;
+        let mut cmd = None;
+        std::mem::swap(&mut self.initial_cmd, &mut cmd);
+        if let Some(cmd) = cmd {
+            self.deal_cmd(cmd);
+        }
     }
 
     fn set_parent(&mut self, parent: Weak<RefCell<Box<dyn DomComponent>>>) {
