@@ -238,6 +238,7 @@ impl<Msg, State, Sub> BasicComponent<Node> for Component<Msg, State, Sub> {
         let html = (self.render)(&self.state);
         if self.is_changed {
             self.is_changed = false;
+            self.children.clear();
             self.render_force(html)
         } else {
             self.render_lazy(html, &mut 0)
