@@ -43,8 +43,8 @@ struct Msg;
 
 struct Sub;
 
-fn init() -> State {
-    State
+fn init() -> (State, Cmd<Msg, Sub>) {
+    (State, Cmd::none())
 }
 
 fn update(_: &mut State, _: Msg) -> Cmd<Msg, Sub> {Cmd::none()}
