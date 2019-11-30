@@ -10,7 +10,8 @@ A front-end framework that runs on WebAssembly written in Rust.
 
 ## Big changes
 
-Supporting a batch process.
+- Supporting a batch process
+- Experimental supporting of websocket
 
 ## Tutorial
 
