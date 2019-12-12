@@ -54,6 +54,7 @@ features = [
     "EventTarget",
     "GainNode",
     "HtmlInputElement",
+    "HtmlTextAreaElement",
     "KeyboardEvent",
     "MediaStreamAudioDestinationNode",
     "MouseEvent",
