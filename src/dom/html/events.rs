@@ -107,13 +107,16 @@ impl<Msg> Events<Msg> {
 
     pub fn on_input(self, handler: impl FnOnce(String) -> Msg + 'static) -> Self {
         self.on("input", |e| {
-            if let Some(Ok(target)) = e
-                .target()
-                .map(|target| target.dyn_into::<web_sys::HtmlInputElement>())
-            {
-                handler(target.value())
+            if let Some(target) = e.target() {
+                match target.dyn_into::<web_sys::HtmlInputElement>() {
+                    Ok(target) => handler(target.value()),
+                    Err(target) => match target.dyn_into::<web_sys::HtmlTextAreaElement>() {
+                        Ok(target) => handler(target.value()),
+                        Err(_) => handler(String::new()),
+                    },
+                }
             } else {
-                handler("".to_string())
+                handler(String::new())
             }
         })
     }
