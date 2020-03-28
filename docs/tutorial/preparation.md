@@ -8,21 +8,21 @@
 ## Install wasm-pack
 
 ```shell
-$ cargo install wasm-pack
+cargo install wasm-pack
 ```
 
 ## create a crate
 
 ```shell
-$ cargo new --lib crate_name
-$ cd crate_name
+cargo new --lib crate_name
+cd crate_name
 ```
 
 ## install webpack and so on
 
 ```shell
-$ npm init
-$ npm install -D @wasm-tool/wasm-pack-plugin html-webpack-plugin webpack webpack-cli webpack-dev-server
+npm init
+npm install -D @wasm-tool/wasm-pack-plugin html-webpack-plugin webpack webpack-cli webpack-dev-server
 ```
 
 ## create webpack.config.js
