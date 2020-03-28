@@ -12,7 +12,7 @@ use std::rc::Weak;
 use wasm_bindgen::prelude::*;
 
 /// Wrapper of Component
-pub trait DomComponent: BasicComponent<Node> {
+pub trait DomComponent: BasicComponent<Option<Node>> {
     fn set_me(&mut self, me: Weak<RefCell<Box<dyn DomComponent>>>);
     fn set_parent(&mut self, parent: Weak<RefCell<Box<dyn DomComponent>>>);
     fn update(&mut self, msg: Box<dyn Any>);
@@ -140,7 +140,7 @@ where
     }
 
     /// render on non-update
-    fn render_lazy(&mut self, html: Html<Msg>, child_index: &mut usize) -> Node {
+    fn render_lazy(&mut self, html: Html<Msg>, child_index: &mut usize) -> Option<Node> {
         match html {
             Html::ComponentNode(composable) => {
                 if let Some(child) = self.children.get_mut(*child_index) {
@@ -152,7 +152,7 @@ where
                     node
                 }
             }
-            Html::TextNode(text) => Node::Text(text),
+            Html::TextNode(text) => Some(Node::Text(text)),
             Html::ElementNode {
                 tag_name,
                 attributes: _,
@@ -161,22 +161,30 @@ where
             } => {
                 let children = children
                     .into_iter()
-                    .map(|child| self.render_lazy(child, child_index))
+                    .filter_map(|child| self.render_lazy(child, child_index))
                     .collect::<Vec<Node>>();
-                Node::element(tag_name, Attributes::new(), Events::new(), children, false)
+                Some(Node::element(
+                    tag_name,
+                    Attributes::new(),
+                    Events::new(),
+                    children,
+                    false,
+                ))
             }
+            Html::None => None,
         }
     }
 
     /// render on updated
-    fn render_force(&mut self, html: Html<Msg>) -> Node {
+    fn render_force(&mut self, html: Html<Msg>) -> Option<Node> {
         match html {
             Html::ComponentNode(composable) => {
                 let node = composable.borrow_mut().render();
                 self.append_component(composable);
                 node
             }
-            Html::TextNode(text) => Node::Text(text),
+            Html::TextNode(text) => Some(Node::Text(text)),
+            Html::None => None,
             Html::ElementNode {
                 tag_name,
                 attributes,
@@ -185,7 +193,7 @@ where
             } => {
                 let children = children
                     .into_iter()
-                    .map(|child| self.render_force(child))
+                    .filter_map(|child| self.render_force(child))
                     .collect::<Vec<Node>>();
                 let mut dom_events = Events::new();
                 for (name, handler) in events.handlers {
@@ -197,7 +205,13 @@ where
                         }
                     });
                 }
-                Node::element(tag_name, attributes.into(), dom_events, children, true)
+                Some(Node::element(
+                    tag_name,
+                    attributes.into(),
+                    dom_events,
+                    children,
+                    true,
+                ))
             }
         }
     }
@@ -240,8 +254,8 @@ impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
     }
 }
 
-impl<Msg, State, Sub> BasicComponent<Node> for Component<Msg, State, Sub> {
-    fn render(&mut self) -> Node {
+impl<Msg, State, Sub> BasicComponent<Option<Node>> for Component<Msg, State, Sub> {
+    fn render(&mut self) -> Option<Node> {
         let html = (self.render)(&self.state);
         if self.is_changed {
             self.is_changed = false;

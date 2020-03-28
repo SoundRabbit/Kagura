@@ -11,8 +11,10 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(virtual_node: super::Node, root_node: web_sys::Node) -> Self {
+    pub fn new(virtual_node: Option<super::Node>, root_node: web_sys::Node) -> Self {
         let root: web_sys::Node;
+        let virtual_node = virtual_node
+            .expect("kagura-dom must have 1 or more valid node with the exception of Html::None");
         if let Some(node) = render(&virtual_node, None, Some(&root_node)) {
             root = node;
         } else {
@@ -28,7 +30,9 @@ impl Renderer {
         }
     }
 
-    pub fn update(&mut self, after: super::Node) {
+    pub fn update(&mut self, after: Option<super::Node>) {
+        let after = after
+            .expect("kagura-dom must have 1 or more valid node with the exception of Html::None");
         if let Some(root) = render(&after, Some(&self.before), Some(&self.root)) {
             let _ = self
                 .root

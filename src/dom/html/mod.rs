@@ -19,6 +19,7 @@ pub enum Html<Msg> {
         attributes: Attributes,
         events: Events<Msg>,
     },
+    None,
 }
 
 impl<Msg> Html<Msg> {
@@ -50,6 +51,11 @@ impl<Msg> Html<Msg> {
             attributes,
             events,
         }
+    }
+
+    /// Creates Html<Msg> which means there is no node
+    pub fn none() -> Self {
+        Html::None
     }
 
     pub fn a(attributes: Attributes, events: Events<Msg>, children: Vec<Html<Msg>>) -> Self {
