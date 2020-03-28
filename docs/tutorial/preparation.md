@@ -20,6 +20,8 @@ cd crate_name
 
 ## install webpack and so on
 
+In this tutorial, you will compile your source codes using webpack, and use webpach-dev-server to show webpages. If you have a better idea, please send issue to my repogitory. Now, Kagura is developed by too small number of persons, so we welcome collaborators everytime.
+
 ```shell
 npm init
 npm install -D @wasm-tool/wasm-pack-plugin html-webpack-plugin webpack webpack-cli webpack-dev-server
