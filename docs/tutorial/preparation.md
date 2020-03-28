@@ -96,6 +96,6 @@ Add `[dependencies]` and `[lib]` to `crago.toml` in root of crate. like this:
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-kagura = "0.8.4"
+kagura = "0.8.5"
 wasm-bindgen = "0.2"
 ```
