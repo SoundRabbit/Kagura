@@ -63,6 +63,8 @@ fn set_attribute_set(element: &web_sys::Element, a: &str, v: &HashSet<super::Val
     if String::from("value") == String::from(a) {
         if let Some(element) = element.dyn_ref::<web_sys::HtmlInputElement>() {
             element.set_value(&v);
+        } else if let Some(element) = element.dyn_ref::<web_sys::HtmlTextAreaElement>() {
+            element.set_value(&v);
         } else {
             let _ = element.set_attribute(a, &v);
         }
