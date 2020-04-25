@@ -9,7 +9,6 @@ use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::rc::Weak;
-use wasm_bindgen::prelude::*;
 
 /// Wrapper of Component
 pub trait DomComponent: BasicComponent<Option<Node>> {
