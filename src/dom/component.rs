@@ -93,7 +93,7 @@ where
         component
     }
 
-    /// set subscription witch bind from child sub to parent msg
+    /// set subscription which bind from child sub to parent msg
     pub fn subscribe<Msg_>(mut self, mut sub: impl FnMut(Sub) -> Msg_ + 'static) -> Self
     where
         Msg_: 'static,
