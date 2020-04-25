@@ -54,7 +54,7 @@ where
                 Err(e) => {
                     resolver(handler(Err(e)));
                 }
-                Ok(e) => {
+                Ok(_) => {
                     xhr.set_timeout(props.timeout);
                     for header in props.header {
                         let (header, value) = header;
