@@ -2,7 +2,7 @@ use crate::dom;
 use std::ops::Deref;
 
 /// Attributes for Html<Msg>
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub struct Attributes {
     pub attributes: dom::Attributes,
     last_attribute: String,
