@@ -21,6 +21,7 @@ pub struct Element {
     pub need_rerendering: bool,
 }
 
+#[derive(Clone)]
 pub struct Attributes {
     pub attributes: HashMap<String, HashSet<Value>>,
     pub delimiters: HashMap<String, String>,

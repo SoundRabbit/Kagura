@@ -7,8 +7,10 @@ use crate::state;
 use crate::task;
 use std::any::Any;
 use std::cell::RefCell;
+use std::clone::Clone;
 use std::rc::Rc;
 use std::rc::Weak;
+use wasm_bindgen::prelude::*;
 
 /// Wrapper of Component
 pub trait DomComponent: BasicComponent<Option<Node>> {
@@ -45,7 +47,7 @@ where
     subscribe: Option<Box<dyn FnMut(Sub) -> Box<dyn Any>>>,
     batch_handlers: BatchHandlers<Msg>,
     initial_cmd: Option<Cmd<Msg, Sub>>,
-    children: Vec<Rc<RefCell<Box<dyn DomComponent>>>>,
+    cash: Html<Msg>,
     me: Weak<RefCell<Box<dyn DomComponent>>>,
     parent: Weak<RefCell<Box<dyn DomComponent>>>,
     is_changed: bool,
@@ -84,7 +86,7 @@ where
             subscribe: None,
             batch_handlers: BatchHandlers::Handlers(vec![]),
             initial_cmd: Some(cmd),
-            children: vec![],
+            cash: Html::none(),
             me: Weak::new(),
             parent: Weak::new(),
             is_changed: true,
@@ -116,6 +118,7 @@ where
                 if let (Some(subscribe), Some(parent)) =
                     (&mut self.subscribe, &self.parent.upgrade())
                 {
+                    web_sys::console::log_1(&JsValue::from("Cmd::Sub_A"));
                     parent.borrow_mut().update(subscribe(sub));
                 }
             }
@@ -132,45 +135,39 @@ where
         };
     }
 
-    /// append component to children components buffer
-    fn append_component(&mut self, component: Rc<RefCell<Box<dyn DomComponent>>>) {
-        component.borrow_mut().set_parent(Weak::clone(&self.me));
-        self.children.push(component);
-    }
-
-    /// render on non-update
-    fn render_lazy(&mut self, html: Html<Msg>, child_index: &mut usize) -> Option<Node> {
+    fn render_lazy(&mut self, html: Html<Msg>) -> Option<Node> {
         match html {
-            Html::ComponentNode(composable) => {
-                if let Some(child) = self.children.get_mut(*child_index) {
-                    *child_index += 1;
-                    (*child).borrow_mut().render()
-                } else {
-                    let node = composable.borrow_mut().render();
-                    self.append_component(composable);
-                    node
-                }
-            }
+            Html::ComponentNode(composable) => composable.borrow_mut().render(),
             Html::TextNode(text) => Some(Node::Text(text)),
+            Html::None => None,
             Html::ElementNode {
                 tag_name,
-                attributes: _,
-                events: _,
+                attributes,
+                events,
                 children,
             } => {
                 let children = children
                     .into_iter()
-                    .filter_map(|child| self.render_lazy(child, child_index))
+                    .filter_map(|child| self.render_force(child))
                     .collect::<Vec<Node>>();
+                let mut dom_events = Events::new();
+                for (name, handler) in events.handlers {
+                    let me = Weak::clone(&self.me);
+                    dom_events.add(name, move |e| {
+                        if let Some(me) = me.upgrade() {
+                            me.borrow_mut().update(Box::new(handler(e)));
+                            state::render();
+                        }
+                    });
+                }
                 Some(Node::element(
                     tag_name,
-                    Attributes::new(),
-                    Events::new(),
+                    attributes.into(),
+                    dom_events,
                     children,
-                    false,
+                    true,
                 ))
             }
-            Html::None => None,
         }
     }
 
@@ -178,9 +175,8 @@ where
     fn render_force(&mut self, html: Html<Msg>) -> Option<Node> {
         match html {
             Html::ComponentNode(composable) => {
-                let node = composable.borrow_mut().render();
-                self.append_component(composable);
-                node
+                composable.borrow_mut().set_parent(Weak::clone(&self.me));
+                composable.borrow_mut().render()
             }
             Html::TextNode(text) => Some(Node::Text(text)),
             Html::None => None,
@@ -255,13 +251,13 @@ impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
 
 impl<Msg, State, Sub> BasicComponent<Option<Node>> for Component<Msg, State, Sub> {
     fn render(&mut self) -> Option<Node> {
-        let html = (self.render)(&self.state);
         if self.is_changed {
             self.is_changed = false;
-            self.children.clear();
+            let html = (self.render)(&self.state);
+            self.cash = html.clone();
             self.render_force(html)
         } else {
-            self.render_lazy(html, &mut 0)
+            self.render_force(self.cash.clone())
         }
     }
 }

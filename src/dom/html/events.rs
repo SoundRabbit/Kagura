@@ -25,6 +25,14 @@ pub struct KeyboardEvent {
     implement: Option<web_sys::KeyboardEvent>,
 }
 
+impl<Msg> Clone for Events<Msg> {
+    fn clone(&self) -> Self {
+        Self {
+            handlers: HashMap::new(),
+        }
+    }
+}
+
 impl Deref for MouseEvent {
     type Target = web_sys::MouseEvent;
     fn deref(&self) -> &web_sys::MouseEvent {

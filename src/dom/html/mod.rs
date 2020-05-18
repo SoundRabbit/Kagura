@@ -22,6 +22,27 @@ pub enum Html<Msg> {
     None,
 }
 
+impl<Msg> Clone for Html<Msg> {
+    fn clone(&self) -> Self {
+        match self {
+            Html::ComponentNode(component) => Html::ComponentNode(Rc::clone(component)),
+            Html::TextNode(text) => Html::TextNode(text.clone()),
+            Html::ElementNode {
+                tag_name,
+                children,
+                attributes,
+                events,
+            } => Html::ElementNode {
+                tag_name: tag_name.clone(),
+                children: children.clone(),
+                attributes: attributes.clone(),
+                events: events.clone(),
+            },
+            Html::None => Html::None,
+        }
+    }
+}
+
 impl<Msg> Html<Msg> {
     /// Creates Html<Msg> from component
     pub fn component<M, S, B>(component: Component<M, S, B>) -> Self
