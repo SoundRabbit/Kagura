@@ -1,5 +1,4 @@
 use super::html::Html;
-use super::Attributes;
 use super::Events;
 use super::Node;
 use crate::basic_component::BasicComponent;
@@ -133,42 +132,6 @@ where
                 task::add(|| task(resolver));
             }
         };
-    }
-
-    fn render_lazy(&mut self, html: Html<Msg>) -> Option<Node> {
-        match html {
-            Html::ComponentNode(composable) => composable.borrow_mut().render(),
-            Html::TextNode(text) => Some(Node::Text(text)),
-            Html::None => None,
-            Html::ElementNode {
-                tag_name,
-                attributes,
-                events,
-                children,
-            } => {
-                let children = children
-                    .into_iter()
-                    .filter_map(|child| self.render_force(child))
-                    .collect::<Vec<Node>>();
-                let mut dom_events = Events::new();
-                for (name, handler) in events.handlers {
-                    let me = Weak::clone(&self.me);
-                    dom_events.add(name, move |e| {
-                        if let Some(me) = me.upgrade() {
-                            me.borrow_mut().update(Box::new(handler(e)));
-                            state::render();
-                        }
-                    });
-                }
-                Some(Node::element(
-                    tag_name,
-                    attributes.into(),
-                    dom_events,
-                    children,
-                    true,
-                ))
-            }
-        }
     }
 
     /// render on updated

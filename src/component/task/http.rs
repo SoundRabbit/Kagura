@@ -94,7 +94,7 @@ where
                     }) as Box<dyn FnMut()>);
                     xhr_.set_onreadystatechange(Some(h.as_ref().unchecked_ref()));
                     h.forget();
-                    xhr_.send();
+                    let _ = xhr_.send();
                 }
             },
         };
