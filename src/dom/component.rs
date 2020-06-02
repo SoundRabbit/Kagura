@@ -135,7 +135,7 @@ where
     }
 
     /// render on updated
-    fn render_force(&mut self, html: Html<Msg>) -> Option<Node> {
+    fn render_force(&mut self, html: Html<Msg>, need_rendering: bool) -> Option<Node> {
         match html {
             Html::ComponentNode(composable) => {
                 composable.borrow_mut().set_parent(Weak::clone(&self.me));
@@ -151,7 +151,7 @@ where
             } => {
                 let children = children
                     .into_iter()
-                    .filter_map(|child| self.render_force(child))
+                    .filter_map(|child| self.render_force(child, need_rendering))
                     .collect::<Vec<Node>>();
                 let mut dom_events = Events::new();
                 for (name, handler) in events.handlers {
@@ -168,7 +168,7 @@ where
                     attributes.into(),
                     dom_events,
                     children,
-                    true,
+                    need_rendering,
                 ))
             }
         }
@@ -218,9 +218,9 @@ impl<Msg, State, Sub> BasicComponent<Option<Node>> for Component<Msg, State, Sub
             self.is_changed = false;
             let html = (self.render)(&self.state);
             self.cash = html.clone();
-            self.render_force(html)
+            self.render_force(html, true)
         } else {
-            self.render_force(self.cash.clone())
+            self.render_force(self.cash.clone(), false)
         }
     }
 }
