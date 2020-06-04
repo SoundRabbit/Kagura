@@ -134,8 +134,35 @@ where
         };
     }
 
+    fn render_lazy(&mut self, html: Html<Msg>) -> Option<Node> {
+        match html {
+            Html::ComponentNode(composable) => composable.borrow_mut().render(),
+            Html::TextNode(text) => Some(Node::Text(text)),
+            Html::None => None,
+            Html::ElementNode {
+                tag_name,
+                attributes,
+                events: _,
+                children,
+            } => {
+                let children = children
+                    .into_iter()
+                    .filter_map(|child| self.render_lazy(child))
+                    .collect::<Vec<Node>>();
+                let dom_events = Events::new();
+                Some(Node::element(
+                    tag_name,
+                    attributes.into(),
+                    dom_events,
+                    children,
+                    false,
+                ))
+            }
+        }
+    }
+
     /// render on updated
-    fn render_force(&mut self, html: Html<Msg>, need_rendering: bool) -> Option<Node> {
+    fn render_force(&mut self, html: Html<Msg>) -> Option<Node> {
         match html {
             Html::ComponentNode(composable) => {
                 composable.borrow_mut().set_parent(Weak::clone(&self.me));
@@ -151,7 +178,7 @@ where
             } => {
                 let children = children
                     .into_iter()
-                    .filter_map(|child| self.render_force(child, need_rendering))
+                    .filter_map(|child| self.render_force(child))
                     .collect::<Vec<Node>>();
                 let mut dom_events = Events::new();
                 for (name, handler) in events.handlers {
@@ -168,7 +195,7 @@ where
                     attributes.into(),
                     dom_events,
                     children,
-                    need_rendering,
+                    true,
                 ))
             }
         }
@@ -218,9 +245,9 @@ impl<Msg, State, Sub> BasicComponent<Option<Node>> for Component<Msg, State, Sub
             self.is_changed = false;
             let html = (self.render)(&self.state);
             self.cash = html.clone();
-            self.render_force(html, true)
+            self.render_force(html)
         } else {
-            self.render_force(self.cash.clone(), false)
+            self.render_lazy(self.cash.clone())
         }
     }
 }

@@ -13,9 +13,9 @@ pub struct Renderer {
 impl Renderer {
     pub fn new(virtual_node: Option<super::Node>, root_node: web_sys::Node) -> Self {
         let root: web_sys::Node;
-        let virtual_node = virtual_node
+        let mut virtual_node = virtual_node
             .expect("kagura-dom must have 1 or more valid node with the exception of Html::None");
-        if let Some(node) = render(&virtual_node, None, Some(&root_node)) {
+        if let Some(node) = render(&mut virtual_node, None, Some(&root_node)) {
             root = node;
         } else {
             root = native::create_text_node("").into();
@@ -31,9 +31,9 @@ impl Renderer {
     }
 
     pub fn update(&mut self, after: Option<super::Node>) {
-        let after = after
+        let mut after = after
             .expect("kagura-dom must have 1 or more valid node with the exception of Html::None");
-        if let Some(root) = render(&after, Some(&self.before), Some(&self.root)) {
+        if let Some(root) = render(&mut after, Some(&mut self.before), Some(&self.root)) {
             let _ = self
                 .root
                 .parent_node()
@@ -106,8 +106,8 @@ fn set_attribute_diff(
 }
 
 fn render(
-    after: &super::Node,
-    before: Option<&super::Node>,
+    after: &mut super::Node,
+    before: Option<&mut super::Node>,
     root: Option<&web_sys::Node>,
 ) -> Option<web_sys::Node> {
     use super::Node;
@@ -141,11 +141,16 @@ fn render(
     }
 }
 
-fn render_element_lazy(after: &super::Element, before: &super::Element, root: &web_sys::Node) {
+fn render_element_lazy(
+    after: &mut super::Element,
+    before: &mut super::Element,
+    root: &web_sys::Node,
+) {
     let mut i: usize = 0;
-    for child in &after.children {
+    std::mem::swap(&mut after.events, &mut before.events);
+    for child in &mut after.children {
         if let Some(b) = root.child_nodes().item(i as u32) {
-            if let Some(a) = render(&child, before.children.get(i), Some(&b)) {
+            if let Some(a) = render(child, before.children.get_mut(i), Some(&b)) {
                 let _ = root.replace_child(&a, &b);
             }
         }
@@ -153,17 +158,21 @@ fn render_element_lazy(after: &super::Element, before: &super::Element, root: &w
     }
 }
 
-fn render_element_force(after: &super::Element) -> web_sys::Node {
+fn render_element_force(after: &mut super::Element) -> web_sys::Node {
     let el = new_element(&after.tag_name, &after.attributes, &after.events);
-    for child in &after.children {
-        if let Some(node) = render(&child, None, None) {
+    for child in &mut after.children {
+        if let Some(node) = render(child, None, None) {
             let _ = el.append_child(&node);
         }
     }
     el.into()
 }
 
-fn render_element_diff(after: &super::Element, before: &super::Element, root: &web_sys::Element) {
+fn render_element_diff(
+    after: &mut super::Element,
+    before: &mut super::Element,
+    root: &web_sys::Element,
+) {
     for (_, hid) in &before.events.handlers {
         event::remove(hid);
     }
@@ -180,13 +189,13 @@ fn render_element_diff(after: &super::Element, before: &super::Element, root: &w
         i -= 1;
     }
     let mut i: usize = 0;
-    for child in &after.children {
+    for child in &mut after.children {
         if let Some(old) = root.child_nodes().item(i as u32) {
-            if let Some(new) = render(&child, before.children.get(i), Some(&old)) {
+            if let Some(new) = render(child, before.children.get_mut(i), Some(&old)) {
                 let _ = root.replace_child(&new, &old);
             }
         } else {
-            if let Some(new) = render(&child, None, None) {
+            if let Some(new) = render(child, None, None) {
                 let _ = root.append_child(&new);
             }
         }
