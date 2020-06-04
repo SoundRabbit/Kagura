@@ -28,11 +28,6 @@ pub enum Cmd<Msg, Sub> {
     Task(Box<dyn FnOnce(Resolver<Msg>)>),
 }
 
-enum BatchHandlers<Msg> {
-    Handlers(Vec<Box<dyn FnOnce(Messenger<Msg>)>>),
-    Binded(),
-}
-
 /// Component constructed by State-update-render
 pub struct Component<Msg, State, Sub>
 where
@@ -44,7 +39,7 @@ where
     update: Box<dyn Fn(&mut State, Msg) -> Cmd<Msg, Sub>>,
     render: Box<dyn Fn(&State) -> Html<Msg>>,
     subscribe: Option<Box<dyn FnMut(Sub) -> Box<dyn Any>>>,
-    batch_handlers: BatchHandlers<Msg>,
+    batch_handlers: Option<Vec<Box<dyn FnOnce(Messenger<Msg>)>>>,
     initial_cmd: Option<Cmd<Msg, Sub>>,
     cash: Html<Msg>,
     me: Weak<RefCell<Box<dyn DomComponent>>>,
@@ -83,7 +78,7 @@ where
             update: Box::new(update),
             render: Box::new(render),
             subscribe: None,
-            batch_handlers: BatchHandlers::Handlers(vec![]),
+            batch_handlers: Some(vec![]),
             initial_cmd: Some(cmd),
             cash: Html::none(),
             me: Weak::new(),
@@ -104,7 +99,7 @@ where
 
     /// append batch handler
     pub fn batch(mut self, handler: impl FnOnce(Messenger<Msg>) + 'static) -> Self {
-        if let BatchHandlers::Handlers(handlers) = &mut self.batch_handlers {
+        if let Some(handlers) = &mut self.batch_handlers {
             handlers.push(Box::new(handler));
         }
         self
@@ -117,7 +112,6 @@ where
                 if let (Some(subscribe), Some(parent)) =
                     (&mut self.subscribe, &self.parent.upgrade())
                 {
-                    web_sys::console::log_1(&JsValue::from("Cmd::Sub_A"));
                     parent.borrow_mut().update(subscribe(sub));
                 }
             }
@@ -134,8 +128,35 @@ where
         };
     }
 
+    fn render_lazy(&mut self, html: Html<Msg>) -> Option<Node> {
+        match html {
+            Html::ComponentNode(composable) => composable.borrow_mut().render(),
+            Html::TextNode(text) => Some(Node::Text(text)),
+            Html::None => None,
+            Html::ElementNode {
+                tag_name,
+                attributes,
+                events: _,
+                children,
+            } => {
+                let children = children
+                    .into_iter()
+                    .filter_map(|child| self.render_lazy(child))
+                    .collect::<Vec<Node>>();
+                let dom_events = Events::new();
+                Some(Node::element(
+                    tag_name,
+                    attributes.into(),
+                    dom_events,
+                    children,
+                    false,
+                ))
+            }
+        }
+    }
+
     /// render on updated
-    fn render_force(&mut self, html: Html<Msg>, need_rendering: bool) -> Option<Node> {
+    fn render_force(&mut self, html: Html<Msg>) -> Option<Node> {
         match html {
             Html::ComponentNode(composable) => {
                 composable.borrow_mut().set_parent(Weak::clone(&self.me));
@@ -151,7 +172,7 @@ where
             } => {
                 let children = children
                     .into_iter()
-                    .filter_map(|child| self.render_force(child, need_rendering))
+                    .filter_map(|child| self.render_force(child))
                     .collect::<Vec<Node>>();
                 let mut dom_events = Events::new();
                 for (name, handler) in events.handlers {
@@ -168,7 +189,7 @@ where
                     attributes.into(),
                     dom_events,
                     children,
-                    need_rendering,
+                    true,
                 ))
             }
         }
@@ -177,9 +198,7 @@ where
 
 impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
     fn set_me(&mut self, me: Weak<RefCell<Box<dyn DomComponent>>>) {
-        let mut batch_handlers = BatchHandlers::Binded();
-        std::mem::swap(&mut self.batch_handlers, &mut batch_handlers);
-        if let BatchHandlers::Handlers(handlers) = batch_handlers {
+        if let Some(handlers) = self.batch_handlers.take() {
             for handler in handlers {
                 let me = Weak::clone(&me);
                 let messenger: Messenger<Msg> = Box::new(move |msg| {
@@ -192,9 +211,7 @@ impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
             }
         }
         self.me = me;
-        let mut cmd = None;
-        std::mem::swap(&mut self.initial_cmd, &mut cmd);
-        if let Some(cmd) = cmd {
+        if let Some(cmd) = self.initial_cmd.take() {
             self.deal_cmd(cmd);
         }
     }
@@ -218,9 +235,9 @@ impl<Msg, State, Sub> BasicComponent<Option<Node>> for Component<Msg, State, Sub
             self.is_changed = false;
             let html = (self.render)(&self.state);
             self.cash = html.clone();
-            self.render_force(html, true)
+            self.render_force(html)
         } else {
-            self.render_force(self.cash.clone(), false)
+            self.render_lazy(self.cash.clone())
         }
     }
 }
