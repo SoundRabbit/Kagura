@@ -1,6 +1,6 @@
 [package]
 name = "kagura"
-version = "0.8.8"
+version = "0.8.9"
 authors = ["SoundRabbit <soundrabbitstd@gmail.com>"]
 edition = "2018"
 description = "Frontend frame-work for wasm on Rust."
