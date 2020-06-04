@@ -65,35 +65,37 @@ where
                         }
                     }
                     let xhr = Rc::new(xhr);
-                    let xhr_ = Rc::clone(&xhr);
-                    let h = Closure::wrap(Box::new(move || {
-                        if xhr.ready_state() == 4 {
-                            let text = xhr.response_text();
-                            let status = xhr.status();
-                            match text {
-                                Err(e) => {
-                                    resolver.take().map(|r| r(handler(Err(e))));
-                                }
-                                Ok(text) => match status {
+                    let h = Closure::wrap(Box::new({
+                        let xhr = Rc::clone(&xhr);
+                        move || {
+                            if xhr.ready_state() == 4 {
+                                let text = xhr.response_text();
+                                let status = xhr.status();
+                                match text {
                                     Err(e) => {
                                         resolver.take().map(|r| r(handler(Err(e))));
                                     }
-                                    Ok(status) => {
-                                        let response = Response {
-                                            type_: xhr.response_type(),
-                                            text: text,
-                                            url: xhr.response_url(),
-                                            status: status,
-                                        };
-                                        resolver.take().map(|r| r(handler(Ok(response))));
-                                    }
-                                },
+                                    Ok(text) => match status {
+                                        Err(e) => {
+                                            resolver.take().map(|r| r(handler(Err(e))));
+                                        }
+                                        Ok(status) => {
+                                            let response = Response {
+                                                type_: xhr.response_type(),
+                                                text: text,
+                                                url: xhr.response_url(),
+                                                status: status,
+                                            };
+                                            resolver.take().map(|r| r(handler(Ok(response))));
+                                        }
+                                    },
+                                }
                             }
                         }
                     }) as Box<dyn FnMut()>);
-                    xhr_.set_onreadystatechange(Some(h.as_ref().unchecked_ref()));
+                    xhr.set_onreadystatechange(Some(h.as_ref().unchecked_ref()));
                     h.forget();
-                    let _ = xhr_.send();
+                    let _ = xhr.send();
                 }
             },
         };
