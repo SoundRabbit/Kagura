@@ -28,11 +28,6 @@ pub enum Cmd<Msg, Sub> {
     Task(Box<dyn FnOnce(Resolver<Msg>)>),
 }
 
-enum BatchHandlers<Msg> {
-    Handlers(Vec<Box<dyn FnOnce(Messenger<Msg>)>>),
-    Binded(),
-}
-
 /// Component constructed by State-update-render
 pub struct Component<Msg, State, Sub>
 where
@@ -44,7 +39,7 @@ where
     update: Box<dyn Fn(&mut State, Msg) -> Cmd<Msg, Sub>>,
     render: Box<dyn Fn(&State) -> Html<Msg>>,
     subscribe: Option<Box<dyn FnMut(Sub) -> Box<dyn Any>>>,
-    batch_handlers: BatchHandlers<Msg>,
+    batch_handlers: Option<Vec<Box<dyn FnOnce(Messenger<Msg>)>>>,
     initial_cmd: Option<Cmd<Msg, Sub>>,
     cash: Html<Msg>,
     me: Weak<RefCell<Box<dyn DomComponent>>>,
@@ -83,7 +78,7 @@ where
             update: Box::new(update),
             render: Box::new(render),
             subscribe: None,
-            batch_handlers: BatchHandlers::Handlers(vec![]),
+            batch_handlers: Some(vec![]),
             initial_cmd: Some(cmd),
             cash: Html::none(),
             me: Weak::new(),
@@ -104,7 +99,7 @@ where
 
     /// append batch handler
     pub fn batch(mut self, handler: impl FnOnce(Messenger<Msg>) + 'static) -> Self {
-        if let BatchHandlers::Handlers(handlers) = &mut self.batch_handlers {
+        if let Some(handlers) = &mut self.batch_handlers {
             handlers.push(Box::new(handler));
         }
         self
@@ -204,9 +199,7 @@ where
 
 impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
     fn set_me(&mut self, me: Weak<RefCell<Box<dyn DomComponent>>>) {
-        let mut batch_handlers = BatchHandlers::Binded();
-        std::mem::swap(&mut self.batch_handlers, &mut batch_handlers);
-        if let BatchHandlers::Handlers(handlers) = batch_handlers {
+        if let Some(handlers) = self.batch_handlers.take() {
             for handler in handlers {
                 let me = Weak::clone(&me);
                 let messenger: Messenger<Msg> = Box::new(move |msg| {
@@ -219,9 +212,7 @@ impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
             }
         }
         self.me = me;
-        let mut cmd = None;
-        std::mem::swap(&mut self.initial_cmd, &mut cmd);
-        if let Some(cmd) = cmd {
+        if let Some(cmd) = self.initial_cmd.take() {
             self.deal_cmd(cmd);
         }
     }
