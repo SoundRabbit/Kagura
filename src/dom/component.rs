@@ -112,7 +112,6 @@ where
                 if let (Some(subscribe), Some(parent)) =
                     (&mut self.subscribe, &self.parent.upgrade())
                 {
-                    web_sys::console::log_1(&JsValue::from("Cmd::Sub_A"));
                     parent.borrow_mut().update(subscribe(sub));
                 }
             }
