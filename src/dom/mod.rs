@@ -120,12 +120,12 @@ impl PartialEq for Attributes {
     }
 }
 
-impl Into<String> for &Value {
-    fn into(self) -> String {
+impl Value {
+    fn as_str(&self) -> &str {
         match self {
-            Value::Int(v) => v.to_string(),
-            Value::Nut(v) => v.to_string(),
-            Value::Str(v) => v.clone(),
+            Value::Int(v) => &v.to_string(),
+            Value::Nut(v) => &v.to_string(),
+            Value::Str(v) => v,
         }
     }
 }

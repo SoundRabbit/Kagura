@@ -58,8 +58,7 @@ fn set_attribute_all(element: &web_sys::Element, attributes: &super::Attributes)
 }
 
 fn set_attribute_set(element: &web_sys::Element, a: &str, v: &Vec<super::Value>, d: &str) {
-    let v = v.iter().map(|v| v.into()).collect::<Vec<String>>();
-    let v = v.iter().map(|v| &v as &str).collect::<Vec<&str>>().join(d);
+    let v = v.iter().map(|v| v.as_str()).collect::<Vec<&str>>().join(d);
     if a == "value" {
         if let Some(element) = element.dyn_ref::<web_sys::HtmlInputElement>() {
             element.set_value(&v);
