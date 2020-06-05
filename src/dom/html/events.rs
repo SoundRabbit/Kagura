@@ -6,7 +6,7 @@ use web_sys;
 
 /// Events for Html<Msg>
 pub struct Events<Msg> {
-    pub handlers: HashMap<String, Box<dyn FnOnce(web_sys::Event) -> Msg>>,
+    pub handlers: HashMap<String, Option<Box<dyn FnOnce(web_sys::Event) -> Msg>>>,
 }
 
 /// Props of MouseEvent
@@ -69,7 +69,7 @@ impl<Msg> Events<Msg> {
         type_: impl Into<String>,
         handler: impl FnOnce(web_sys::Event) -> Msg + 'static,
     ) -> Self {
-        self.handlers.insert(type_.into(), Box::new(handler));
+        self.handlers.insert(type_.into(), Some(Box::new(handler)));
         self
     }
 
