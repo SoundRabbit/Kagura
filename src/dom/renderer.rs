@@ -155,7 +155,17 @@ fn render(
 ) -> Option<web_sys::Node> {
     use super::Node;
     match after {
-        Node::Text(text) => Some(native::create_text_node(&text).into()),
+        Node::Text(text) => {
+            if let Some(Node::Text(before)) = before {
+                if before == text {
+                    None
+                } else {
+                    Some(native::create_text_node(&text).into())
+                }
+            } else {
+                Some(native::create_text_node(&text).into())
+            }
+        }
         Node::Element(after) => {
             if after.need_rerendering {
                 if let (Some(Node::Element(before)), Some(root)) = (before, root) {
