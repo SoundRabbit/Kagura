@@ -98,7 +98,7 @@ fn set_attribute_diff(
     before: &super::Attributes,
 ) {
     for (a, _) in &before.attributes {
-        if after.attributes.get(a).is_none() {
+        if !after.attributes.contains_key(a) {
             let _ = element.remove_attribute(a);
         }
     }
