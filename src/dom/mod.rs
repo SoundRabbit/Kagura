@@ -4,7 +4,7 @@ pub mod renderer;
 
 use crate::event;
 use std::collections::HashMap;
-use std::collections::HashSet;
+use std::rc::Rc;
 
 pub use renderer::Renderer;
 
@@ -29,7 +29,7 @@ pub struct Attributes {
 
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub enum Value {
-    Str(String),
+    Str(Rc<String>),
     Nut(u64),
     Int(i64),
 }
@@ -121,11 +121,11 @@ impl PartialEq for Attributes {
 }
 
 impl Value {
-    fn as_str(&self) -> &str {
-        match self {
-            Value::Int(v) => &v.to_string(),
-            Value::Nut(v) => &v.to_string(),
-            Value::Str(v) => v,
+    fn as_rc_string(&self) -> Rc<String> {
+        match &self {
+            Value::Int(v) => Rc::new(v.to_string()),
+            Value::Nut(v) => Rc::new(v.to_string()),
+            Value::Str(v) => Rc::clone(v),
         }
     }
 }
