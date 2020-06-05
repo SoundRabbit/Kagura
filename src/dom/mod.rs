@@ -4,7 +4,7 @@ pub mod renderer;
 
 use crate::event;
 use std::collections::HashMap;
-use std::collections::HashSet;
+use std::rc::Rc;
 
 pub use renderer::Renderer;
 
@@ -23,13 +23,13 @@ pub struct Element {
 
 #[derive(Clone)]
 pub struct Attributes {
-    pub attributes: HashMap<String, HashSet<Value>>,
+    pub attributes: HashMap<String, Vec<Value>>,
     pub delimiters: HashMap<String, String>,
 }
 
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub enum Value {
-    Str(String),
+    Str(Rc<String>),
     Nut(u64),
     Int(i64),
 }
@@ -82,11 +82,9 @@ impl Attributes {
     pub fn add(&mut self, name: impl Into<String>, value: Value) {
         let name: String = name.into();
         if let Some(attr) = self.attributes.get_mut(&name) {
-            attr.insert(value);
+            attr.push(value);
         } else {
-            let mut attr: HashSet<Value> = HashSet::new();
-            attr.insert(value);
-            self.attributes.insert(name, attr);
+            self.attributes.insert(name, vec![value]);
         }
     }
 
@@ -94,7 +92,7 @@ impl Attributes {
     pub fn set(&mut self, name: impl Into<String>) {
         let name: String = name.into();
         if self.attributes.get(&name).is_none() {
-            self.attributes.insert(name, HashSet::new());
+            self.attributes.insert(name, vec![]);
         }
     }
 
@@ -122,12 +120,12 @@ impl PartialEq for Attributes {
     }
 }
 
-impl Into<String> for &Value {
-    fn into(self) -> String {
-        match self {
-            Value::Int(v) => v.to_string(),
-            Value::Nut(v) => v.to_string(),
-            Value::Str(v) => v.clone(),
+impl Value {
+    fn as_rc_string(&self) -> Rc<String> {
+        match &self {
+            Value::Int(v) => Rc::new(v.to_string()),
+            Value::Nut(v) => Rc::new(v.to_string()),
+            Value::Str(v) => Rc::clone(v),
         }
     }
 }

@@ -1,5 +1,6 @@
 use crate::dom;
 use std::ops::Deref;
+use std::rc::Rc;
 
 /// Attributes for Html<Msg>
 #[derive(PartialEq, Clone)]
@@ -34,7 +35,8 @@ impl Attributes {
     pub fn string(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         let name = name.into();
         self.last_attribute = name.clone();
-        self.attributes.add(name, dom::Value::Str(value.into()));
+        self.attributes
+            .add(name, dom::Value::Str(Rc::new(value.into())));
         self
     }
 

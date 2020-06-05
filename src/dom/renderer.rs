@@ -1,6 +1,6 @@
 use crate::event;
 use crate::native;
-use std::collections::HashSet;
+use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys;
@@ -57,10 +57,13 @@ fn set_attribute_all(element: &web_sys::Element, attributes: &super::Attributes)
     }
 }
 
-fn set_attribute_set(element: &web_sys::Element, a: &str, v: &HashSet<super::Value>, d: &str) {
-    let v = v.iter().map(|v| v.into()).collect::<Vec<String>>();
-    let v = v.iter().map(|v| &v as &str).collect::<Vec<&str>>().join(d);
-    if String::from("value") == String::from(a) {
+fn set_attribute_set(element: &web_sys::Element, a: &str, v: &Vec<super::Value>, d: &str) {
+    let v = v
+        .iter()
+        .map(|v| v.as_rc_string())
+        .collect::<Vec<Rc<String>>>();
+    let v = v.iter().map(|v| v.as_str()).collect::<Vec<&str>>().join(d);
+    if a == "value" {
         if let Some(element) = element.dyn_ref::<web_sys::HtmlInputElement>() {
             element.set_value(&v);
         } else if let Some(element) = element.dyn_ref::<web_sys::HtmlTextAreaElement>() {
@@ -98,11 +101,51 @@ fn set_attribute_diff(
     before: &super::Attributes,
 ) {
     for (a, _) in &before.attributes {
-        if after.attributes.get(a).is_none() {
+        if !after.attributes.contains_key(a) {
             let _ = element.remove_attribute(a);
         }
     }
-    set_attribute_all(element, after);
+
+    let mut diff_attribute = super::Attributes::new();
+
+    for (name, values) in &after.attributes {
+        let value_is_changed = before
+            .attributes
+            .get(name)
+            .map(|before| {
+                if values.len() == before.len() {
+                    for i in 0..values.len() {
+                        if values[i] != before[i] {
+                            return true;
+                        }
+                    }
+                    false
+                } else {
+                    true
+                }
+            })
+            .unwrap_or(true);
+
+        let value_is_changed = if value_is_changed {
+            true
+        } else {
+            let (a, b) = (after, before);
+            let a = a.delimiters.get(name).map(|a| a.as_str()).unwrap_or("");
+            let b = b.delimiters.get(name).map(|b| b.as_str()).unwrap_or("");
+            a != b
+        };
+
+        if value_is_changed {
+            for value in values {
+                diff_attribute.add(name, value.clone());
+            }
+            if let Some(d) = after.delimiters.get(name) {
+                diff_attribute.delimit(name, d);
+            }
+        }
+    }
+
+    set_attribute_all(element, &diff_attribute);
 }
 
 fn render(
@@ -112,7 +155,17 @@ fn render(
 ) -> Option<web_sys::Node> {
     use super::Node;
     match after {
-        Node::Text(text) => Some(native::create_text_node(&text).into()),
+        Node::Text(text) => {
+            if let Some(Node::Text(before)) = before {
+                if before == text {
+                    None
+                } else {
+                    Some(native::create_text_node(&text).into())
+                }
+            } else {
+                Some(native::create_text_node(&text).into())
+            }
+        }
         Node::Element(after) => {
             if after.need_rerendering {
                 if let (Some(Node::Element(before)), Some(root)) = (before, root) {
