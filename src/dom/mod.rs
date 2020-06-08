@@ -35,7 +35,12 @@ pub enum Value {
 }
 
 pub struct Events {
-    pub handlers: HashMap<String, event::HandlerId>,
+    pub handlers: HashMap<String, Event>,
+}
+
+pub enum Event {
+    Handler(Box<dyn FnOnce(web_sys::Event)>),
+    HandlerId(event::HandlerId),
 }
 
 impl Node {
@@ -138,7 +143,28 @@ impl Events {
     }
 
     pub fn add(&mut self, name: impl Into<String>, handler: impl FnOnce(web_sys::Event) + 'static) {
-        let handler_id = event::add(handler);
-        self.handlers.insert(name.into(), handler_id);
+        self.handlers
+            .insert(name.into(), Event::Handler(Box::new(handler)));
+    }
+}
+
+impl Event {
+    pub fn is_handler(&self) -> bool {
+        match self {
+            Self::Handler(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn take_with_id(
+        &mut self,
+        handler_id: event::HandlerId,
+    ) -> Option<Box<dyn FnOnce(web_sys::Event)>> {
+        let mut handler = Event::HandlerId(handler_id);
+        std::mem::swap(self, &mut handler);
+        match handler {
+            Self::Handler(handler) => Some(handler),
+            _ => None,
+        }
     }
 }

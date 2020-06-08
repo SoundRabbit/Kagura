@@ -76,22 +76,38 @@ fn set_attribute_set(element: &web_sys::Element, a: &str, v: &Vec<super::Value>,
     }
 }
 
-fn set_event_all(element: &web_sys::Element, events: &super::Events, before: &super::Events) {
-    for (_, hid) in &before.handlers {
-        event::remove(&hid);
+fn set_event_all(element: &web_sys::Element, after: &mut super::Events, before: &super::Events) {
+    for (event_name, handler_id) in &before.handlers {
+        if let super::Event::HandlerId(handler_id) = handler_id {
+            let handler_id = *handler_id;
+            if let Some(handler) = after
+                .handlers
+                .get_mut(event_name)
+                .and_then(|e| e.take_with_id(handler_id))
+            {
+                event::add(handler_id, handler);
+            } else {
+                event::remove(&handler_id);
+                after
+                    .handlers
+                    .insert(event_name.clone(), super::Event::HandlerId(handler_id));
+            }
+        }
     }
-    for (t, hid) in &events.handlers {
-        let hid = *hid;
-        let h = Closure::once(move |e| {
-            event::dispatch(hid, e);
-        });
-        let event_target: &web_sys::EventTarget = element.as_ref();
-        let _ = event_target.add_event_listener_with_callback_and_add_event_listener_options(
-            &t,
-            h.as_ref().unchecked_ref(),
-            web_sys::AddEventListenerOptions::new().once(true),
-        );
-        h.forget();
+
+    for (event_name, ev) in &mut after.handlers {
+        if ev.is_handler() {
+            let handler_id = event::new_handler_id();
+            let handler = ev.take_with_id(handler_id).unwrap();
+            event::add(handler_id, handler);
+
+            let a = Closure::wrap(Box::new(move |e| {
+                event::dispatch(handler_id, e);
+            }) as Box<dyn FnMut(web_sys::Event)>);
+            let _ =
+                element.add_event_listener_with_callback(event_name, a.as_ref().unchecked_ref());
+            a.forget();
+        }
     }
 }
 
@@ -212,7 +228,7 @@ fn render_element_lazy(
 }
 
 fn render_element_force(after: &mut super::Element) -> web_sys::Node {
-    let el = new_element(&after.tag_name, &after.attributes, &after.events);
+    let el = new_element(&after.tag_name, &after.attributes, &mut after.events);
     for child in &mut after.children {
         if let Some(node) = render(child, None, None) {
             let _ = el.append_child(&node);
@@ -226,11 +242,8 @@ fn render_element_diff(
     before: &mut super::Element,
     root: &web_sys::Element,
 ) {
-    for (_, hid) in &before.events.handlers {
-        event::remove(hid);
-    }
     set_attribute_diff(&root, &after.attributes, &before.attributes);
-    set_event_all(&root, &after.events, &before.events);
+    set_event_all(&root, &mut after.events, &before.events);
     let mut i = (root.child_nodes().length() as i64) - (after.children.len() as i64);
     while i > 0 {
         if let Some(node) = root
@@ -259,7 +272,7 @@ fn render_element_diff(
 fn new_element(
     tag_name: &str,
     attributes: &super::Attributes,
-    events: &super::Events,
+    events: &mut super::Events,
 ) -> web_sys::Element {
     let element = native::create_element(tag_name);
     set_attribute_all(&element, attributes);
