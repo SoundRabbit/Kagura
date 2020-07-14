@@ -234,6 +234,7 @@ impl<Msg, State, Sub> BasicComponent<Option<Node>> for Component<Msg, State, Sub
     fn render(&mut self) -> Option<Node> {
         if self.is_changed {
             self.is_changed = false;
+            self.cash = Html::none();
             let mut html = (self.render)(&self.state);
             let node = self.render_force(&mut html);
             self.cash = html;

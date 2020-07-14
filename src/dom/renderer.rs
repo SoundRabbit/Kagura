@@ -31,6 +31,7 @@ impl Renderer {
     }
 
     pub fn update(&mut self, after: Option<super::Node>) {
+        event::clear();
         let mut after = after
             .expect("kagura-dom must have 1 or more valid node with the exception of Html::None");
         if let Some(root) = render(&mut after, Some(&mut self.before), Some(&self.root)) {
@@ -87,7 +88,6 @@ fn set_event_all(element: &web_sys::Element, after: &mut super::Events, before: 
             {
                 event::add(handler_id, handler);
             } else {
-                event::remove(&handler_id);
                 after
                     .handlers
                     .insert(event_name.clone(), super::Event::HandlerId(handler_id));
