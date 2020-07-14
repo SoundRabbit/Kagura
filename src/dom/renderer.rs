@@ -80,6 +80,7 @@ fn set_event_all(element: &web_sys::Element, after: &mut super::Events, before: 
     for (event_name, handler_id) in &before.handlers {
         if let super::Event::HandlerId(handler_id) = handler_id {
             let handler_id = *handler_id;
+            event::remove(&handler_id);
             if let Some(handler) = after
                 .handlers
                 .get_mut(event_name)
@@ -87,7 +88,6 @@ fn set_event_all(element: &web_sys::Element, after: &mut super::Events, before: 
             {
                 event::add(handler_id, handler);
             } else {
-                event::remove(&handler_id);
                 after
                     .handlers
                     .insert(event_name.clone(), super::Event::HandlerId(handler_id));

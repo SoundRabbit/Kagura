@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::collections::HashMap;
 use std::convert::From;
 use std::ops::Deref;
@@ -5,8 +6,8 @@ use wasm_bindgen::JsCast;
 use web_sys;
 
 /// Events for Html<Msg>
-pub struct Events<Msg> {
-    pub handlers: HashMap<String, Option<Box<dyn FnOnce(web_sys::Event) -> Msg>>>,
+pub struct Events {
+    pub handlers: HashMap<String, Option<Box<dyn FnOnce(web_sys::Event) -> Box<dyn Any>>>>,
 }
 
 /// Props of MouseEvent
@@ -25,7 +26,7 @@ pub struct KeyboardEvent {
     implement: Option<web_sys::KeyboardEvent>,
 }
 
-impl<Msg> Clone for Events<Msg> {
+impl Clone for Events {
     fn clone(&self) -> Self {
         Self {
             handlers: HashMap::new(),
@@ -55,7 +56,7 @@ impl Deref for KeyboardEvent {
     }
 }
 
-impl<Msg> Events<Msg> {
+impl Events {
     /// Creates new empty Events
     pub fn new() -> Self {
         Self {
@@ -64,56 +65,78 @@ impl<Msg> Events<Msg> {
     }
 
     /// Adds event handler
-    pub fn on(
+    pub fn on<Msg: 'static>(
         mut self,
         type_: impl Into<String>,
         handler: impl FnOnce(web_sys::Event) -> Msg + 'static,
     ) -> Self {
-        self.handlers.insert(type_.into(), Some(Box::new(handler)));
+        self.handlers
+            .insert(type_.into(), Some(Box::new(move |e| Box::new(handler(e)))));
         self
     }
 
-    pub fn on_click(self, handler: impl FnOnce(MouseEvent) -> Msg + 'static) -> Self {
+    pub fn on_click<Msg: 'static>(self, handler: impl FnOnce(MouseEvent) -> Msg + 'static) -> Self {
         self.on("click", |e| handler(MouseEvent::from(e)))
     }
 
-    pub fn on_contextmenu(self, handler: impl FnOnce(MouseEvent) -> Msg + 'static) -> Self {
+    pub fn on_contextmenu<Msg: 'static>(
+        self,
+        handler: impl FnOnce(MouseEvent) -> Msg + 'static,
+    ) -> Self {
         self.on("contextmenu", |e| handler(MouseEvent::from(e)))
     }
 
-    pub fn on_dblclick(self, handler: impl FnOnce(MouseEvent) -> Msg + 'static) -> Self {
+    pub fn on_dblclick<Msg: 'static>(
+        self,
+        handler: impl FnOnce(MouseEvent) -> Msg + 'static,
+    ) -> Self {
         self.on("dblclick", |e| handler(MouseEvent::from(e)))
     }
 
-    pub fn on_drag(self, handler: impl FnOnce(DragEvent) -> Msg + 'static) -> Self {
+    pub fn on_drag<Msg: 'static>(self, handler: impl FnOnce(DragEvent) -> Msg + 'static) -> Self {
         self.on("drag", |e| handler(DragEvent::from(e)))
     }
 
-    pub fn on_dragend(self, handler: impl FnOnce(DragEvent) -> Msg + 'static) -> Self {
+    pub fn on_dragend<Msg: 'static>(
+        self,
+        handler: impl FnOnce(DragEvent) -> Msg + 'static,
+    ) -> Self {
         self.on("dragend", |e| handler(DragEvent::from(e)))
     }
 
-    pub fn on_dragenter(self, handler: impl FnOnce(DragEvent) -> Msg + 'static) -> Self {
+    pub fn on_dragenter<Msg: 'static>(
+        self,
+        handler: impl FnOnce(DragEvent) -> Msg + 'static,
+    ) -> Self {
         self.on("dragenter", |e| handler(DragEvent::from(e)))
     }
 
-    pub fn on_dragstart(self, handler: impl FnOnce(DragEvent) -> Msg + 'static) -> Self {
+    pub fn on_dragstart<Msg: 'static>(
+        self,
+        handler: impl FnOnce(DragEvent) -> Msg + 'static,
+    ) -> Self {
         self.on("dragstart", |e| handler(DragEvent::from(e)))
     }
 
-    pub fn on_dragleave(self, handler: impl FnOnce(DragEvent) -> Msg + 'static) -> Self {
+    pub fn on_dragleave<Msg: 'static>(
+        self,
+        handler: impl FnOnce(DragEvent) -> Msg + 'static,
+    ) -> Self {
         self.on("dragleave", |e| handler(DragEvent::from(e)))
     }
 
-    pub fn on_dragover(self, handler: impl FnOnce(DragEvent) -> Msg + 'static) -> Self {
+    pub fn on_dragover<Msg: 'static>(
+        self,
+        handler: impl FnOnce(DragEvent) -> Msg + 'static,
+    ) -> Self {
         self.on("dragover", |e| handler(DragEvent::from(e)))
     }
 
-    pub fn on_drop(self, handler: impl FnOnce(DragEvent) -> Msg + 'static) -> Self {
+    pub fn on_drop<Msg: 'static>(self, handler: impl FnOnce(DragEvent) -> Msg + 'static) -> Self {
         self.on("drop", |e| handler(DragEvent::from(e)))
     }
 
-    pub fn on_input(self, handler: impl FnOnce(String) -> Msg + 'static) -> Self {
+    pub fn on_input<Msg: 'static>(self, handler: impl FnOnce(String) -> Msg + 'static) -> Self {
         self.on("input", |e| {
             if let Some(target) = e.target() {
                 match target.dyn_into::<web_sys::HtmlInputElement>() {
@@ -129,47 +152,77 @@ impl<Msg> Events<Msg> {
         })
     }
 
-    pub fn on_keydown(self, handler: impl FnOnce(KeyboardEvent) -> Msg + 'static) -> Self {
+    pub fn on_keydown<Msg: 'static>(
+        self,
+        handler: impl FnOnce(KeyboardEvent) -> Msg + 'static,
+    ) -> Self {
         self.on("keydown", |e| handler(KeyboardEvent::from(e)))
     }
 
-    pub fn on_keypress(self, handler: impl FnOnce(KeyboardEvent) -> Msg + 'static) -> Self {
+    pub fn on_keypress<Msg: 'static>(
+        self,
+        handler: impl FnOnce(KeyboardEvent) -> Msg + 'static,
+    ) -> Self {
         self.on("keypress", |e| handler(KeyboardEvent::from(e)))
     }
 
-    pub fn on_keyup(self, handler: impl FnOnce(KeyboardEvent) -> Msg + 'static) -> Self {
+    pub fn on_keyup<Msg: 'static>(
+        self,
+        handler: impl FnOnce(KeyboardEvent) -> Msg + 'static,
+    ) -> Self {
         self.on("keyup", |e| handler(KeyboardEvent::from(e)))
     }
 
-    pub fn on_load(self, handler: impl FnOnce() -> Msg + 'static) -> Self {
+    pub fn on_load<Msg: 'static>(self, handler: impl FnOnce() -> Msg + 'static) -> Self {
         self.on("load", |_| handler())
     }
 
-    pub fn on_mousedown(self, handler: impl FnOnce(MouseEvent) -> Msg + 'static) -> Self {
+    pub fn on_mousedown<Msg: 'static>(
+        self,
+        handler: impl FnOnce(MouseEvent) -> Msg + 'static,
+    ) -> Self {
         self.on("mousedown", |e| handler(MouseEvent::from(e)))
     }
 
-    pub fn on_mouseenter(self, handler: impl FnOnce(MouseEvent) -> Msg + 'static) -> Self {
+    pub fn on_mouseenter<Msg: 'static>(
+        self,
+        handler: impl FnOnce(MouseEvent) -> Msg + 'static,
+    ) -> Self {
         self.on("mouseenter", |e| handler(MouseEvent::from(e)))
     }
 
-    pub fn on_mouseleave(self, handler: impl FnOnce(MouseEvent) -> Msg + 'static) -> Self {
+    pub fn on_mouseleave<Msg: 'static>(
+        self,
+        handler: impl FnOnce(MouseEvent) -> Msg + 'static,
+    ) -> Self {
         self.on("mouseleave", |e| handler(MouseEvent::from(e)))
     }
 
-    pub fn on_mousemove(self, handler: impl FnOnce(MouseEvent) -> Msg + 'static) -> Self {
+    pub fn on_mousemove<Msg: 'static>(
+        self,
+        handler: impl FnOnce(MouseEvent) -> Msg + 'static,
+    ) -> Self {
         self.on("mousemove", |e| handler(MouseEvent::from(e)))
     }
 
-    pub fn on_mouseover(self, handler: impl FnOnce(MouseEvent) -> Msg + 'static) -> Self {
+    pub fn on_mouseover<Msg: 'static>(
+        self,
+        handler: impl FnOnce(MouseEvent) -> Msg + 'static,
+    ) -> Self {
         self.on("mouseover", |e| handler(MouseEvent::from(e)))
     }
 
-    pub fn on_mouseout(self, handler: impl FnOnce(MouseEvent) -> Msg + 'static) -> Self {
+    pub fn on_mouseout<Msg: 'static>(
+        self,
+        handler: impl FnOnce(MouseEvent) -> Msg + 'static,
+    ) -> Self {
         self.on("mouseout", |e| handler(MouseEvent::from(e)))
     }
 
-    pub fn on_mouseup(self, handler: impl FnOnce(MouseEvent) -> Msg + 'static) -> Self {
+    pub fn on_mouseup<Msg: 'static>(
+        self,
+        handler: impl FnOnce(MouseEvent) -> Msg + 'static,
+    ) -> Self {
         self.on("mouseup", |e| handler(MouseEvent::from(e)))
     }
 }
