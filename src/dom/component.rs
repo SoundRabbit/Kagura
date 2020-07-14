@@ -36,11 +36,11 @@ where
 {
     state: State,
     update: Box<dyn Fn(&mut State, Msg) -> Cmd<Msg, Sub>>,
-    render: Box<dyn Fn(&State) -> Html<Msg>>,
+    render: Box<dyn Fn(&State) -> Html>,
     subscribe: Option<Box<dyn FnMut(Sub) -> Box<dyn Any>>>,
     batch_handlers: Option<Vec<Box<dyn FnOnce(Messenger<Msg>)>>>,
     initial_cmd: Option<Cmd<Msg, Sub>>,
-    cash: Html<Msg>,
+    cash: Html,
     me: Weak<RefCell<Box<dyn DomComponent>>>,
     parent: Weak<RefCell<Box<dyn DomComponent>>>,
     is_changed: bool,
@@ -69,7 +69,7 @@ where
     pub fn new(
         init: impl FnOnce() -> (State, Cmd<Msg, Sub>),
         update: impl Fn(&mut State, Msg) -> Cmd<Msg, Sub> + 'static,
-        render: impl Fn(&State) -> Html<Msg> + 'static,
+        render: impl Fn(&State) -> Html + 'static,
     ) -> Self {
         let (state, cmd) = init();
         let component = Component {
@@ -127,7 +127,7 @@ where
         };
     }
 
-    fn render_lazy(&self, html: &Html<Msg>) -> Option<Node> {
+    fn render_lazy(&self, html: &Html) -> Option<Node> {
         match html {
             Html::ComponentNode(composable) => composable.borrow_mut().render(),
             Html::TextNode(text) => Some(Node::Text(text.clone())),
@@ -155,7 +155,7 @@ where
     }
 
     /// render on updated
-    fn render_force(&self, html: &mut Html<Msg>) -> Option<Node> {
+    fn render_force(&self, html: &mut Html) -> Option<Node> {
         match html {
             Html::ComponentNode(composable) => {
                 composable.borrow_mut().set_parent(Weak::clone(&self.me));
@@ -179,7 +179,7 @@ where
                         let me = Weak::clone(&self.me);
                         dom_events.add(name, move |e| {
                             if let Some(me) = me.upgrade() {
-                                me.borrow_mut().update(Box::new(handler(e)));
+                                me.borrow_mut().update(handler(e));
                                 state::render();
                             }
                         });
@@ -222,10 +222,17 @@ impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
     }
 
     fn update(&mut self, msg: Box<dyn Any>) {
-        if let Ok(msg) = msg.downcast::<Msg>() {
-            let cmd = (self.update)(&mut self.state, *msg);
-            self.is_changed = true;
-            self.deal_cmd(cmd);
+        match msg.downcast::<Msg>() {
+            Ok(msg) => {
+                let cmd = (self.update)(&mut self.state, *msg);
+                self.is_changed = true;
+                self.deal_cmd(cmd);
+            }
+            Err(msg) => {
+                if let Some(parent) = self.parent.upgrade() {
+                    parent.borrow_mut().update(msg);
+                }
+            }
         }
     }
 }
@@ -234,7 +241,6 @@ impl<Msg, State, Sub> BasicComponent<Option<Node>> for Component<Msg, State, Sub
     fn render(&mut self) -> Option<Node> {
         if self.is_changed {
             self.is_changed = false;
-            self.cash = Html::none();
             let mut html = (self.render)(&self.state);
             let node = self.render_force(&mut html);
             self.cash = html;

@@ -29,8 +29,8 @@ pub fn add(handler_id: HandlerId, handler: impl FnOnce(web_sys::Event) + 'static
     handler_id
 }
 
-pub fn clear() {
+pub fn remove(handler_id: &HandlerId) {
     HANDLERS.with(|handlers| {
-        handlers.borrow_mut().clear();
+        handlers.borrow_mut().remove(handler_id);
     });
 }
