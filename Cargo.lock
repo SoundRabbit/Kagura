@@ -50,7 +50,7 @@ dependencies = [
 
 [[package]]
 name = "kagura"
-version = "0.8.11"
+version = "0.9.0"
 dependencies = [
  "js-sys 0.3.37 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
