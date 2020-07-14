@@ -49,7 +49,7 @@ fn init() -> (State, Cmd<Msg, Sub>) {
 
 fn update(_: &mut State, _: Msg) -> Cmd<Msg, Sub> {Cmd::none()}
 
-fn render(_: &State) -> Html<Msg> {
+fn render(_: &State) -> Html {
     Html::h1(
         Attributes::new(),
         Events::new(),
