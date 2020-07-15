@@ -8,6 +8,7 @@ use web_sys;
 /// Events for Html<Msg>
 pub struct Events {
     pub handlers: HashMap<String, Vec<Box<dyn FnOnce(web_sys::Event) -> Box<dyn Any>>>>,
+    pub rendered: Option<Box<dyn FnOnce(web_sys::Element) -> Box<dyn Any>>>,
 }
 
 /// Props of MouseEvent
@@ -30,6 +31,7 @@ impl Clone for Events {
     fn clone(&self) -> Self {
         Self {
             handlers: HashMap::new(),
+            rendered: None,
         }
     }
 }
@@ -61,7 +63,21 @@ impl Events {
     pub fn new() -> Self {
         Self {
             handlers: HashMap::new(),
+            rendered: None,
         }
+    }
+
+    /// on rendered event
+    pub fn rendered<Msg: 'static>(
+        mut self,
+        handler: Option<impl FnOnce(web_sys::Element) -> Msg + 'static>,
+    ) -> Self {
+        if let Some(handler) = handler {
+            self.rendered = Some(Box::new(move |e| Box::new(handler(e))));
+        } else {
+            self.rendered = None;
+        }
+        self
     }
 
     /// Adds event handler

@@ -185,6 +185,15 @@ where
                         });
                     }
                 }
+                if let Some(rendered) = events.rendered.take() {
+                    let me = Weak::clone(&self.me);
+                    dom_events.rendered = Some(Box::new(move |e| {
+                        if let Some(me) = me.upgrade() {
+                            me.borrow_mut().update(rendered(e));
+                            state::render();
+                        }
+                    }))
+                }
                 Some(Node::element(
                     tag_name.as_str(),
                     attributes.clone().into(),

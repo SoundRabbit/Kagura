@@ -1,5 +1,6 @@
 use crate::event;
 use crate::native;
+use crate::task;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -121,6 +122,11 @@ fn set_event_all(element: &web_sys::Element, after: &mut super::Events, before: 
                 a.forget();
             }
         }
+    }
+
+    if let Some(rendered) = after.rendered.take() {
+        let element = element.clone();
+        task::add(move || rendered(element));
     }
 }
 

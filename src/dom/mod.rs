@@ -36,6 +36,7 @@ pub enum Value {
 
 pub struct Events {
     pub handlers: HashMap<String, Vec<Event>>,
+    pub rendered: Option<Box<dyn FnOnce(web_sys::Element)>>,
 }
 
 pub enum Event {
@@ -139,6 +140,7 @@ impl Events {
     pub fn new() -> Self {
         Self {
             handlers: HashMap::new(),
+            rendered: None,
         }
     }
 
