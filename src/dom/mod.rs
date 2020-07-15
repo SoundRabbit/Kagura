@@ -35,11 +35,11 @@ pub enum Value {
 }
 
 pub struct Events {
-    pub handlers: HashMap<String, Event>,
+    pub handlers: HashMap<String, Vec<Event>>,
 }
 
 pub enum Event {
-    Handler(Vec<Box<dyn FnOnce(web_sys::Event)>>),
+    Handler(Box<dyn FnOnce(web_sys::Event)>),
     HandlerId(event::HandlerId),
 }
 
@@ -144,11 +144,11 @@ impl Events {
 
     pub fn add(&mut self, name: impl Into<String>, handler: impl FnOnce(web_sys::Event) + 'static) {
         let name = name.into();
-        if let Some(Event::Handler(handlers)) = self.handlers.get_mut(&name) {
-            handlers.push(Box::new(handler));
+        if let Some(handlers) = self.handlers.get_mut(&name) {
+            handlers.push(Event::Handler(Box::new(handler)));
         } else {
             self.handlers
-                .insert(name, Event::Handler(vec![Box::new(handler)]));
+                .insert(name, vec![Event::Handler(Box::new(handler))]);
         }
     }
 }
@@ -164,7 +164,7 @@ impl Event {
     pub fn take_with_id(
         &mut self,
         handler_id: event::HandlerId,
-    ) -> Option<Vec<Box<dyn FnOnce(web_sys::Event)>>> {
+    ) -> Option<Box<dyn FnOnce(web_sys::Event)>> {
         let mut handler = Event::HandlerId(handler_id);
         std::mem::swap(self, &mut handler);
         match handler {
