@@ -39,7 +39,7 @@ pub struct Events {
 }
 
 pub enum Event {
-    Handler(Box<dyn FnOnce(web_sys::Event)>),
+    Handler(Vec<Box<dyn FnOnce(web_sys::Event)>>),
     HandlerId(event::HandlerId),
 }
 
@@ -143,8 +143,13 @@ impl Events {
     }
 
     pub fn add(&mut self, name: impl Into<String>, handler: impl FnOnce(web_sys::Event) + 'static) {
-        self.handlers
-            .insert(name.into(), Event::Handler(Box::new(handler)));
+        let name = name.into();
+        if let Some(Event::Handler(handlers)) = self.handlers.get_mut(&name) {
+            handlers.push(Box::new(handler));
+        } else {
+            self.handlers
+                .insert(name, Event::Handler(vec![Box::new(handler)]));
+        }
     }
 }
 
@@ -159,7 +164,7 @@ impl Event {
     pub fn take_with_id(
         &mut self,
         handler_id: event::HandlerId,
-    ) -> Option<Box<dyn FnOnce(web_sys::Event)>> {
+    ) -> Option<Vec<Box<dyn FnOnce(web_sys::Event)>>> {
         let mut handler = Event::HandlerId(handler_id);
         std::mem::swap(self, &mut handler);
         match handler {

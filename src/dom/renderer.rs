@@ -77,16 +77,18 @@ fn set_attribute_set(element: &web_sys::Element, a: &str, v: &Vec<super::Value>,
 }
 
 fn set_event_all(element: &web_sys::Element, after: &mut super::Events, before: &super::Events) {
-    for (event_name, handler_id) in &before.handlers {
-        if let super::Event::HandlerId(handler_id) = handler_id {
+    for (event_name, handler) in &before.handlers {
+        if let super::Event::HandlerId(handler_id) = handler {
             let handler_id = *handler_id;
             event::remove(&handler_id);
-            if let Some(handler) = after
+            if let Some(handlers) = after
                 .handlers
                 .get_mut(event_name)
                 .and_then(|e| e.take_with_id(handler_id))
             {
-                event::add(handler_id, handler);
+                for handler in handlers {
+                    event::add(handler_id, handler);
+                }
             } else {
                 after
                     .handlers
@@ -98,8 +100,11 @@ fn set_event_all(element: &web_sys::Element, after: &mut super::Events, before: 
     for (event_name, ev) in &mut after.handlers {
         if ev.is_handler() {
             let handler_id = event::new_handler_id();
-            let handler = ev.take_with_id(handler_id).unwrap();
-            event::add(handler_id, handler);
+            let handlers = ev.take_with_id(handler_id).unwrap();
+
+            for handler in handlers {
+                event::add(handler_id, handler);
+            }
 
             let a = Closure::wrap(Box::new(move |e| {
                 event::dispatch(handler_id, e);

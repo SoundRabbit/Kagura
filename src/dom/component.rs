@@ -174,8 +174,8 @@ where
                     .filter_map(|child| self.render_force(child))
                     .collect::<Vec<Node>>();
                 let mut dom_events = Events::new();
-                for (name, handler) in &mut events.handlers {
-                    if let Some(handler) = handler.take() {
+                for (name, handlers) in &mut events.handlers {
+                    for handler in handlers.drain(..) {
                         let me = Weak::clone(&self.me);
                         dom_events.add(name, move |e| {
                             if let Some(me) = me.upgrade() {
