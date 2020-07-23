@@ -34,8 +34,12 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(start)]
 pub fn main() {
-    kagura::run(Component::new(init, update, render), "app");
+    kagura::run(Component::new(init, update, render).with(Props), "app");
 }
+
+type HelloKagura = Component<Msg, Props, State, Sub>;
+
+struct Props;
 
 struct State;
 
@@ -43,7 +47,7 @@ struct Msg;
 
 struct Sub;
 
-fn init() -> (State, Cmd<Msg, Sub>) {
+fn init(_this: &mut HelloKagura, _state: Option<State>, _props: Props) -> (State, Cmd<Msg, Sub>) {
     (State, Cmd::none())
 }
 
@@ -152,17 +156,17 @@ kagura::Html::component(component)
 #### Example
 
 ```rust
-fn render() -> Html<Msg> {
+fn render() -> Html {
     Html::component(
-        child_component::new().subscribe(|sub| match sub {
+        child_component::new().with(props).subscribe(|sub| match sub {
             child_component::Sub::Foo => Msg::Bar
         })
     )
 }
 
 mod child_component {
-    fn new() -> Component<Msg, State, Sub> {
-        Component::new(initial_state, update, render)
+    fn new() -> Component<Msg, Props, State, Sub> {
+        Component::new(init, update, render)
     }
 
     .
@@ -212,6 +216,10 @@ fn update(state: &mut State, msg: Msg) -> kagura::Cmd<Msg, Sub> {
 You can set a batch process to component like this:
 
 ```rust
-Component::new(init, update, render)
-    .batch(batch::time::tick(1000, || Msg::SomeMsg))
+fn init(this: &mut MyComponent, _state: Option<State>, props: Props) -> (State, Cmd<Msg, Sub>) {
+    this.batch(batch::time::tick(1000, || Msg::SomeMsg));
+    .
+    .
+    .
+}
 ```
