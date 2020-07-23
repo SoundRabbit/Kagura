@@ -32,7 +32,13 @@ pub enum Cmd<Msg, Sub> {
 pub struct ImplComponent<Msg: 'static, Props: 'static, State: 'static, Sub: 'static> {
     state: Option<State>,
     children: Vec<Html>,
-    init: Box<dyn Fn(Option<State>, Props) -> (State, Cmd<Msg, Sub>)>,
+    init: Box<
+        dyn Fn(
+            &mut Component<Msg, Props, State, Sub>,
+            Option<State>,
+            Props,
+        ) -> (State, Cmd<Msg, Sub>),
+    >,
     update: Box<dyn Fn(&mut State, Msg) -> Cmd<Msg, Sub>>,
     render: Box<dyn Fn(&State) -> Html>,
     subscribe: Option<Box<dyn FnMut(Sub) -> Box<dyn Any>>>,
@@ -65,7 +71,7 @@ impl<Msg, Sub> Cmd<Msg, Sub> {
 
 impl<Msg, Props, State, Sub> Component<Msg, Props, State, Sub> {
     pub fn new(
-        init: impl Fn(Option<State>, Props) -> (State, Cmd<Msg, Sub>) + 'static,
+        init: impl Fn(&mut Self, Option<State>, Props) -> (State, Cmd<Msg, Sub>) + 'static,
         update: impl Fn(&mut State, Msg) -> Cmd<Msg, Sub> + 'static,
         render: impl Fn(&State) -> Html + 'static,
     ) -> Self {
@@ -93,20 +99,20 @@ impl<Msg, Props, State, Sub> Component<Msg, Props, State, Sub> {
     }
 
     /// append batch handler
-    pub fn batch(mut self, handler: impl FnOnce(Messenger<Msg>) + 'static) -> Self {
+    pub fn batch(&mut self, handler: impl FnOnce(Messenger<Msg>) + 'static) {
         if let Some(handlers) = &mut self.batch_handlers {
             handlers.push(Box::new(handler));
         }
-        self
     }
 
     pub fn with(&self, props: Props) -> Self {
+        let mut cmp = Self(Rc::clone(&self.0));
         let state = self.0.borrow_mut().state.take();
-        let (state, cmd) = (self.init)(state, props);
+        let (state, cmd) = (self.init)(&mut cmp, state, props);
         self.0.borrow_mut().state = Some(state);
         self.0.borrow_mut().cmd = Some(cmd);
         self.0.borrow_mut().is_changed = true;
-        Self(Rc::clone(&self.0))
+        cmp
     }
 
     fn deal_cmd(&mut self, cmd: Cmd<Msg, Sub>) {
@@ -242,12 +248,15 @@ impl<Msg, Props, State, Sub> DomComponent for Component<Msg, Props, State, Sub> 
     fn update(&mut self, msg: Box<dyn Any>) {
         match msg.downcast::<Msg>() {
             Ok(msg) => {
-                let cmd = if let Some(state) = &mut self.0.borrow_mut().state {
-                    let cmd = (self.0.borrow_mut().update)(state, *msg);
-                    self.0.borrow_mut().is_changed = true;
-                    Some(cmd)
-                } else {
-                    None
+                let cmd = {
+                    let this = &mut *self.0.borrow_mut();
+                    if let Some(state) = &mut this.state {
+                        let cmd = (this.update)(state, *msg);
+                        this.is_changed = true;
+                        Some(cmd)
+                    } else {
+                        None
+                    }
                 };
                 if let Some(cmd) = cmd {
                     self.deal_cmd(cmd);

@@ -46,7 +46,7 @@ impl Clone for Html {
 impl Html {
     /// Creates Html from component
     pub fn component<Msg: 'static, Props: 'static, State: 'static, Sub: 'static>(
-        mut component: Component<Msg, Props, State, Sub>,
+        component: Component<Msg, Props, State, Sub>,
         children: Vec<Html>,
     ) -> Self {
         let component = Rc::new(RefCell::new(Box::new(component) as Box<dyn DomComponent>));
