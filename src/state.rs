@@ -12,12 +12,7 @@ struct App {
     dom_renderer: dom::Renderer,
 }
 
-pub fn init<M, S, B>(root_component: Component<M, S, B>, id: &str)
-where
-    M: 'static,
-    S: 'static,
-    B: 'static,
-{
+pub fn init<Msg, Props, State, Sub>(root_component: Component<Msg, Props, State, Sub>, id: &str) {
     let root_component = Rc::new(RefCell::new(
         Box::new(root_component) as Box<dyn DomComponent>
     ));

@@ -45,13 +45,14 @@ impl Clone for Html {
 
 impl Html {
     /// Creates Html from component
-    pub fn component<M, S, B>(component: Component<M, S, B>) -> Self
-    where
-        M: 'static,
-        S: 'static,
-        B: 'static,
-    {
-        Html::ComponentNode(component.into())
+    pub fn component<Msg: 'static, Props: 'static, State: 'static, Sub: 'static>(
+        mut component: Component<Msg, Props, State, Sub>,
+        children: Vec<Html>,
+    ) -> Self {
+        let component = Rc::new(RefCell::new(Box::new(component) as Box<dyn DomComponent>));
+        component.borrow_mut().set_me(Rc::downgrade(&component));
+        component.borrow_mut().set_children(children);
+        Html::ComponentNode(component)
     }
 
     /// Creates Html from a non-validated text

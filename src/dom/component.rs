@@ -7,6 +7,7 @@ use crate::task;
 use std::any::Any;
 use std::cell::RefCell;
 use std::clone::Clone;
+use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::rc::Weak;
 
@@ -14,6 +15,7 @@ use std::rc::Weak;
 pub trait DomComponent: BasicComponent<Option<Node>> {
     fn set_me(&mut self, me: Weak<RefCell<Box<dyn DomComponent>>>);
     fn set_parent(&mut self, parent: Weak<RefCell<Box<dyn DomComponent>>>);
+    fn set_children(&mut self, children: Vec<Html>);
     fn update(&mut self, msg: Box<dyn Any>);
 }
 
@@ -27,24 +29,25 @@ pub enum Cmd<Msg, Sub> {
     Task(Box<dyn FnOnce(Resolver<Msg>)>),
 }
 
-/// Component constructed by State-update-render
-pub struct Component<Msg, State, Sub>
-where
-    Msg: 'static,
-    State: 'static,
-    Sub: 'static,
-{
-    state: State,
+pub struct ImplComponent<Msg: 'static, Props: 'static, State: 'static, Sub: 'static> {
+    state: Option<State>,
+    children: Vec<Html>,
+    init: Box<dyn Fn(Option<State>, Props) -> (State, Cmd<Msg, Sub>)>,
     update: Box<dyn Fn(&mut State, Msg) -> Cmd<Msg, Sub>>,
     render: Box<dyn Fn(&State) -> Html>,
     subscribe: Option<Box<dyn FnMut(Sub) -> Box<dyn Any>>>,
     batch_handlers: Option<Vec<Box<dyn FnOnce(Messenger<Msg>)>>>,
-    initial_cmd: Option<Cmd<Msg, Sub>>,
-    cash: Html,
+    cache: Html,
     me: Weak<RefCell<Box<dyn DomComponent>>>,
     parent: Weak<RefCell<Box<dyn DomComponent>>>,
     is_changed: bool,
+    cmd: Option<Cmd<Msg, Sub>>,
 }
+
+/// Component constructed by State-update-render
+pub struct Component<Msg: 'static, Props: 'static, State: 'static, Sub: 'static>(
+    Rc<RefCell<ImplComponent<Msg, Props, State, Sub>>>,
+);
 
 impl<Msg, Sub> Cmd<Msg, Sub> {
     pub fn none() -> Self {
@@ -60,38 +63,31 @@ impl<Msg, Sub> Cmd<Msg, Sub> {
     }
 }
 
-impl<Msg, State, Sub> Component<Msg, State, Sub>
-where
-    Msg: 'static,
-    State: 'static,
-    Sub: 'static,
-{
+impl<Msg, Props, State, Sub> Component<Msg, Props, State, Sub> {
     pub fn new(
-        init: impl FnOnce() -> (State, Cmd<Msg, Sub>),
+        init: impl Fn(Option<State>, Props) -> (State, Cmd<Msg, Sub>) + 'static,
         update: impl Fn(&mut State, Msg) -> Cmd<Msg, Sub> + 'static,
         render: impl Fn(&State) -> Html + 'static,
     ) -> Self {
-        let (state, cmd) = init();
-        let component = Component {
-            state: state,
+        let component = Self(Rc::new(RefCell::new(ImplComponent {
+            state: None,
+            children: vec![],
+            init: Box::new(init),
             update: Box::new(update),
             render: Box::new(render),
             subscribe: None,
             batch_handlers: Some(vec![]),
-            initial_cmd: Some(cmd),
-            cash: Html::none(),
+            cache: Html::none(),
             me: Weak::new(),
             parent: Weak::new(),
             is_changed: true,
-        };
+            cmd: None,
+        })));
         component
     }
 
     /// set subscription which bind from child sub to parent msg
-    pub fn subscribe<Msg_>(mut self, mut sub: impl FnMut(Sub) -> Msg_ + 'static) -> Self
-    where
-        Msg_: 'static,
-    {
+    pub fn subscribe<Msg_: 'static>(mut self, mut sub: impl FnMut(Sub) -> Msg_ + 'static) -> Self {
         self.subscribe = Some(Box::new(move |s| Box::new(sub(s))));
         self
     }
@@ -104,14 +100,23 @@ where
         self
     }
 
+    pub fn with(&self, props: Props) -> Self {
+        let state = self.0.borrow_mut().state.take();
+        let (state, cmd) = (self.init)(state, props);
+        self.0.borrow_mut().state = Some(state);
+        self.0.borrow_mut().cmd = Some(cmd);
+        self.0.borrow_mut().is_changed = true;
+        Self(Rc::clone(&self.0))
+    }
+
     fn deal_cmd(&mut self, cmd: Cmd<Msg, Sub>) {
         match cmd {
             Cmd::None => {}
             Cmd::Sub(sub) => {
-                if let (Some(subscribe), Some(parent)) =
-                    (&mut self.subscribe, &self.parent.upgrade())
-                {
-                    parent.borrow_mut().update(subscribe(sub));
+                if let Some(parent) = self.parent.upgrade() {
+                    if let Some(subscribe) = &mut self.subscribe {
+                        parent.borrow_mut().update(subscribe(sub));
+                    }
                 }
             }
             Cmd::Task(task) => {
@@ -206,7 +211,7 @@ where
     }
 }
 
-impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
+impl<Msg, Props, State, Sub> DomComponent for Component<Msg, Props, State, Sub> {
     fn set_me(&mut self, me: Weak<RefCell<Box<dyn DomComponent>>>) {
         if let Some(handlers) = self.batch_handlers.take() {
             for handler in handlers {
@@ -221,7 +226,7 @@ impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
             }
         }
         self.me = me;
-        if let Some(cmd) = self.initial_cmd.take() {
+        if let Some(cmd) = self.cmd.take() {
             self.deal_cmd(cmd);
         }
     }
@@ -230,12 +235,23 @@ impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
         self.parent = parent;
     }
 
+    fn set_children(&mut self, children: Vec<Html>) {
+        self.children = children;
+    }
+
     fn update(&mut self, msg: Box<dyn Any>) {
         match msg.downcast::<Msg>() {
             Ok(msg) => {
-                let cmd = (self.update)(&mut self.state, *msg);
-                self.is_changed = true;
-                self.deal_cmd(cmd);
+                let cmd = if let Some(state) = &mut self.0.borrow_mut().state {
+                    let cmd = (self.0.borrow_mut().update)(state, *msg);
+                    self.0.borrow_mut().is_changed = true;
+                    Some(cmd)
+                } else {
+                    None
+                };
+                if let Some(cmd) = cmd {
+                    self.deal_cmd(cmd);
+                }
             }
             Err(msg) => {
                 if let Some(parent) = self.parent.upgrade() {
@@ -246,24 +262,33 @@ impl<Msg, State, Sub> DomComponent for Component<Msg, State, Sub> {
     }
 }
 
-impl<Msg, State, Sub> BasicComponent<Option<Node>> for Component<Msg, State, Sub> {
+impl<Msg, Props, State, Sub> BasicComponent<Option<Node>> for Component<Msg, Props, State, Sub> {
     fn render(&mut self) -> Option<Node> {
         if self.is_changed {
             self.is_changed = false;
-            let mut html = (self.render)(&self.state);
-            let node = self.render_force(&mut html);
-            self.cash = html;
-            node
+            if let Some(state) = &self.state {
+                let mut html = (self.render)(state);
+                let node = self.render_force(&mut html);
+                self.cache = html;
+                node
+            } else {
+                None
+            }
         } else {
-            self.render_lazy(&self.cash)
+            self.render_lazy(&self.cache)
         }
     }
 }
 
-impl<Msg, State, Sub> Into<Rc<RefCell<Box<dyn DomComponent>>>> for Component<Msg, State, Sub> {
-    fn into(self) -> Rc<RefCell<Box<dyn DomComponent>>> {
-        let component: Rc<RefCell<Box<dyn DomComponent>>> = Rc::new(RefCell::new(Box::new(self)));
-        component.borrow_mut().set_me(Rc::downgrade(&component));
-        component
+impl<Msg, Props, State, Sub> Deref for Component<Msg, Props, State, Sub> {
+    type Target = ImplComponent<Msg, Props, State, Sub>;
+    fn deref(&self) -> &Self::Target {
+        unsafe { self.0.as_ptr().as_ref().unwrap() }
+    }
+}
+
+impl<Msg, Props, State, Sub> DerefMut for Component<Msg, Props, State, Sub> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { self.0.as_ptr().as_mut().unwrap() }
     }
 }

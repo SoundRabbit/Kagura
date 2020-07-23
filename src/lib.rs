@@ -51,7 +51,7 @@ mod task;
 use dom::component::Component;
 
 /// Starts application with component
-pub fn run<Msg, State, Sub>(component: Component<Msg, State, Sub>, id: &str)
+pub fn run<Msg, Props, State, Sub>(component: Component<Msg, Props, State, Sub>, id: &str)
 where
     Msg: 'static,
     State: 'static,
