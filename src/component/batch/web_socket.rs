@@ -1,4 +1,4 @@
-use crate::dom::component::Messenger;
+use crate::dom::component::BatchResolver;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -22,11 +22,11 @@ fn web_socket(url: &'static str) -> Rc<web_sys::WebSocket> {
 pub fn on_close<Msg>(
     url: &'static str,
     mut msg_gen: impl FnMut() -> Msg + 'static,
-) -> Box<dyn FnOnce(Messenger<Msg>)>
+) -> Box<dyn FnOnce(BatchResolver<Msg>)>
 where
     Msg: 'static,
 {
-    Box::new(move |mut messenger: Messenger<Msg>| {
+    Box::new(move |mut messenger: BatchResolver<Msg>| {
         let socket = web_socket(url);
         let a = Closure::wrap(Box::new(move || {
             messenger(msg_gen());
@@ -39,11 +39,11 @@ where
 pub fn on_error<Msg>(
     url: &'static str,
     mut msg_gen: impl FnMut() -> Msg + 'static,
-) -> Box<dyn FnOnce(Messenger<Msg>)>
+) -> Box<dyn FnOnce(BatchResolver<Msg>)>
 where
     Msg: 'static,
 {
-    Box::new(move |mut messenger: Messenger<Msg>| {
+    Box::new(move |mut messenger: BatchResolver<Msg>| {
         let socket = web_socket(url);
         let a = Closure::wrap(Box::new(move || {
             messenger(msg_gen());
@@ -56,11 +56,11 @@ where
 pub fn on_message<Msg>(
     url: &'static str,
     mut msg_gen: impl FnMut() -> Msg + 'static,
-) -> Box<dyn FnOnce(Messenger<Msg>)>
+) -> Box<dyn FnOnce(BatchResolver<Msg>)>
 where
     Msg: 'static,
 {
-    Box::new(move |mut messenger: Messenger<Msg>| {
+    Box::new(move |mut messenger: BatchResolver<Msg>| {
         let socket = web_socket(url);
         let a = Closure::wrap(Box::new(move || {
             messenger(msg_gen());
@@ -73,11 +73,11 @@ where
 pub fn on_open<Msg>(
     url: &'static str,
     mut msg_gen: impl FnMut() -> Msg + 'static,
-) -> Box<dyn FnOnce(Messenger<Msg>)>
+) -> Box<dyn FnOnce(BatchResolver<Msg>)>
 where
     Msg: 'static,
 {
-    Box::new(move |mut messenger: Messenger<Msg>| {
+    Box::new(move |mut messenger: BatchResolver<Msg>| {
         let socket = web_socket(url);
         let a = Closure::wrap(Box::new(move || {
             messenger(msg_gen());

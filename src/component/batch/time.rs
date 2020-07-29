@@ -1,15 +1,15 @@
-use crate::dom::component::Messenger;
+use crate::dom::component::BatchResolver;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
 pub fn tick<Msg>(
     interval: i32,
     mut msg_gen: impl FnMut() -> Msg + 'static,
-) -> Box<dyn FnOnce(Messenger<Msg>)>
+) -> Box<dyn FnOnce(BatchResolver<Msg>)>
 where
     Msg: 'static,
 {
-    Box::new(move |mut messenger: Messenger<Msg>| {
+    Box::new(move |mut messenger: BatchResolver<Msg>| {
         let a = Closure::wrap(Box::new(move || {
             messenger(msg_gen());
         }) as Box<dyn FnMut()>);

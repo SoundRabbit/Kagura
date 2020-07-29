@@ -4,14 +4,12 @@ pub mod events;
 pub use attributes::Attributes;
 pub use events::Events;
 
-use super::component::Component;
-use super::component::DomComponent;
-use std::cell::RefCell;
-use std::rc::Rc;
+use super::component::Controller as Composed;
+use super::component::RcController as Component;
 
 /// viritual html element
 pub enum Html {
-    ComponentNode(Rc<RefCell<Box<dyn DomComponent>>>),
+    ComponentNode(Box<dyn Composed>),
     TextNode(String),
     ElementNode {
         tag_name: String,
@@ -25,7 +23,9 @@ pub enum Html {
 impl Clone for Html {
     fn clone(&self) -> Self {
         match self {
-            Html::ComponentNode(component) => Html::ComponentNode(Rc::clone(component)),
+            Html::ComponentNode(composed) => {
+                Html::ComponentNode(Composed::clone(composed.as_ref()))
+            }
             Html::TextNode(text) => Html::TextNode(text.clone()),
             Html::ElementNode {
                 tag_name,
@@ -45,14 +45,13 @@ impl Clone for Html {
 
 impl Html {
     /// Creates Html from component
-    pub fn component<Msg: 'static, Props: 'static, State: 'static, Sub: 'static>(
-        component: Component<Msg, Props, State, Sub>,
+    pub fn component<Props: 'static, Sub: 'static>(
+        composed: Component<Props, Sub>,
         children: Vec<Html>,
     ) -> Self {
-        let component = Rc::new(RefCell::new(Box::new(component) as Box<dyn DomComponent>));
-        component.borrow_mut().set_me(Rc::downgrade(&component));
-        component.borrow_mut().set_children(children);
-        Html::ComponentNode(component)
+        let composed = Box::new(composed);
+        composed.set_children(children);
+        Html::ComponentNode(composed)
     }
 
     /// Creates Html from a non-validated text

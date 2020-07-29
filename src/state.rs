@@ -1,6 +1,6 @@
 use crate::dom;
-use crate::dom::component::Component;
-use crate::dom::component::DomComponent;
+use crate::dom::component::Controller as Composed;
+use crate::dom::component::RcController as Component;
 use crate::native;
 use crate::task;
 use std::cell::RefCell;
@@ -8,17 +8,12 @@ use std::rc::Rc;
 thread_local!(static APP: RefCell<Option<App>> = RefCell::new(None));
 
 struct App {
-    root_component: Rc<RefCell<Box<dyn DomComponent>>>,
+    root_component: Rc<RefCell<Box<dyn Composed>>>,
     dom_renderer: dom::Renderer,
 }
 
-pub fn init<Msg, Props, State, Sub>(root_component: Component<Msg, Props, State, Sub>, id: &str) {
-    let root_component = Rc::new(RefCell::new(
-        Box::new(root_component) as Box<dyn DomComponent>
-    ));
-    root_component
-        .borrow_mut()
-        .set_me(Rc::downgrade(&root_component));
+pub fn init<Props: 'static, Sub: 'static>(root_component: Component<Props, Sub>, id: &str) {
+    let root_component = Rc::new(RefCell::new(Box::new(root_component) as Box<dyn Composed>));
     let node = root_component.borrow_mut().render();
     let root = native::get_element_by_id(id);
     let dom_renderer = dom::Renderer::new(node, root.into());

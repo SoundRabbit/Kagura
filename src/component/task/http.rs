@@ -1,4 +1,4 @@
-use crate::dom::component::Resolver;
+use crate::dom::component::TaskResolver;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -39,13 +39,13 @@ pub fn request<Msg>(
     url: impl Into<String>,
     props: Props,
     mut handler: impl FnMut(Result<Response, JsValue>) -> Msg + 'static,
-) -> Box<dyn FnOnce(Resolver<Msg>)>
+) -> Box<dyn FnOnce(TaskResolver<Msg>)>
 where
     Msg: 'static,
 {
     let method = method.into();
     let url = url.into();
-    Box::new(move |resolver: Resolver<Msg>| {
+    Box::new(move |resolver: TaskResolver<Msg>| {
         let mut resolver = Some(resolver);
         match web_sys::XmlHttpRequest::new() {
             Err(e) => {
@@ -99,14 +99,14 @@ where
                 }
             },
         };
-    }) as Box<dyn FnOnce(Resolver<Msg>)>
+    }) as Box<dyn FnOnce(TaskResolver<Msg>)>
 }
 
 pub fn get<Msg>(
     url: impl Into<String>,
     props: Props,
     handler: impl FnMut(Result<Response, JsValue>) -> Msg + 'static,
-) -> Box<dyn FnOnce(Resolver<Msg>)>
+) -> Box<dyn FnOnce(TaskResolver<Msg>)>
 where
     Msg: 'static,
 {
@@ -117,7 +117,7 @@ pub fn post<Msg>(
     url: impl Into<String>,
     props: Props,
     handler: impl FnMut(Result<Response, JsValue>) -> Msg + 'static,
-) -> Box<dyn FnOnce(Resolver<Msg>)>
+) -> Box<dyn FnOnce(TaskResolver<Msg>)>
 where
     Msg: 'static,
 {
@@ -128,7 +128,7 @@ pub fn put<Msg>(
     url: impl Into<String>,
     props: Props,
     handler: impl FnMut(Result<Response, JsValue>) -> Msg + 'static,
-) -> Box<dyn FnOnce(Resolver<Msg>)>
+) -> Box<dyn FnOnce(TaskResolver<Msg>)>
 where
     Msg: 'static,
 {
@@ -139,7 +139,7 @@ pub fn delete<Msg>(
     url: impl Into<String>,
     props: Props,
     handler: impl FnMut(Result<Response, JsValue>) -> Msg + 'static,
-) -> Box<dyn FnOnce(Resolver<Msg>)>
+) -> Box<dyn FnOnce(TaskResolver<Msg>)>
 where
     Msg: 'static,
 {

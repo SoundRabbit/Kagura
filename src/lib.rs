@@ -48,22 +48,18 @@ mod native;
 mod state;
 mod task;
 
-use dom::component::Component;
+use dom::component::RcController as Component;
 
 /// Starts application with component
-pub fn run<Msg, Props, State, Sub>(component: Component<Msg, Props, State, Sub>, id: &str)
-where
-    Msg: 'static,
-    State: 'static,
-    Sub: 'static,
-{
-    state::init(component, id);
+pub fn run<Props: 'static, Sub: 'static>(composed: Component<Props, Sub>, id: &str) {
+    state::init(composed, id);
 }
 
 pub mod prelude {
     pub use crate::component::*;
+    pub use crate::dom::component::Batch;
     pub use crate::dom::component::Cmd;
-    pub use crate::dom::component::Component;
+    pub use crate::dom::component::RcController as Component;
     pub use crate::dom::html::Attributes;
     pub use crate::dom::html::Events;
     pub use crate::dom::html::Html;
