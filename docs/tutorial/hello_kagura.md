@@ -35,7 +35,7 @@ fn init(_previous_state: Option<State>, _props: Props) -> (State, Cmd<Msg, Sub>)
 fn update(_state: &mut State, _msg: Msg) -> Cmd<Msg, Sub> {Cmd::none()}
 
 //  <h1>hello kagura</h1>
-fn render(_state: &State) -> Html {
+fn render(_state: &State, _children: Vec<Html>) -> Html {
     Html::h1(
         Attributes::new(),
         Events::new(),
