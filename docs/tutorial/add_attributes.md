@@ -1,6 +1,6 @@
 # Add attributes
 
-Attributes of an element are presented by `Attributes` structure. `Attributes` is initialize by `Attributes.new()`. You can add an attribute to `Attributes` by method chain.
+Attributes of an element are presented by `Attributes` structure. `Attributes` is initialize by `Attributes::new()`. You can add an attribute to `Attributes` by method chain.
 
 like this:
 
@@ -38,23 +38,25 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(start)]
 pub fn main() {
-    kagura::run(Component::new(init, update, render), "app");
+    kagura::run(Component::new(init, update, render).with(Props {}), "app");
 }
 
-struct State{}
+struct Props {}
 
-enum Msg{}
+struct State {}
 
-enum Sub{}
+enum Msg {}
 
-fn init() -> State {
-    State{}
+enum Sub {}
+
+fn init(_: Option<State>, _: Props) -> (State, Cmd<Msg, Sub> {
+    (State {}, Cmd::none())
 }
 
 fn update(_: &mut State, _: Msg) -> Cmd<Msg, Sub> {Cmd::none()}
 
 //  <h1 style="color:#FFFFFF;background-color:#D3381C;">hello kagura</h1>
-fn render(_: &State) -> Html<Msg> {
+fn render(_: &State, _: Vec<Html>) -> Html {
     Html::h1(
         Attributes::new()
             .style("color", "#FFFFFF")
