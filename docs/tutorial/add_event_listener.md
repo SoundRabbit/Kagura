@@ -20,8 +20,10 @@ use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(start)]
 pub fn main() {
-    kagura::run(Component::new(init, update, render), "app");
+    kagura::run(Component::new(init, update, render).with(Props {}), "app");
 }
+
+struct Props {}
 
 struct State {
     message: &'static str,
@@ -33,10 +35,13 @@ enum Msg {
 
 enum Sub {}
 
-fn init() -> State {
-    State {
-        message: "hello kagura",
-    }
+fn init(_: Option<State>, props: Props) -> (State, Cmd<Msg, Sub>) {
+    (
+        State {
+            message: "hello kagura",
+        },
+        Cmd::none()
+    )
 }
 
 fn update(state: &mut State, msg: Msg) -> Cmd<Msg, Sub> {
@@ -49,7 +54,7 @@ fn update(state: &mut State, msg: Msg) -> Cmd<Msg, Sub> {
 }
 
 //  <h1 style="color:#FFFFFF;background-color:#D3381C;" onClick="send_a_message">hello kagura</h1>
-fn render(state: &State) -> Html<Msg> {
+fn render(state: &State, _: Vec<Html>) -> Html {
     Html::h1(
         Attributes::new()
             .style("color", "#FFFFFF")
