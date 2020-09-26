@@ -13,6 +13,7 @@ struct App {
 }
 
 pub fn init<Props: 'static, Sub: 'static>(root_component: Component<Props, Sub>, id: &str) {
+    root_component.init();
     let root_component = Rc::new(RefCell::new(Box::new(root_component) as Box<dyn Composed>));
     let node = root_component.borrow_mut().render();
     let root = native::get_element_by_id(id);

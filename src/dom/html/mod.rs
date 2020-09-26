@@ -54,6 +54,18 @@ impl Html {
         Html::ComponentNode(composed)
     }
 
+    /// Creates Html from component with key
+    pub fn component_with_key<Props: 'static, Sub: 'static>(
+        key: u64,
+        composed: Component<Props, Sub>,
+        children: Vec<Html>,
+    ) -> Self {
+        let composed = Box::new(composed);
+        composed.set_key(key);
+        composed.set_children(children);
+        Html::ComponentNode(composed)
+    }
+
     /// Creates Html from a non-validated text
     pub fn text(text: impl Into<String>) -> Self {
         Html::TextNode(text.into())

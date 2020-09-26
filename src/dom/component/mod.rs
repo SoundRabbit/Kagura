@@ -15,13 +15,18 @@ pub type TaskResolver<Msg> = Box<dyn FnOnce(Msg)>;
 pub type BatchResolver<Msg> = Box<dyn FnMut(Msg)>;
 
 trait Component<Props, Sub> {
-    fn init(&mut self, props: Props);
+    fn init(&mut self);
     fn update(&mut self, msg: Box<dyn Any>);
     fn render(&mut self) -> Option<Node>;
     fn set_this(&mut self, this: Box<dyn Controller>);
     fn set_children(&mut self, children: Vec<Html>);
     fn set_parent(&mut self, parent: Box<dyn Controller>);
     fn set_messenger(&mut self, messenger: Box<dyn FnOnce(Sub) -> Box<dyn Any>>);
+    fn set_props(&mut self, props: Props);
+    fn set_state(&mut self, state: Box<dyn Any>);
+    fn take_state(&mut self) -> Option<Box<dyn Any>>;
+    fn set_key(&mut self, key: u64);
+    fn key(&self) -> u64;
 }
 
 pub enum Cmd<Msg, Sub> {
@@ -34,17 +39,19 @@ pub struct Batch<Msg: 'static> {
     payload: Box<dyn FnOnce(BatchResolver<Msg>)>,
 }
 
-struct ImplComponent<Msg: 'static, Props: 'static, State, Sub: 'static> {
+struct ImplComponent<Msg: 'static, Props: 'static, State: 'static, Sub: 'static> {
     this: Box<dyn Controller>,
     parent: Box<dyn Controller>,
     messenger: Option<Box<dyn FnOnce(Sub) -> Box<dyn Any>>>,
-    state: Option<State>,
+    state: Option<Box<State>>,
     init: Box<dyn Fn(Option<State>, Props) -> (State, Cmd<Msg, Sub>, Vec<Batch<Msg>>)>,
     update: Box<dyn Fn(&mut State, Msg) -> Cmd<Msg, Sub>>,
     render: Box<dyn Fn(&State, Vec<Html>) -> Html>,
     children: Vec<Html>,
     cache: Html,
     is_updated: bool,
+    props: Option<Props>,
+    key: u64,
 }
 
 impl<Msg, Sub> Cmd<Msg, Sub> {
@@ -86,6 +93,8 @@ impl<Msg, Props, State, Sub> ImplComponent<Msg, Props, State, Sub> {
             children: vec![],
             cache: Html::None,
             is_updated: false,
+            props: None,
+            key: 0,
         }
     }
 
@@ -139,10 +148,19 @@ impl<Msg, Props, State, Sub> ImplComponent<Msg, Props, State, Sub> {
         }
     }
 
-    fn render_force(&self, html: &mut Html) -> Option<Node> {
+    fn render_force(&self, html: &mut Html, cache: Html) -> Option<Node> {
         match html {
             Html::None => None,
             Html::ComponentNode(controller) => {
+                if let Html::ComponentNode(before) = cache {
+                    if Any::type_id(controller) == Any::type_id(&before)
+                        && controller.key() == before.key()
+                    {
+                        let state = before.take_state().unwrap();
+                        controller.set_state(state);
+                    }
+                }
+                controller.init();
                 controller.set_parent(self.this.clone());
                 controller.render()
             }
@@ -153,10 +171,25 @@ impl<Msg, Props, State, Sub> ImplComponent<Msg, Props, State, Sub> {
                 events,
                 children,
             } => {
-                let children = children
-                    .into_iter()
-                    .filter_map(|child| self.render_force(child))
-                    .collect::<Vec<Node>>();
+                let children = match cache {
+                    Html::ElementNode {
+                        children: mut before,
+                        ..
+                    } => {
+                        while children.len() > before.len() {
+                            before.push(Html::none());
+                        }
+                        children
+                            .into_iter()
+                            .zip(before.into_iter())
+                            .filter_map(|(child, cache)| self.render_force(child, cache))
+                            .collect::<Vec<Node>>()
+                    }
+                    _ => children
+                        .into_iter()
+                        .filter_map(|child| self.render_force(child, Html::none()))
+                        .collect::<Vec<Node>>(),
+                };
 
                 let mut dom_events = Events::new();
                 for (name, handlers) in &mut events.handlers {
@@ -188,18 +221,20 @@ impl<Msg, Props, State, Sub> ImplComponent<Msg, Props, State, Sub> {
 }
 
 impl<Msg, Props, State, Sub> Component<Props, Sub> for ImplComponent<Msg, Props, State, Sub> {
-    fn init(&mut self, props: Props) {
-        let (state, cmd, batchs) = (self.init)(self.state.take(), props);
-        self.is_updated = true;
-        self.state = Some(state);
-        self.proc_cmd(cmd);
-        for batch in batchs {
-            let batch = batch.payload;
-            let this = self.this.clone();
-            batch(Box::new(move |msg| {
-                this.update(Box::new(msg));
-                state::render()
-            }));
+    fn init(&mut self) {
+        if let Some(props) = self.props.take() {
+            let (state, cmd, batchs) = (self.init)(self.state.take().map(|x| *x), props);
+            self.is_updated = true;
+            self.state = Some(Box::new(state));
+            self.proc_cmd(cmd);
+            for batch in batchs {
+                let batch = batch.payload;
+                let this = self.this.clone();
+                batch(Box::new(move |msg| {
+                    this.update(Box::new(msg));
+                    state::render()
+                }));
+            }
         }
     }
 
@@ -225,7 +260,9 @@ impl<Msg, Props, State, Sub> Component<Props, Sub> for ImplComponent<Msg, Props,
                 let mut children = self.children.clone();
                 std::mem::swap(&mut children, &mut self.children);
                 let mut html = (self.render)(state, children);
-                let node = self.render_force(&mut html);
+                let mut cache = Html::none();
+                std::mem::swap(&mut self.cache, &mut cache);
+                let node = self.render_force(&mut html, cache);
                 self.cache = html;
                 node
             } else {
@@ -250,5 +287,27 @@ impl<Msg, Props, State, Sub> Component<Props, Sub> for ImplComponent<Msg, Props,
 
     fn set_messenger(&mut self, messenger: Box<dyn FnOnce(Sub) -> Box<dyn Any>>) {
         self.messenger = Some(Box::new(messenger));
+    }
+
+    fn set_props(&mut self, props: Props) {
+        self.props = Some(props);
+    }
+
+    fn set_state(&mut self, state: Box<dyn Any>) {
+        if let Ok(state) = state.downcast::<State>() {
+            self.state = Some(state);
+        }
+    }
+
+    fn take_state(&mut self) -> Option<Box<dyn Any>> {
+        self.state.take().map(|x| x as Box<dyn Any>)
+    }
+
+    fn set_key(&mut self, key: u64) {
+        self.key = key;
+    }
+
+    fn key(&self) -> u64 {
+        self.key
     }
 }

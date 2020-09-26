@@ -11,11 +11,16 @@ use std::rc::Rc;
 use std::rc::Weak;
 
 pub trait Controller: 'static {
+    fn init(&self);
     fn update(&self, msg: Box<dyn Any>);
     fn render(&self) -> Option<Node>;
     fn clone(&self) -> Box<dyn Controller>;
     fn set_children(&self, children: Vec<Html>);
     fn set_parent(&self, parent: Box<dyn Controller>);
+    fn set_state(&self, state: Box<dyn Any>);
+    fn take_state(&self) -> Option<Box<dyn Any>>;
+    fn set_key(&self, key: u64);
+    fn key(&self) -> u64;
 }
 
 pub struct RcController<Props: 'static, Sub: 'static>(Rc<RefCell<Box<dyn Component<Props, Sub>>>>);
@@ -41,7 +46,7 @@ impl<Props, Sub> RcController<Props, Sub> {
 
     pub fn with(&self, props: Props) -> Self {
         let this = Self(Rc::clone(&self.0));
-        this.0.borrow_mut().init(props);
+        this.0.borrow_mut().set_props(props);
         this
     }
 
@@ -54,6 +59,10 @@ impl<Props, Sub> RcController<Props, Sub> {
 }
 
 impl<Props, Sub> Controller for RcController<Props, Sub> {
+    fn init(&self) {
+        self.0.borrow_mut().init();
+    }
+
     fn update(&self, msg: Box<dyn Any>) {
         self.0.borrow_mut().update(msg);
     }
@@ -74,6 +83,22 @@ impl<Props, Sub> Controller for RcController<Props, Sub> {
     fn set_parent(&self, parent: Box<dyn Controller>) {
         self.0.borrow_mut().set_parent(parent);
     }
+
+    fn set_state(&self, state: Box<dyn Any>) {
+        self.0.borrow_mut().set_state(state);
+    }
+
+    fn take_state(&self) -> Option<Box<dyn Any>> {
+        self.0.borrow_mut().take_state()
+    }
+
+    fn set_key(&self, key: u64) {
+        self.0.borrow_mut().set_key(key);
+    }
+
+    fn key(&self) -> u64 {
+        self.0.borrow().key()
+    }
 }
 
 impl<Props, Sub> WeakController<Props, Sub> {
@@ -83,6 +108,12 @@ impl<Props, Sub> WeakController<Props, Sub> {
 }
 
 impl<Props, Sub> Controller for WeakController<Props, Sub> {
+    fn init(&self) {
+        if let Some(this) = self.0.upgrade() {
+            this.borrow_mut().init();
+        }
+    }
+
     fn update(&self, msg: Box<dyn Any>) {
         if let Some(this) = self.0.upgrade() {
             this.borrow_mut().update(msg);
@@ -111,6 +142,34 @@ impl<Props, Sub> Controller for WeakController<Props, Sub> {
     fn set_parent(&self, parent: Box<dyn Controller>) {
         if let Some(this) = self.0.upgrade() {
             this.borrow_mut().set_parent(parent);
+        }
+    }
+
+    fn set_state(&self, state: Box<dyn Any>) {
+        if let Some(this) = self.0.upgrade() {
+            this.borrow_mut().set_state(state);
+        }
+    }
+
+    fn take_state(&self) -> Option<Box<dyn Any>> {
+        if let Some(this) = self.0.upgrade() {
+            this.borrow_mut().take_state()
+        } else {
+            None
+        }
+    }
+
+    fn set_key(&self, key: u64) {
+        if let Some(this) = self.0.upgrade() {
+            this.borrow_mut().set_key(key);
+        }
+    }
+
+    fn key(&self) -> u64 {
+        if let Some(this) = self.0.upgrade() {
+            this.borrow().key()
+        } else {
+            0
         }
     }
 }
