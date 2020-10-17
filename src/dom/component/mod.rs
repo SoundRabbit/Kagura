@@ -36,7 +36,7 @@ pub enum Cmd<Msg, Sub> {
 }
 
 pub struct Batch<Msg: 'static> {
-    payload: Box<dyn FnOnce(BatchResolver<Msg>)>,
+    payload: Vec<Box<dyn FnOnce(BatchResolver<Msg>)>>,
 }
 
 struct ImplComponent<Msg: 'static, Props: 'static, State: 'static, Sub: 'static> {
@@ -44,7 +44,7 @@ struct ImplComponent<Msg: 'static, Props: 'static, State: 'static, Sub: 'static>
     parent: Box<dyn Controller>,
     messenger: Option<Box<dyn FnOnce(Sub) -> Box<dyn Any>>>,
     state: Option<Box<State>>,
-    init: Box<dyn Fn(Option<State>, Props) -> (State, Cmd<Msg, Sub>, Vec<Batch<Msg>>)>,
+    init: Box<dyn Fn(Option<State>, Props) -> (State, Cmd<Msg, Sub>, Batch<Msg>)>,
     update: Box<dyn Fn(&mut State, Msg) -> Cmd<Msg, Sub>>,
     render: Box<dyn Fn(&State, Vec<Html>) -> Html>,
     children: Vec<Html>,
@@ -69,16 +69,20 @@ impl<Msg, Sub> Cmd<Msg, Sub> {
 }
 
 impl<Msg> Batch<Msg> {
-    pub fn new(f: impl FnOnce(BatchResolver<Msg>) + 'static) -> Self {
+    pub fn new() -> Self {
         Self {
-            payload: Box::new(f),
+            payload: Vec::new(),
         }
+    }
+
+    pub fn add(&mut self, f: impl FnOnce(BatchResolver<Msg>) + 'static) {
+        self.payload.push(Box::new(f));
     }
 }
 
 impl<Msg, Props, State, Sub> ImplComponent<Msg, Props, State, Sub> {
     fn new(
-        init: impl Fn(Option<State>, Props) -> (State, Cmd<Msg, Sub>, Vec<Batch<Msg>>) + 'static,
+        init: impl Fn(Option<State>, Props) -> (State, Cmd<Msg, Sub>, Batch<Msg>) + 'static,
         update: impl Fn(&mut State, Msg) -> Cmd<Msg, Sub> + 'static,
         render: impl Fn(&State, Vec<Html>) -> Html + 'static,
     ) -> Self {
@@ -227,8 +231,7 @@ impl<Msg, Props, State, Sub> Component<Props, Sub> for ImplComponent<Msg, Props,
             self.is_updated = true;
             self.state = Some(Box::new(state));
             self.proc_cmd(cmd);
-            for batch in batchs {
-                let batch = batch.payload;
+            for batch in batchs.payload {
                 let this = self.this.clone();
                 batch(Box::new(move |msg| {
                     this.update(Box::new(msg));

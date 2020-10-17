@@ -31,7 +31,7 @@ pub struct WeakController<Props: 'static, Sub: 'static>(
 
 impl<Props, Sub> RcController<Props, Sub> {
     pub fn new<Msg: 'static, State: 'static>(
-        init: impl Fn(Option<State>, Props) -> (State, Cmd<Msg, Sub>, Vec<Batch<Msg>>) + 'static,
+        init: impl Fn(Option<State>, Props) -> (State, Cmd<Msg, Sub>, Batch<Msg>) + 'static,
         update: impl Fn(&mut State, Msg) -> Cmd<Msg, Sub> + 'static,
         render: impl Fn(&State, Vec<Html>) -> Html + 'static,
     ) -> Self {
