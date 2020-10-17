@@ -110,6 +110,10 @@ impl Attributes {
         self.string("style", name.into() + ":" + &value.into())
     }
 
+    pub fn src(self, value: impl Into<String>) -> Self {
+        self.string("src", value)
+    }
+
     pub fn title(self, name: impl Into<String>) -> Self {
         self.string("title", name)
     }

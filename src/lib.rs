@@ -44,19 +44,25 @@ mod event;
 mod native;
 mod state;
 mod task;
+mod uid;
 
-// use dom::component::RcController as Component;
+use dom::component::{Component, ComposedComponent, Constructor};
+use dom::html::Html;
 
 /// Starts application with component
-// pub fn run<Props: 'static, Sub: 'static>(composed: Component<Props, Sub>, id: &str) {
-//     state::init(composed, id);
-// }
+pub fn run<C: 'static, P: 'static, M: 'static, S: 'static>(id: &str, props: P, children: Vec<Html>)
+where
+    C: Component<Props = P, Msg = M, Sub = S> + Constructor<Props = P>,
+{
+    let component = C::constructor(props);
+    let component = ComposedComponent::new(uid::get(), component);
+    component.borrow_mut().set_children(children);
+    state::init(component, id);
+}
 
 pub mod prelude {
-    // pub use crate::component::*;
-    // pub use crate::dom::component::Batch;
-    // pub use crate::dom::component::Cmd;
-    // pub use crate::dom::component::RcController as Component;
+    pub use crate::dom::component::Component;
+    pub use crate::dom::component::Constructor;
     pub use crate::dom::html::Attributes;
     pub use crate::dom::html::Events;
     pub use crate::dom::html::Html;

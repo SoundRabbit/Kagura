@@ -72,12 +72,14 @@ impl Html {
         Html::ComponentBuilder {
             builder: Some(Box::new(move |before| {
                 if let Some(before) = before {
-                    if let Some(before) =
+                    if let Some(component) =
                         Any::downcast_mut::<ComposedComponent<P, M, S>>(&mut (*before.borrow_mut()))
                     {
+                        component.init(props);
+                        return Rc::clone(&before);
                     }
                 }
-                ComposedComponent::new(0, C::new(props))
+                ComposedComponent::new(crate::uid::get(), C::constructor(props))
             })),
             children: children,
         }
