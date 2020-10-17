@@ -1,8 +1,7 @@
 use crate::dom;
-use crate::dom::component::{Component, Composed, ComposedComponent};
+use crate::dom::component::Composed;
 use crate::native;
 use crate::task;
-use crate::uid;
 use std::cell::RefCell;
 use std::rc::Rc;
 thread_local!(static APP: RefCell<Option<App>> = RefCell::new(None));

@@ -1,6 +1,6 @@
 use std::any::Any;
 use std::cell::RefCell;
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 
 pub mod attributes;
 pub mod events;
