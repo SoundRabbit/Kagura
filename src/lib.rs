@@ -38,25 +38,25 @@ extern crate wasm_bindgen;
 extern crate wasm_bindgen_futures;
 extern crate web_sys;
 
-pub mod component;
+// pub mod component;
 mod dom;
 mod event;
 mod native;
 mod state;
 mod task;
 
-use dom::component::RcController as Component;
+// use dom::component::RcController as Component;
 
 /// Starts application with component
-pub fn run<Props: 'static, Sub: 'static>(composed: Component<Props, Sub>, id: &str) {
-    state::init(composed, id);
-}
+// pub fn run<Props: 'static, Sub: 'static>(composed: Component<Props, Sub>, id: &str) {
+//     state::init(composed, id);
+// }
 
 pub mod prelude {
-    pub use crate::component::*;
-    pub use crate::dom::component::Batch;
-    pub use crate::dom::component::Cmd;
-    pub use crate::dom::component::RcController as Component;
+    // pub use crate::component::*;
+    // pub use crate::dom::component::Batch;
+    // pub use crate::dom::component::Cmd;
+    // pub use crate::dom::component::RcController as Component;
     pub use crate::dom::html::Attributes;
     pub use crate::dom::html::Events;
     pub use crate::dom::html::Html;

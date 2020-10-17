@@ -1,21 +1,35 @@
+use std::any::Any;
+use std::cell::RefCell;
+use std::rc::{Rc, Weak};
+
 pub mod attributes;
 pub mod events;
 
 pub use attributes::Attributes;
 pub use events::Events;
 
-use super::component::Controller as Composed;
-use super::component::RcController as Component;
+use super::component::{Component, Composed, ComposedComponent, Constructor};
 
 /// viritual html element
 pub enum Html {
-    ComponentNode(Box<dyn Composed>),
+    ComponentBuilder {
+        builder: Option<
+            Box<
+                dyn FnOnce(
+                    Option<Rc<RefCell<Box<dyn Composed + 'static>>>>,
+                ) -> Rc<RefCell<Box<dyn Composed>>>,
+            >,
+        >,
+        children: Vec<Html>,
+    },
+    ComponentNode(Rc<RefCell<Box<dyn Composed>>>),
     TextNode(String),
     ElementNode {
         tag_name: String,
         children: Vec<Html>,
         attributes: Attributes,
         events: Events,
+        component_id: Option<u32>,
     },
     None,
 }
@@ -23,47 +37,50 @@ pub enum Html {
 impl Clone for Html {
     fn clone(&self) -> Self {
         match self {
-            Html::ComponentNode(composed) => {
-                Html::ComponentNode(Composed::clone(composed.as_ref()))
-            }
-            Html::TextNode(text) => Html::TextNode(text.clone()),
-            Html::ElementNode {
+            Self::ComponentBuilder { .. } => Self::ComponentBuilder {
+                builder: None,
+                children: Vec::new(),
+            },
+            Self::ComponentNode(component_node) => Self::ComponentNode(Rc::clone(&component_node)),
+            Self::TextNode(text) => Self::TextNode(text.clone()),
+            Self::ElementNode {
                 tag_name,
                 children,
                 attributes,
                 events,
-            } => Html::ElementNode {
+                component_id,
+            } => Self::ElementNode {
                 tag_name: tag_name.clone(),
                 children: children.clone(),
                 attributes: attributes.clone(),
                 events: events.clone(),
+                component_id: component_id.clone(),
             },
-            Html::None => Html::None,
+            Self::None => Self::None,
         }
     }
 }
 
 impl Html {
-    /// Creates Html from component
-    pub fn component<Props: 'static, Sub: 'static>(
-        composed: Component<Props, Sub>,
+    pub fn component<C: 'static, P: 'static, M: 'static, S: 'static>(
+        props: P,
         children: Vec<Html>,
-    ) -> Self {
-        let composed = Box::new(composed);
-        composed.set_children(children);
-        Html::ComponentNode(composed)
-    }
-
-    /// Creates Html from component with key
-    pub fn component_with_key<Props: 'static, Sub: 'static>(
-        key: u64,
-        composed: Component<Props, Sub>,
-        children: Vec<Html>,
-    ) -> Self {
-        let composed = Box::new(composed);
-        composed.set_key(key);
-        composed.set_children(children);
-        Html::ComponentNode(composed)
+    ) -> Html
+    where
+        C: Component<Props = P, Msg = M, Sub = S> + Constructor<Props = P>,
+    {
+        Html::ComponentBuilder {
+            builder: Some(Box::new(move |before| {
+                if let Some(before) = before {
+                    if let Some(before) =
+                        Any::downcast_mut::<ComposedComponent<P, M, S>>(&mut (*before.borrow_mut()))
+                    {
+                    }
+                }
+                ComposedComponent::new(0, C::new(props))
+            })),
+            children: children,
+        }
     }
 
     /// Creates Html from a non-validated text
@@ -83,6 +100,7 @@ impl Html {
             children,
             attributes,
             events,
+            component_id: None,
         }
     }
 
