@@ -4,30 +4,49 @@
 //! extern crate kagura;
 //! extern crate wasm_bindgen;
 //!
-//! use kagura::prelude::*;
 //! use wasm_bindgen::prelude::*;
+//!
+//! use hello_component::HelloComponent;
 //!
 //! #[wasm_bindgen(start)]
 //! pub fn main() {
-//!     kagura::run(Component::new(State, update, render), "app");
+//!     kagura::run::<HelloComponent, _, _, _>("app", hello_component::Props {}, vec![]);
 //! }
 //!
-//! struct State;
+//! mod hello_component {
+//!     use kagura::prelude::*;
 //!
-//! struct Msg;
+//!     pub struct Props {}
+//!     pub enum Msg {}
+//!     pub enum Sub {}
 //!
-//! struct Sub;
+//!     pub struct HelloComponent {}
 //!
-//! fn update(_: &mut State, _: Msg) -> Cmd<Msg, Sub> {Cmd::none()}
+//!     impl Constructor for HelloComponent {
+//!         fn constructor(_: Self::Props, _: &mut ComponentBuilder<Msg, Sub>) -> Self {
+//!             Self {}
+//!         }
+//!     }
 //!
-//! fn render(_: &State) -> Html<Msg> {
-//!     Html::h1(
-//!         Attributes::new(),
-//!         Events::new(),
-//!         vec![
-//!             Html::text("hello kagura"),
-//!         ],
-//!     )
+//!     impl Component for HelloComponent {
+//!         type Props = Props;
+//!         type Msg = Msg;
+//!         type Sub = Sub;
+//!
+//!         fn init(&mut self, _: Self::Props, _: &mut ComponentBuilder<Msg, Sub>) {}
+//!
+//!         fn update(&mut self, _: Self::Msg) -> Cmd<Msg, Sub> {
+//!             Cmd::none()
+//!         }
+//!
+//!         fn render(&self, _: Vec<Html>) -> Html {
+//!             Html::h1(
+//!                 Attributes::new(),
+//!                 Events::new(),
+//!                 vec![Html::text("Hello Kagura")],
+//!             )
+//!         }
+//!     }
 //! }
 //! ```
 
