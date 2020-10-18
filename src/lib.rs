@@ -57,7 +57,7 @@ extern crate wasm_bindgen;
 extern crate wasm_bindgen_futures;
 extern crate web_sys;
 
-// pub mod component;
+pub mod component;
 mod dom;
 mod event;
 mod native;
