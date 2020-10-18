@@ -29,7 +29,7 @@ pub enum Html {
         children: Vec<Html>,
         attributes: Attributes,
         events: Events,
-        component_id: Option<u32>,
+        component_id: Option<crate::uid::IdType>,
     },
     None,
 }
@@ -69,6 +69,7 @@ impl Html {
     where
         C: Component<Props = P, Msg = M, Sub = S> + Constructor<Props = P>,
     {
+        let component_id = crate::uid::get();
         Html::ComponentBuilder {
             builder: Some(Box::new(move |before| {
                 if let Some(before) = before {
@@ -79,7 +80,7 @@ impl Html {
                         return Rc::clone(&before);
                     }
                 }
-                ComposedComponent::new(crate::uid::get(), C::constructor(props))
+                ComposedComponent::new(component_id, C::constructor(props))
             })),
             children: children,
         }

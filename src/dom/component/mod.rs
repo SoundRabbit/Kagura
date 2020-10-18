@@ -20,7 +20,7 @@ pub trait Constructor: Component {
 
 pub trait Composed {
     fn update(&mut self, msg: Message);
-    fn render(&mut self) -> Option<Node>;
+    fn render(&mut self, is_forced: bool) -> Option<Node>;
     fn set_children(&mut self, children: Vec<Html>);
     fn set_this(&mut self, this: Weak<RefCell<Box<dyn Composed>>>);
     fn set_parent(&mut self, parent: Weak<RefCell<Box<dyn Composed>>>);
@@ -28,11 +28,11 @@ pub trait Composed {
 
 pub struct Message {
     pub payload: Box<dyn Any>,
-    pub component_id: u32,
+    pub component_id: crate::uid::IdType,
 }
 
 pub struct ComposedComponent<Props: 'static, Msg: 'static, Sub: 'static> {
-    component_id: u32,
+    component_id: crate::uid::IdType,
     component: Box<dyn Component<Props = Props, Msg = Msg, Sub = Sub>>,
     this: Weak<RefCell<Box<dyn Composed>>>,
     parent: Weak<RefCell<Box<dyn Composed>>>,
@@ -43,7 +43,7 @@ pub struct ComposedComponent<Props: 'static, Msg: 'static, Sub: 'static> {
 
 impl<Props: 'static, Msg: 'static, Sub: 'static> ComposedComponent<Props, Msg, Sub> {
     pub fn new(
-        component_id: u32,
+        component_id: crate::uid::IdType,
         component: impl Component<Props = Props, Msg = Msg, Sub = Sub> + 'static,
     ) -> Rc<RefCell<Box<dyn Composed>>> {
         let this = Self {
@@ -69,7 +69,7 @@ impl<Props: 'static, Msg: 'static, Sub: 'static> ComposedComponent<Props, Msg, S
         match before {
             Html::TextNode(text) => Some(Node::Text(text.clone())),
             Html::None => None,
-            Html::ComponentNode(component) => component.borrow_mut().render(),
+            Html::ComponentNode(component) => component.borrow_mut().render(false),
             Html::ComponentBuilder { .. } => None,
             Html::ElementNode {
                 tag_name,
@@ -100,7 +100,7 @@ impl<Props: 'static, Msg: 'static, Sub: 'static> ComposedComponent<Props, Msg, S
         match after {
             Html::None => None,
             Html::TextNode(text) => Some(Node::Text(text.clone())),
-            Html::ComponentNode(component) => component.borrow_mut().render(),
+            Html::ComponentNode(component) => component.borrow_mut().render(true),
             Html::ComponentBuilder { builder, children } => {
                 if let Some(component_builder) = builder.take() {
                     let component = if let Html::ComponentNode(component) = before {
@@ -112,9 +112,12 @@ impl<Props: 'static, Msg: 'static, Sub: 'static> ComposedComponent<Props, Msg, S
                     self.set_component_id(children);
                     let children = children.drain(..).collect::<Vec<_>>();
                     component.borrow_mut().set_children(children);
-                    let node = component.borrow_mut().render();
+                    let node = component.borrow_mut().render(true);
                     *after = Html::ComponentNode(Rc::clone(&component));
                     node
+                } else if let Html::ComponentNode(component) = before {
+                    *after = Html::ComponentNode(Rc::clone(&component));
+                    component.borrow_mut().render(true)
                 } else {
                     None
                 }
@@ -225,8 +228,8 @@ impl<Props, Msg: 'static, Sub> Composed for ComposedComponent<Props, Msg, Sub> {
         }
     }
 
-    fn render(&mut self) -> Option<Node> {
-        if self.is_updated {
+    fn render(&mut self, is_forced: bool) -> Option<Node> {
+        if self.is_updated || is_forced {
             let mut children = self.children.clone();
             std::mem::swap(&mut children, &mut self.children);
             let mut html = self.component.render(children);
@@ -234,6 +237,7 @@ impl<Props, Msg: 'static, Sub> Composed for ComposedComponent<Props, Msg, Sub> {
             std::mem::swap(&mut self.rendered_cache, &mut rendered_cache);
             let node = self.render_force(rendered_cache, &mut html);
             self.rendered_cache = html;
+            self.is_updated = false;
             node
         } else {
             self.render_lazy(&self.rendered_cache)
@@ -241,14 +245,17 @@ impl<Props, Msg: 'static, Sub> Composed for ComposedComponent<Props, Msg, Sub> {
     }
 
     fn set_children(&mut self, children: Vec<Html>) {
+        self.is_updated = true;
         self.children = children;
     }
 
     fn set_this(&mut self, this: Weak<RefCell<Box<dyn Composed>>>) {
+        self.is_updated = true;
         self.this = this;
     }
 
     fn set_parent(&mut self, parent: Weak<RefCell<Box<dyn Composed>>>) {
+        self.is_updated = true;
         self.parent = parent;
     }
 }
