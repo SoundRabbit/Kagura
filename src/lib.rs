@@ -46,7 +46,7 @@ mod state;
 mod task;
 mod uid;
 
-use dom::component::{Component, ComposedComponent, Constructor};
+use dom::component::{Component, ComponentBuilder, ComposedComponent, Constructor, SubMap};
 use dom::html::Html;
 
 /// Starts application with component
@@ -54,15 +54,19 @@ pub fn run<C: 'static, P: 'static, M: 'static, S: 'static>(id: &str, props: P, c
 where
     C: Component<Props = P, Msg = M, Sub = S> + Constructor<Props = P>,
 {
-    let component = C::constructor(props);
-    let component = ComposedComponent::new(uid::get(), component);
+    let mut builder = ComponentBuilder::new();
+    let component = C::constructor(props, &mut builder);
+    let component = ComposedComponent::new(uid::get(), component, builder, SubMap::empty());
     component.borrow_mut().set_children(children);
     state::init(component, id);
 }
 
 pub mod prelude {
+    pub use crate::dom::component::Cmd;
     pub use crate::dom::component::Component;
+    pub use crate::dom::component::ComponentBuilder;
     pub use crate::dom::component::Constructor;
+    pub use crate::dom::component::SubMap;
     pub use crate::dom::html::Attributes;
     pub use crate::dom::html::Events;
     pub use crate::dom::html::Html;

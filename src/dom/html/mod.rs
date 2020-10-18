@@ -8,7 +8,9 @@ pub mod events;
 pub use attributes::Attributes;
 pub use events::Events;
 
-use super::component::{Component, Composed, ComposedComponent, Constructor};
+use super::component::{
+    Component, ComponentBuilder, Composed, ComposedComponent, Constructor, SubMap,
+};
 
 /// viritual html element
 pub enum Html {
@@ -64,6 +66,7 @@ impl Clone for Html {
 impl Html {
     pub fn component<C: 'static, P: 'static, M: 'static, S: 'static>(
         props: P,
+        sub_map: SubMap<S>,
         children: Vec<Html>,
     ) -> Html
     where
@@ -80,7 +83,9 @@ impl Html {
                         return Rc::clone(&before);
                     }
                 }
-                ComposedComponent::new(component_id, C::constructor(props))
+                let mut builder = ComponentBuilder::new();
+                let component = C::constructor(props, &mut builder);
+                ComposedComponent::new(component_id, component, builder, sub_map)
             })),
             children: children,
         }

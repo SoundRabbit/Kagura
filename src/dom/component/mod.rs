@@ -1,25 +1,33 @@
 use super::html::Html;
 use super::{Events, Node};
-use crate::state;
+use crate::{state, task};
 use std::any::Any;
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
-pub trait Component {
+pub trait Component: 'static {
     type Props;
     type Msg;
     type Sub;
-    fn init(&mut self, props: Self::Props);
-    fn update(&mut self, msg: Self::Msg);
+    fn init(&mut self, props: Self::Props, builder: &mut ComponentBuilder<Self::Msg, Self::Sub>);
+    fn update(&mut self, msg: Self::Msg) -> Cmd<Self::Msg, Self::Sub>;
     fn render(&self, children: Vec<Html>) -> Html;
 }
 
-pub trait Constructor: Component {
-    fn constructor(props: Self::Props) -> Self;
+pub trait Constructor: Component + Sized {
+    fn constructor(
+        props: Self::Props,
+        builder: &mut ComponentBuilder<Self::Msg, Self::Sub>,
+    ) -> Self;
+
+    fn view(props: Self::Props, sub_map: SubMap<Self::Sub>, children: Vec<Html>) -> Html {
+        Html::component::<Self, Self::Props, Self::Msg, Self::Sub>(props, sub_map, children)
+    }
 }
 
 pub trait Composed {
     fn update(&mut self, msg: Message);
+    fn subscribe(&mut self, msg: Box<dyn Any>);
     fn render(&mut self, is_forced: bool) -> Option<Node>;
     fn set_children(&mut self, children: Vec<Html>);
     fn set_this(&mut self, this: Weak<RefCell<Box<dyn Composed>>>);
@@ -31,6 +39,24 @@ pub struct Message {
     pub component_id: crate::uid::IdType,
 }
 
+pub type TaskResolver<Msg> = Box<dyn FnOnce(Msg)>;
+pub type BatchResolver<Msg> = Box<dyn FnMut(Msg)>;
+
+pub enum Cmd<Msg, Sub> {
+    None,
+    Task(Box<dyn FnOnce(TaskResolver<Msg>)>),
+    Sub(Sub),
+}
+
+pub struct ComponentBuilder<Msg: 'static, Sub> {
+    batches: Vec<Box<dyn FnOnce(BatchResolver<Msg>)>>,
+    cmd: Cmd<Msg, Sub>,
+}
+
+pub struct SubMap<Sub: 'static> {
+    payload: Option<Box<dyn FnOnce(Sub) -> Box<dyn Any>>>,
+}
+
 pub struct ComposedComponent<Props: 'static, Msg: 'static, Sub: 'static> {
     component_id: crate::uid::IdType,
     component: Box<dyn Component<Props = Props, Msg = Msg, Sub = Sub>>,
@@ -39,12 +65,59 @@ pub struct ComposedComponent<Props: 'static, Msg: 'static, Sub: 'static> {
     children: Vec<Html>,
     rendered_cache: Html,
     is_updated: bool,
+    sub_map: Option<Box<dyn FnOnce(Sub) -> Box<dyn Any>>>,
+    builder: Option<ComponentBuilder<Msg, Sub>>,
+}
+
+impl<Msg, Sub> Cmd<Msg, Sub> {
+    pub fn none() -> Self {
+        Cmd::None
+    }
+
+    pub fn task(worker: impl FnOnce(TaskResolver<Msg>) + 'static) -> Self {
+        Self::Task(Box::new(worker))
+    }
+
+    pub fn sub(sub: Sub) -> Self {
+        Cmd::Sub(sub)
+    }
+}
+
+impl<Msg, Sub> ComponentBuilder<Msg, Sub> {
+    pub fn new() -> Self {
+        Self {
+            batches: Vec::new(),
+            cmd: Cmd::none(),
+        }
+    }
+
+    pub fn add_batch(&mut self, f: impl FnOnce(BatchResolver<Msg>) + 'static) {
+        self.batches.push(Box::new(f));
+    }
+
+    pub fn set_cmd(&mut self, cmd: Cmd<Msg, Sub>) {
+        self.cmd = cmd;
+    }
+}
+
+impl<Sub> SubMap<Sub> {
+    pub fn new<Msg: 'static>(mapper: impl FnOnce(Sub) -> Msg + 'static) -> Self {
+        Self {
+            payload: Some(Box::new(move |sub| Box::new(mapper(sub)) as Box<dyn Any>)),
+        }
+    }
+
+    pub fn empty() -> Self {
+        Self { payload: None }
+    }
 }
 
 impl<Props: 'static, Msg: 'static, Sub: 'static> ComposedComponent<Props, Msg, Sub> {
     pub fn new(
         component_id: crate::uid::IdType,
         component: impl Component<Props = Props, Msg = Msg, Sub = Sub> + 'static,
+        builder: ComponentBuilder<Msg, Sub>,
+        sub_map: SubMap<Sub>,
     ) -> Rc<RefCell<Box<dyn Composed>>> {
         let this = Self {
             component_id: component_id,
@@ -54,15 +127,48 @@ impl<Props: 'static, Msg: 'static, Sub: 'static> ComposedComponent<Props, Msg, S
             children: Vec::new(),
             rendered_cache: Html::none(),
             is_updated: true,
+            sub_map: sub_map.payload,
+            builder: Some(builder),
         };
         let this = Rc::new(RefCell::new(Box::new(this) as Box<dyn Composed>));
         let weak_this = Rc::downgrade(&this);
-        this.borrow_mut().set_this(weak_this);
+        this.borrow_mut().set_this(Weak::clone(&weak_this));
         this
     }
 
     pub fn init(&mut self, props: Props) {
-        self.component.init(props);
+        let mut builder = ComponentBuilder::new();
+        self.component.init(props, &mut builder);
+    }
+
+    fn proc_cmd(&mut self, cmd: Cmd<Msg, Sub>) {
+        match cmd {
+            Cmd::None => {}
+            Cmd::Task(worker) => {
+                let this = Weak::clone(&self.this);
+                let component_id = self.component_id;
+                task::add(move || {
+                    worker(Box::new(move |msg| {
+                        if let Some(this) = this.upgrade() {
+                            let msg = Message {
+                                payload: Box::new(msg),
+                                component_id: component_id,
+                            };
+                            this.borrow_mut().update(msg);
+                            state::render();
+                        }
+                    }))
+                })
+            }
+            Cmd::Sub(sub) => {
+                if let Some(parent) = self.parent.upgrade() {
+                    if let Some(sub_map) = self.sub_map.take() {
+                        let msg = sub_map(sub);
+                        parent.borrow_mut().subscribe(msg);
+                    }
+                }
+            }
+        }
     }
 
     fn render_lazy(&self, before: &Html) -> Option<Node> {
@@ -221,11 +327,19 @@ impl<Props, Msg: 'static, Sub> Composed for ComposedComponent<Props, Msg, Sub> {
         if msg.component_id == self.component_id {
             if let Ok(msg) = msg.payload.downcast::<Msg>() {
                 self.is_updated = true;
-                self.component.update(*msg);
+                let cmd = self.component.update(*msg);
+                self.proc_cmd(cmd);
             }
         } else if let Some(parent) = self.parent.upgrade() {
             parent.borrow_mut().update(msg);
         }
+    }
+
+    fn subscribe(&mut self, msg: Box<dyn Any>) {
+        self.update(Message {
+            payload: msg,
+            component_id: self.component_id,
+        });
     }
 
     fn render(&mut self, is_forced: bool) -> Option<Node> {
@@ -252,6 +366,23 @@ impl<Props, Msg: 'static, Sub> Composed for ComposedComponent<Props, Msg, Sub> {
     fn set_this(&mut self, this: Weak<RefCell<Box<dyn Composed>>>) {
         self.is_updated = true;
         self.this = this;
+        if let Some(builder) = self.builder.take() {
+            self.proc_cmd(builder.cmd);
+            for batch in builder.batches {
+                let this = Weak::clone(&self.this);
+                let component_id = self.component_id;
+                batch(Box::new(move |msg| {
+                    if let Some(this) = this.upgrade() {
+                        let msg = Message {
+                            payload: Box::new(msg),
+                            component_id: component_id,
+                        };
+                        this.borrow_mut().update(msg);
+                        state::render();
+                    }
+                }))
+            }
+        }
     }
 
     fn set_parent(&mut self, parent: Weak<RefCell<Box<dyn Composed>>>) {
