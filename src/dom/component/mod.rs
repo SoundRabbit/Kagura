@@ -38,6 +38,7 @@ pub trait Constructor: Component + Sized {
 }
 
 pub trait Composed: Any + 'static {
+    fn init(&mut self, props: Box<dyn Any>);
     fn update(&mut self, msg: Box<dyn Any>);
     fn render(&mut self, is_forced: bool) -> Vec<Node>;
     fn set_children(&mut self, children: Vec<Html>);
@@ -354,6 +355,12 @@ impl<Props: 'static, Msg: 'static, Sub: 'static> ComposedComponent<Props, Msg, S
 }
 
 impl<Props, Msg: 'static, Sub> Composed for ComposedComponent<Props, Msg, Sub> {
+    fn init(&mut self, props: Box<dyn Any>) {
+        if let Ok(props) = props.downcast::<Props>() {
+            self.init(*props);
+        }
+    }
+
     fn update(&mut self, msg: Box<dyn Any>) {
         if let Ok(msg) = msg.downcast::<Msg>() {
             self.is_updated = true;

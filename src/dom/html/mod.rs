@@ -1,4 +1,4 @@
-use std::any::Any;
+use std::any::{self, Any};
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
@@ -96,13 +96,13 @@ impl Html {
         Html::ComponentBuilder {
             builder: Some(Box::new(move |before| {
                 if let Some(before) = before {
-                    if let Some(component) =
-                        Any::downcast_mut::<ComposedComponent<P, M, S>>(&mut (*before.borrow_mut()))
-                    {
-                        component.init(props);
+                    if before.borrow().is(any::TypeId::of::<C>()) {
+                        before.borrow_mut().init(Box::new(props));
                         return Rc::clone(&before);
                     }
                 }
+                use wasm_bindgen::prelude::*;
+                web_sys::console::log_1(&JsValue::from("construct B"));
                 let mut builder = ComponentBuilder::new();
                 let component = C::constructor(props, &mut builder);
                 ComposedComponent::new(component, builder, sub_map)
