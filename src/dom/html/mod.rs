@@ -1,4 +1,4 @@
-use std::any::Any;
+use std::any::{self, Any};
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
@@ -19,7 +19,7 @@ pub enum Html {
             Box<
                 dyn FnOnce(
                     Option<Rc<RefCell<Box<dyn Composed + 'static>>>>,
-                ) -> Rc<RefCell<Box<dyn Composed>>>,
+                ) -> Rc<RefCell<Box<dyn Composed + 'static>>>,
             >,
         >,
         parent: Option<Weak<RefCell<Box<dyn Composed + 'static>>>>,
@@ -96,10 +96,8 @@ impl Html {
         Html::ComponentBuilder {
             builder: Some(Box::new(move |before| {
                 if let Some(before) = before {
-                    if let Some(component) =
-                        Any::downcast_mut::<ComposedComponent<P, M, S>>(&mut (*before.borrow_mut()))
-                    {
-                        component.init(props);
+                    if before.borrow().is(any::TypeId::of::<C>()) {
+                        before.borrow_mut().init(Box::new(props), Box::new(sub_map));
                         return Rc::clone(&before);
                     }
                 }
