@@ -1,3 +1,4 @@
+use wasm_bindgen::prelude::*;
 use web_sys;
 
 pub fn create_text_node(data: &str) -> web_sys::Text {
@@ -24,4 +25,11 @@ pub fn get_element_by_id(element_id: &str) -> web_sys::Element {
         .unwrap()
         .get_element_by_id(element_id)
         .unwrap()
+}
+
+pub fn error<T>(v: T)
+where
+    JsValue: From<T>,
+{
+    web_sys::console::log_1(&JsValue::from(v));
 }

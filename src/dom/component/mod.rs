@@ -1,7 +1,7 @@
 use super::html::Html;
 use super::{Events, Node};
 use crate::{state, task};
-use std::any::Any;
+use std::any::{self, Any};
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
@@ -20,23 +20,30 @@ pub trait Constructor: Component + Sized {
         builder: &mut ComponentBuilder<Self::Msg, Self::Sub>,
     ) -> Self;
 
-    fn view(props: Self::Props, sub_map: SubMap<Self::Sub>, children: Vec<Html>) -> Html {
+    fn with_children(
+        props: Self::Props,
+        sub_map: Subscription<Self::Sub>,
+        children: Vec<Html>,
+    ) -> Html {
         Html::component::<Self, Self::Props, Self::Msg, Self::Sub>(props, sub_map, children)
+    }
+
+    fn with_child(props: Self::Props, sub_map: Subscription<Self::Sub>, child: Html) -> Html {
+        Html::component::<Self, Self::Props, Self::Msg, Self::Sub>(props, sub_map, vec![child])
+    }
+
+    fn empty(props: Self::Props, sub_map: Subscription<Self::Sub>) -> Html {
+        Html::component::<Self, Self::Props, Self::Msg, Self::Sub>(props, sub_map, vec![])
     }
 }
 
-pub trait Composed {
-    fn update(&mut self, msg: Message);
-    fn subscribe(&mut self, msg: Box<dyn Any>);
-    fn render(&mut self, is_forced: bool) -> Option<Node>;
+pub trait Composed: Any + 'static {
+    fn update(&mut self, msg: Box<dyn Any>);
+    fn render(&mut self, is_forced: bool) -> Vec<Node>;
     fn set_children(&mut self, children: Vec<Html>);
     fn set_this(&mut self, this: Weak<RefCell<Box<dyn Composed>>>);
     fn set_parent(&mut self, parent: Weak<RefCell<Box<dyn Composed>>>);
-}
-
-pub struct Message {
-    pub payload: Box<dyn Any>,
-    pub component_id: crate::uid::IdType,
+    fn is(&self, type_id: any::TypeId) -> bool;
 }
 
 pub type TaskResolver<Msg> = Box<dyn FnOnce(Msg)>;
@@ -53,12 +60,11 @@ pub struct ComponentBuilder<Msg: 'static, Sub> {
     cmd: Cmd<Msg, Sub>,
 }
 
-pub struct SubMap<Sub: 'static> {
+pub struct Subscription<Sub: 'static> {
     payload: Option<Box<dyn FnOnce(Sub) -> Box<dyn Any>>>,
 }
 
 pub struct ComposedComponent<Props: 'static, Msg: 'static, Sub: 'static> {
-    component_id: crate::uid::IdType,
     component: Box<dyn Component<Props = Props, Msg = Msg, Sub = Sub>>,
     this: Weak<RefCell<Box<dyn Composed>>>,
     parent: Weak<RefCell<Box<dyn Composed>>>,
@@ -67,6 +73,7 @@ pub struct ComposedComponent<Props: 'static, Msg: 'static, Sub: 'static> {
     is_updated: bool,
     sub_map: Option<Box<dyn FnOnce(Sub) -> Box<dyn Any>>>,
     builder: Option<ComponentBuilder<Msg, Sub>>,
+    self_id: any::TypeId,
 }
 
 impl<Msg, Sub> Cmd<Msg, Sub> {
@@ -100,27 +107,25 @@ impl<Msg, Sub> ComponentBuilder<Msg, Sub> {
     }
 }
 
-impl<Sub> SubMap<Sub> {
+impl<Sub> Subscription<Sub> {
     pub fn new<Msg: 'static>(mapper: impl FnOnce(Sub) -> Msg + 'static) -> Self {
         Self {
             payload: Some(Box::new(move |sub| Box::new(mapper(sub)) as Box<dyn Any>)),
         }
     }
 
-    pub fn empty() -> Self {
+    pub fn none() -> Self {
         Self { payload: None }
     }
 }
 
 impl<Props: 'static, Msg: 'static, Sub: 'static> ComposedComponent<Props, Msg, Sub> {
-    pub fn new(
-        component_id: crate::uid::IdType,
-        component: impl Component<Props = Props, Msg = Msg, Sub = Sub> + 'static,
+    pub fn new<C: Component<Props = Props, Msg = Msg, Sub = Sub> + 'static>(
+        component: C,
         builder: ComponentBuilder<Msg, Sub>,
-        sub_map: SubMap<Sub>,
+        sub_map: Subscription<Sub>,
     ) -> Rc<RefCell<Box<dyn Composed>>> {
         let this = Self {
-            component_id: component_id,
             component: Box::new(component),
             this: Weak::new(),
             parent: Weak::new(),
@@ -129,6 +134,7 @@ impl<Props: 'static, Msg: 'static, Sub: 'static> ComposedComponent<Props, Msg, S
             is_updated: true,
             sub_map: sub_map.payload,
             builder: Some(builder),
+            self_id: any::TypeId::of::<C>(),
         };
         let this = Rc::new(RefCell::new(Box::new(this) as Box<dyn Composed>));
         let weak_this = Rc::downgrade(&this);
@@ -146,15 +152,10 @@ impl<Props: 'static, Msg: 'static, Sub: 'static> ComposedComponent<Props, Msg, S
             Cmd::None => {}
             Cmd::Task(worker) => {
                 let this = Weak::clone(&self.this);
-                let component_id = self.component_id;
                 task::add(move || {
                     worker(Box::new(move |msg| {
                         if let Some(this) = this.upgrade() {
-                            let msg = Message {
-                                payload: Box::new(msg),
-                                component_id: component_id,
-                            };
-                            this.borrow_mut().update(msg);
+                            this.borrow_mut().update(Box::new(msg));
                             state::render();
                         }
                     }))
@@ -164,57 +165,76 @@ impl<Props: 'static, Msg: 'static, Sub: 'static> ComposedComponent<Props, Msg, S
                 if let Some(parent) = self.parent.upgrade() {
                     if let Some(sub_map) = self.sub_map.take() {
                         let msg = sub_map(sub);
-                        parent.borrow_mut().subscribe(msg);
+                        parent.borrow_mut().update(msg);
                     }
                 }
             }
         }
     }
 
-    fn render_lazy(&self, before: &Html) -> Option<Node> {
+    fn render_lazy(&self, before: &Html) -> Vec<Node> {
         match before {
-            Html::TextNode(text) => Some(Node::Text(text.clone())),
-            Html::None => None,
+            Html::TextNode(text) => vec![Node::Text(text.clone())],
+            Html::None => vec![],
             Html::ComponentNode(component) => component.borrow_mut().render(false),
-            Html::ComponentBuilder { .. } => None,
+            Html::Fragment(children) => children
+                .iter()
+                .map(|child| self.render_lazy(child))
+                .flatten()
+                .collect::<Vec<_>>(),
+            Html::ComponentBuilder { .. } => vec![],
             Html::ElementNode {
                 tag_name,
                 attributes,
                 events: _,
                 children,
-                component_id: _,
+                parent: _,
             } => {
                 let children = children
                     .into_iter()
-                    .filter_map(|child| self.render_lazy(child))
+                    .map(|child| self.render_lazy(child))
+                    .flatten()
                     .collect::<Vec<Node>>();
 
                 let dom_events = Events::new();
 
-                Some(Node::element(
+                vec![Node::element(
                     tag_name,
                     attributes.clone().into(),
                     dom_events,
                     children,
                     false,
-                ))
+                )]
             }
         }
     }
 
-    fn render_force(&self, before: Html, after: &mut Html) -> Option<Node> {
+    fn render_force(&self, before: Html, after: &mut Html) -> Vec<Node> {
         match after {
-            Html::None => None,
-            Html::TextNode(text) => Some(Node::Text(text.clone())),
+            Html::None => vec![],
+            Html::TextNode(text) => vec![Node::Text(text.clone())],
             Html::ComponentNode(component) => component.borrow_mut().render(true),
-            Html::ComponentBuilder { builder, children } => {
+            Html::ComponentBuilder {
+                builder,
+                children,
+                parent,
+            } => {
                 if let Some(component_builder) = builder.take() {
                     let component = if let Html::ComponentNode(component) = before {
                         component_builder(Some(component))
+                    } else if let Html::ComponentBuilder { .. } = before {
+                        panic!();
                     } else {
+                        use wasm_bindgen::prelude::*;
+                        web_sys::console::log_1(&JsValue::from(format!("{:?}", before)));
                         component_builder(None)
                     };
-                    component.borrow_mut().set_parent(Weak::clone(&self.this));
+                    let parent = if let Some(parent) = parent {
+                        Weak::clone(parent)
+                    } else {
+                        Weak::clone(&self.this)
+                    };
+                    component.borrow_mut().set_parent(parent);
                     self.set_component_id(children);
                     let children = children.drain(..).collect::<Vec<_>>();
                     component.borrow_mut().set_children(children);
@@ -225,55 +245,60 @@ impl<Props: 'static, Msg: 'static, Sub: 'static> ComposedComponent<Props, Msg, S
                     *after = Html::ComponentNode(Rc::clone(&component));
                     component.borrow_mut().render(true)
                 } else {
-                    None
+                    vec![]
                 }
+            }
+            Html::Fragment(children) => {
+                let mut before = match before {
+                    Html::Fragment(before) => before,
+                    _ => vec![before],
+                };
+                while children.len() > before.len() {
+                    before.push(Html::none());
+                }
+                let children = children
+                    .into_iter()
+                    .zip(before.into_iter())
+                    .map(|(child, cache)| self.render_force(cache, child))
+                    .flatten()
+                    .collect::<Vec<_>>();
+                children
             }
             Html::ElementNode {
                 tag_name,
                 children,
                 attributes,
                 events,
-                component_id,
+                parent,
             } => {
-                let children = match before {
-                    Html::ElementNode {
-                        children: mut before,
-                        ..
-                    } => {
-                        while children.len() > before.len() {
-                            before.push(Html::none());
-                        }
-                        children
-                            .into_iter()
-                            .zip(before.into_iter())
-                            .filter_map(|(child, cache)| self.render_force(cache, child))
-                            .collect::<Vec<Node>>()
-                    }
-                    _ => children
-                        .into_iter()
-                        .filter_map(|child| self.render_force(Html::none(), child))
-                        .collect::<Vec<_>>(),
+                let mut before = match before {
+                    Html::ElementNode { children, .. } => children,
+                    _ => vec![],
                 };
+                while children.len() > before.len() {
+                    before.push(Html::none());
+                }
+                let children = children
+                    .into_iter()
+                    .zip(before.into_iter())
+                    .map(|(child, cache)| self.render_force(cache, child))
+                    .flatten()
+                    .collect::<Vec<_>>();
 
-                let component_id = if let Some(component_id) = component_id {
-                    *component_id
-                } else {
-                    self.component_id
-                };
+                let parent = parent
+                    .as_ref()
+                    .map(|x| Weak::clone(x))
+                    .unwrap_or(Weak::clone(&self.this));
 
                 let mut dom_events = Events::new();
                 for (name, handlers) in &mut events.handlers {
                     for handler in handlers.drain(..) {
-                        let this = Weak::clone(&self.this);
+                        let parent = Weak::clone(&parent);
 
                         dom_events.add(name, move |e| {
-                            if let Some(this) = this.upgrade() {
+                            if let Some(parent) = parent.upgrade() {
                                 let msg = handler(e);
-                                let msg = Message {
-                                    payload: msg,
-                                    component_id: component_id,
-                                };
-                                this.borrow_mut().update(msg);
+                                parent.borrow_mut().update(msg);
                                 state::render();
                             }
                         });
@@ -281,28 +306,24 @@ impl<Props: 'static, Msg: 'static, Sub: 'static> ComposedComponent<Props, Msg, S
                 }
 
                 if let Some(rendered) = events.rendered.take() {
-                    let this = Weak::clone(&self.this);
+                    let parent = Weak::clone(&parent);
 
                     dom_events.rendered = Some(Box::new(move |e| {
-                        if let Some(this) = this.upgrade() {
+                        if let Some(parent) = parent.upgrade() {
                             let msg = rendered(e);
-                            let msg = Message {
-                                payload: msg,
-                                component_id: component_id,
-                            };
-                            this.borrow_mut().update(msg);
+                            parent.borrow_mut().update(msg);
                             state::render();
                         }
                     }))
                 }
 
-                Some(Node::element(
+                vec![Node::element(
                     tag_name.as_str(),
                     attributes.clone().into(),
                     dom_events,
                     children,
                     true,
-                ))
+                )]
             }
         }
     }
@@ -310,10 +331,20 @@ impl<Props: 'static, Msg: 'static, Sub: 'static> ComposedComponent<Props, Msg, S
     fn set_component_id(&self, html: &mut Vec<Html>) {
         for html_node in html {
             match html_node {
-                Html::ElementNode { component_id, .. } => {
-                    *component_id = Some(self.component_id);
+                Html::ElementNode {
+                    parent, children, ..
+                } => {
+                    if parent.is_none() {
+                        *parent = Some(Weak::clone(&self.this));
+                    }
+                    self.set_component_id(children);
                 }
-                Html::ComponentBuilder { children, .. } => {
+                Html::ComponentBuilder {
+                    children, parent, ..
+                } => {
+                    if parent.is_none() {
+                        *parent = Some(Weak::clone(&self.this));
+                    }
                     self.set_component_id(children);
                 }
                 _ => {}
@@ -323,26 +354,15 @@ impl<Props: 'static, Msg: 'static, Sub: 'static> ComposedComponent<Props, Msg, S
 }
 
 impl<Props, Msg: 'static, Sub> Composed for ComposedComponent<Props, Msg, Sub> {
-    fn update(&mut self, msg: Message) {
-        if msg.component_id == self.component_id {
-            if let Ok(msg) = msg.payload.downcast::<Msg>() {
-                self.is_updated = true;
-                let cmd = self.component.update(*msg);
-                self.proc_cmd(cmd);
-            }
-        } else if let Some(parent) = self.parent.upgrade() {
-            parent.borrow_mut().update(msg);
+    fn update(&mut self, msg: Box<dyn Any>) {
+        if let Ok(msg) = msg.downcast::<Msg>() {
+            self.is_updated = true;
+            let cmd = self.component.update(*msg);
+            self.proc_cmd(cmd);
         }
     }
 
-    fn subscribe(&mut self, msg: Box<dyn Any>) {
-        self.update(Message {
-            payload: msg,
-            component_id: self.component_id,
-        });
-    }
-
-    fn render(&mut self, is_forced: bool) -> Option<Node> {
+    fn render(&mut self, is_forced: bool) -> Vec<Node> {
         if self.is_updated || is_forced {
             let mut children = self.children.clone();
             std::mem::swap(&mut children, &mut self.children);
@@ -370,14 +390,9 @@ impl<Props, Msg: 'static, Sub> Composed for ComposedComponent<Props, Msg, Sub> {
             self.proc_cmd(builder.cmd);
             for batch in builder.batches {
                 let this = Weak::clone(&self.this);
-                let component_id = self.component_id;
                 batch(Box::new(move |msg| {
                     if let Some(this) = this.upgrade() {
-                        let msg = Message {
-                            payload: Box::new(msg),
-                            component_id: component_id,
-                        };
-                        this.borrow_mut().update(msg);
+                        this.borrow_mut().update(Box::new(msg));
                         state::render();
                     }
                 }))
@@ -388,5 +403,9 @@ impl<Props, Msg: 'static, Sub> Composed for ComposedComponent<Props, Msg, Sub> {
     fn set_parent(&mut self, parent: Weak<RefCell<Box<dyn Composed>>>) {
         self.is_updated = true;
         self.parent = parent;
+    }
+
+    fn is(&self, type_id: any::TypeId) -> bool {
+        self.self_id == type_id
     }
 }

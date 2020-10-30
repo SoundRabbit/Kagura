@@ -1,6 +1,6 @@
 use std::any::Any;
 use std::cell::RefCell;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
 pub mod attributes;
 pub mod events;
@@ -9,7 +9,7 @@ pub use attributes::Attributes;
 pub use events::Events;
 
 use super::component::{
-    Component, ComponentBuilder, Composed, ComposedComponent, Constructor, SubMap,
+    Component, ComponentBuilder, Composed, ComposedComponent, Constructor, Subscription,
 };
 
 /// viritual html element
@@ -22,6 +22,7 @@ pub enum Html {
                 ) -> Rc<RefCell<Box<dyn Composed>>>,
             >,
         >,
+        parent: Option<Weak<RefCell<Box<dyn Composed + 'static>>>>,
         children: Vec<Html>,
     },
     ComponentNode(Rc<RefCell<Box<dyn Composed>>>),
@@ -31,9 +32,27 @@ pub enum Html {
         children: Vec<Html>,
         attributes: Attributes,
         events: Events,
-        component_id: Option<crate::uid::IdType>,
+        parent: Option<Weak<RefCell<Box<dyn Composed + 'static>>>>,
     },
+    Fragment(Vec<Html>),
     None,
+}
+
+impl std::fmt::Debug for Html {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ComponentBuilder { children, .. } => {
+                write!(f, "[ComponentBuilder]\n{:?}", children)
+            }
+            Self::ComponentNode(..) => write!(f, "[ComponentNode]"),
+            Self::TextNode(text) => write!(f, "[text]\n{}", text),
+            Self::ElementNode {
+                tag_name, children, ..
+            } => write!(f, "[element: {}]\n{:?}", tag_name, children),
+            Self::Fragment(children) => write!(f, "[Fragment]\n{:?}", children),
+            Self::None => write!(f, "[None"),
+        }
+    }
 }
 
 impl Clone for Html {
@@ -41,6 +60,7 @@ impl Clone for Html {
         match self {
             Self::ComponentBuilder { .. } => Self::ComponentBuilder {
                 builder: None,
+                parent: None,
                 children: Vec::new(),
             },
             Self::ComponentNode(component_node) => Self::ComponentNode(Rc::clone(&component_node)),
@@ -50,14 +70,15 @@ impl Clone for Html {
                 children,
                 attributes,
                 events,
-                component_id,
+                parent,
             } => Self::ElementNode {
                 tag_name: tag_name.clone(),
                 children: children.clone(),
                 attributes: attributes.clone(),
                 events: events.clone(),
-                component_id: component_id.clone(),
+                parent: parent.as_ref().map(|x| Weak::clone(x)),
             },
+            Self::Fragment(children) => Self::Fragment(children.clone()),
             Self::None => Self::None,
         }
     }
@@ -66,13 +87,12 @@ impl Clone for Html {
 impl Html {
     pub fn component<C: 'static, P: 'static, M: 'static, S: 'static>(
         props: P,
-        sub_map: SubMap<S>,
+        sub_map: Subscription<S>,
         children: Vec<Html>,
     ) -> Html
     where
         C: Component<Props = P, Msg = M, Sub = S> + Constructor<Props = P>,
     {
-        let component_id = crate::uid::get();
         Html::ComponentBuilder {
             builder: Some(Box::new(move |before| {
                 if let Some(before) = before {
@@ -85,10 +105,15 @@ impl Html {
                 }
                 let mut builder = ComponentBuilder::new();
                 let component = C::constructor(props, &mut builder);
-                ComposedComponent::new(component_id, component, builder, sub_map)
+                ComposedComponent::new(component, builder, sub_map)
             })),
+            parent: None,
             children: children,
         }
+    }
+
+    pub fn fragment(children: Vec<Html>) -> Self {
+        Self::Fragment(children)
     }
 
     /// Creates Html from a non-validated text
@@ -108,7 +133,7 @@ impl Html {
             children,
             attributes,
             events,
-            component_id: None,
+            parent: None,
         }
     }
 
