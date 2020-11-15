@@ -1,4 +1,4 @@
-use std::any::{self, Any};
+use std::any::{self};
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
@@ -101,8 +101,6 @@ impl Html {
                         return Rc::clone(&before);
                     }
                 }
-                use wasm_bindgen::prelude::*;
-                web_sys::console::log_1(&JsValue::from("construct B"));
                 let mut builder = ComponentBuilder::new();
                 let component = C::constructor(props, &mut builder);
                 ComposedComponent::new(component, builder, sub_map)
