@@ -101,6 +101,6 @@ crate-type = ["cdylib", "rlib"]
 opt-level = 3
 
 [dependencies]
-kagura = "0.8.11"
+kagura = "0.12"
 wasm-bindgen = "0.2"
 ```
