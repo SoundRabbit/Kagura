@@ -25,17 +25,16 @@ serde = "1.0.101"
 serde_derive = "1.0.101"
 
 [dependencies.js-sys]
-version = "0.3.28"
+version = "^0.3"
 
 [dependencies.wasm-bindgen]
 version = "^0.2"
-features = ["serde-serialize"]
 
 [dependencies.wasm-bindgen-futures]
-version = "0.3.8"
+version = "^0.3"
 
 [dependencies.web-sys]
-version = "0.3.28"
+version = "^0.3"
 features = [
     "AddEventListenerOptions",
     "AnalyserNode",
