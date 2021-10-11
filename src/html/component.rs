@@ -35,13 +35,13 @@ pub trait Constructor: Update + Render {
 }
 
 pub trait Update: Component {
-    fn update(&mut self, _: &Self::Props, _: Self::Msg) -> Cmd<Self::Sub> {
+    fn update(&mut self, _: &Self::Props, _: Self::Msg) -> Cmd<Self> {
         Cmd::None
     }
-    fn on_assemble(&mut self, _: &Self::Props) -> Cmd<Self::Sub> {
+    fn on_assemble(&mut self, _: &Self::Props) -> Cmd<Self> {
         Cmd::None
     }
-    fn on_load(&mut self, _: &Self::Props) -> Cmd<Self::Sub> {
+    fn on_load(&mut self, _: &Self::Props) -> Cmd<Self> {
         Cmd::None
     }
 }

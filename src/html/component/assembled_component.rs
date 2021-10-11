@@ -39,7 +39,7 @@ pub struct AssembledComponentInstance<ThisComp: Update + Render, DemirootComp: C
     props: ThisComp::Props,
     sub_mapper: sub::Mapper<ThisComp::Sub, DemirootComp::Msg>,
     is_updated: bool,
-    lazy_cmd: VecDeque<AssembledCmd<ThisComp::Sub, DemirootComp::Msg>>,
+    lazy_cmd: VecDeque<AssembledCmd<ThisComp, DemirootComp::Msg>>,
     children_tree: ComponentTree<ThisComp, DemirootComp>,
     children: Vec<ChildComponent<ThisComp, DemirootComp>>,
 }
@@ -56,9 +56,11 @@ enum ChildComponent<ThisComp: Component, DemirootComp: Component> {
     DemirootComp(Rc<RefCell<dyn AssembledChildComponent<DemirootComp = DemirootComp>>>),
 }
 
-enum AssembledCmd<ThisSub, DemirootMsg> {
+enum AssembledCmd<ThisComp: Component, DemirootMsg> {
     None,
-    Sub(ThisSub),
+    Sub(ThisComp::Sub),
+    Task(Box<dyn FnOnce(TaskResolver<ThisComp::Msg>)>),
+    Batch(Box<dyn FnOnce(BatchResolver<ThisComp::Msg>)>),
     Msg(DemirootMsg),
 }
 
@@ -113,10 +115,36 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
         self.lazy_cmd.push_back(AssembledCmd::from(cmd));
     }
 
-    fn load_cmd(&mut self, cmd: Cmd<ThisComp::Sub>) -> Option<ThisComp::Sub> {
+    fn load_cmd(&mut self, cmd: Cmd<ThisComp>) -> Option<ThisComp::Sub> {
         match cmd {
             Cmd::None => None,
             Cmd::Sub(sub) => Some(sub),
+            Cmd::Task(task) => {
+                let this = Weak::clone(&self.this);
+                let resolver = Box::new(move |msg| {
+                    if let Some(this) = this.upgrade() {
+                        this.borrow_mut().update(msg);
+                        crate::state::render();
+                    }
+                });
+                crate::env::add_task(move || {
+                    task(resolver);
+                });
+                None
+            }
+            Cmd::Batch(batch) => {
+                let this = Weak::clone(&self.this);
+                let resolver = Box::new(move |msg| {
+                    if let Some(this) = this.upgrade() {
+                        this.borrow_mut().update(msg);
+                        crate::state::render();
+                    }
+                });
+                crate::env::add_task(move || {
+                    batch(resolver);
+                });
+                None
+            }
         }
     }
 
@@ -216,20 +244,24 @@ impl<ThisComp: Component, DemirootComp: Component> ComponentTree<ThisComp, Demir
     }
 }
 
-impl<ThisSub, DemirootMsg> From<Cmd<ThisSub>> for AssembledCmd<ThisSub, DemirootMsg> {
-    fn from(cmd: Cmd<ThisSub>) -> Self {
+impl<ThisComp: Component, DemirootMsg> From<Cmd<ThisComp>> for AssembledCmd<ThisComp, DemirootMsg> {
+    fn from(cmd: Cmd<ThisComp>) -> Self {
         match cmd {
             Cmd::None => Self::None,
             Cmd::Sub(sub) => Self::Sub(sub),
+            Cmd::Task(task) => Self::Task(task),
+            Cmd::Batch(batch) => Self::Batch(batch),
         }
     }
 }
 
-impl<ThisSub, DemirootMsg> Into<Cmd<ThisSub>> for AssembledCmd<ThisSub, DemirootMsg> {
-    fn into(self) -> Cmd<ThisSub> {
+impl<ThisComp: Component, DemirootMsg> Into<Cmd<ThisComp>> for AssembledCmd<ThisComp, DemirootMsg> {
+    fn into(self) -> Cmd<ThisComp> {
         match self {
             Self::None => Cmd::None,
             Self::Sub(sub) => Cmd::Sub(sub),
+            Self::Task(task) => Cmd::Task(task),
+            Self::Batch(batch) => Cmd::Batch(batch),
             Self::Msg(..) => Cmd::None,
         }
     }

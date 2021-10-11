@@ -15,4 +15,5 @@ pub fn render() {
             state.render();
         }
     });
+    crate::env::dispatch_task();
 }

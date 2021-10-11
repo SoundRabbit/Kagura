@@ -1,9 +1,13 @@
-pub enum Cmd<Sub> {
+use super::*;
+
+pub enum Cmd<C: Component> {
     None,
-    Sub(Sub),
+    Sub(C::Sub),
+    Task(Box<dyn FnOnce(TaskResolver<C::Msg>)>),
+    Batch(Box<dyn FnOnce(BatchResolver<C::Msg>)>),
 }
 
-impl<Sub> Cmd<Sub> {
+impl<C: Component> Cmd<C> {
     pub fn none() -> Self {
         Self::None
     }
