@@ -154,6 +154,7 @@ impl Renderer {
         let r_element = self.create_element(&after.tag_name);
         after.attributes = self.force_render_element_attribute(after.attributes, &r_element);
         after.events = self.force_render_node_event(node::Events::new(), after.events, &r_element);
+        after.children = self.render_node_list(VecDeque::new(), after.children, &r_element);
         (Node::Element(after), r_element.into())
     }
 

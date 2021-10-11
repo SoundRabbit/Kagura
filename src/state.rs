@@ -7,6 +7,7 @@ pub fn mount(kagura: Kagura) {
     STATE.with(|state| {
         *state.borrow_mut() = Some(kagura);
     });
+    render();
 }
 
 pub fn render() {
