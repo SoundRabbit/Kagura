@@ -1,6 +1,3 @@
-use std::cell::RefCell;
-use std::rc::{Rc, Weak};
-
 pub mod assembled_component;
 mod cmd;
 pub mod prepacked_component;
@@ -10,6 +7,9 @@ pub use assembled_component::{AssembledChildComponent, AssembledDemirootComponen
 pub use cmd::Cmd;
 pub use prepacked_component::PrepackedComponent;
 pub use sub::Sub;
+
+pub type TaskResolver<Msg> = Box<dyn FnOnce(Msg)>;
+pub type BatchResolver<Msg> = Box<dyn FnMut(Msg)>;
 
 use super::*;
 use assembled_component::AssembledComponentInstance;
@@ -35,19 +35,19 @@ pub trait Constructor: Update + Render {
 }
 
 pub trait Update: Component {
-    fn update(&mut self, props: &Self::Props, msg: Self::Msg) -> Cmd<Self::Sub> {
+    fn update(&mut self, _: &Self::Props, _: Self::Msg) -> Cmd<Self::Sub> {
         Cmd::None
     }
-    fn on_assemble(&mut self, props: &Self::Props) -> Cmd<Self::Sub> {
+    fn on_assemble(&mut self, _: &Self::Props) -> Cmd<Self::Sub> {
         Cmd::None
     }
-    fn on_load(&mut self, props: &Self::Props) -> Cmd<Self::Sub> {
+    fn on_load(&mut self, _: &Self::Props) -> Cmd<Self::Sub> {
         Cmd::None
     }
 }
 
 pub trait Render: Component {
-    fn render(&self, props: &Self::Props, children: Vec<Html<Self>>) -> Html<Self> {
+    fn render(&self, _: &Self::Props, _: Vec<Html<Self>>) -> Html<Self> {
         Html::Fragment(vec![])
     }
 }

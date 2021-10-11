@@ -11,7 +11,7 @@ pub use component::Component;
 
 use component::AssembledChildComponent;
 
-use crate::document::node;
+use crate::kagura::node;
 
 pub enum Html<DemirootComp: Component> {
     ComponentNode(ComponentNode<DemirootComp>),

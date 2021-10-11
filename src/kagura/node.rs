@@ -1,5 +1,6 @@
-use super::env::IdType;
+use crate::env::IdType;
 use std::collections::HashMap;
+use std::collections::VecDeque;
 use std::rc::Rc;
 
 pub enum Node {
@@ -11,7 +12,7 @@ pub struct ElementNode {
     pub tag_name: String,
     pub attributes: Attributes,
     pub events: Events,
-    pub children: Vec<Node>,
+    pub children: VecDeque<Node>,
 }
 
 pub struct TextNode {
@@ -19,7 +20,7 @@ pub struct TextNode {
     pub events: Events,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Attributes {
     pub attributes: HashMap<String, Vec<Value>>,
     pub delimiters: HashMap<String, String>,
@@ -46,7 +47,7 @@ impl Node {
         tag_name: impl Into<String>,
         attributes: Attributes,
         events: Events,
-        children: Vec<Node>,
+        children: VecDeque<Node>,
     ) -> Self {
         Node::Element(ElementNode {
             tag_name: tag_name.into(),
@@ -101,7 +102,7 @@ impl Attributes {
 }
 
 impl Value {
-    fn as_rc_string(&self) -> Rc<String> {
+    pub fn as_rc_string(&self) -> Rc<String> {
         match &self {
             Value::Int(v) => Rc::new(v.to_string()),
             Value::Nut(v) => Rc::new(v.to_string()),

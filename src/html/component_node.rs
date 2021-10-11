@@ -1,11 +1,11 @@
-use std::any::Any;
 use std::cell::RefCell;
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 
 use super::*;
-use component::AssembledChildComponent;
+use component::assembled_component::AssembledComponentInstance;
+use component::{AssembledChildComponent, Render, Update};
 
-impl<ThisComp: Component, DemirootComp: Component>
+impl<ThisComp: Update + Render, DemirootComp: Component>
     PackedComponentNodeInstance<ThisComp, DemirootComp>
 {
     pub fn new(
@@ -25,7 +25,7 @@ impl<ThisComp: Component, DemirootComp: Component>
     }
 }
 
-impl<ThisComp: Component, DemirootComp: Component> PackedComponentNode
+impl<ThisComp: Update + Render, DemirootComp: Component> PackedComponentNode
     for PackedComponentNodeInstance<ThisComp, DemirootComp>
 {
     type DemirootComp = DemirootComp;
@@ -41,7 +41,33 @@ impl<ThisComp: Component, DemirootComp: Component> PackedComponentNode
         &mut self,
         before: Option<Rc<RefCell<dyn AssembledChildComponent<DemirootComp = Self::DemirootComp>>>>,
     ) -> AssembledComponentNode<Self::DemirootComp> {
-        unimplemented!();
+        let before = before.and_then(|before| {
+            before
+                .borrow_mut()
+                .as_any()
+                .downcast_mut::<AssembledComponentInstance<ThisComp, DemirootComp>>()
+                .map(|before_instance| {
+                    let data = self.data.take().unwrap();
+                    before_instance.set_props(data.props);
+                    before_instance.set_sub_mapper(data.sub_mapper);
+
+                    (Rc::clone(&before), data.children)
+                })
+        });
+
+        if let Some((data, children)) = before {
+            AssembledComponentNode::new(data, children)
+        } else {
+            let data = self.data.take().unwrap();
+            let props = data.props;
+            let sub_mapper = data.sub_mapper;
+            let children = data.children;
+            let data = (data.constructor)(&props);
+            let data =
+                AssembledComponentInstance::new_ref(Rc::new(RefCell::new(data)), props, sub_mapper);
+
+            AssembledComponentNode::new(data, children)
+        }
     }
 }
 

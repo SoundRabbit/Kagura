@@ -1,16 +1,16 @@
 use std::any::Any;
 
 use super::*;
-use crate::document::node;
+use crate::kagura::node;
 
 impl<ThisComp: Update + Render, DemirootComp: Component>
     AssembledComponentInstance<ThisComp, DemirootComp>
 {
-    pub fn render(&mut self, children: Vec<Html<DemirootComp>>) -> Vec<Node> {
+    pub fn render(&mut self, children: Vec<Html<DemirootComp>>) -> VecDeque<Node> {
         let children = children.into_iter().map(|child| self.wrap(child)).collect();
         let html = self.data.borrow().render(&self.props, children);
         let mut before = ComponentTree::None;
-        let mut nodes = vec![];
+        let mut nodes = VecDeque::new();
 
         std::mem::swap(&mut self.children_tree, &mut before);
         self.children.clear();
@@ -80,6 +80,7 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                             if let Some(demiroot) = demiroot.as_ref().and_then(Weak::upgrade) {
                                 let msg = handler(e);
                                 demiroot.borrow_mut().update(msg);
+                                crate::state::render();
                             }
                         })))
                     }
@@ -96,11 +97,11 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
         &mut self,
         before: ComponentTree<ThisComp, DemirootComp>,
         after: Html<ThisComp>,
-    ) -> (ComponentTree<ThisComp, DemirootComp>, Vec<Node>) {
+    ) -> (ComponentTree<ThisComp, DemirootComp>, VecDeque<Node>) {
         let mut before = before.into_deq();
         let after = Self::flatten_html(after);
         let mut mapped = VecDeque::new();
-        let mut nodes = vec![];
+        let mut nodes = VecDeque::new();
 
         for after in after {
             let before_child = before.pop_front().unwrap_or(ComponentTree::None);
@@ -167,7 +168,7 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                 }
                 Html::TextNode { text, events } => (
                     ComponentTree::None,
-                    vec![Node::text(text, self.get_node_events(events))],
+                    vec![Node::text(text, self.get_node_events(events))].into(),
                 ),
                 Html::ElementNode {
                     tag_name,
@@ -180,7 +181,7 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                         _ => std::collections::VecDeque::new(),
                     };
                     let mut fragment = std::collections::VecDeque::new();
-                    let mut nodes = vec![];
+                    let mut nodes = VecDeque::new();
                     for child in children {
                         let before_child =
                             before_children.pop_front().unwrap_or(ComponentTree::None);
@@ -195,7 +196,7 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                         self.get_node_events(events),
                         nodes,
                     );
-                    (ComponentTree::Fragment(fragment), vec![node])
+                    (ComponentTree::Fragment(fragment), vec![node].into())
                 }
                 Html::Fragment(..) => {
                     unreachable!();
@@ -219,7 +220,7 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
         demiroot: Option<Weak<RefCell<dyn AssembledDemirootComponent<ThisComp = C>>>>,
     ) -> (
         Rc<RefCell<dyn AssembledChildComponent<DemirootComp = C>>>,
-        Vec<Node>,
+        VecDeque<Node>,
     ) {
         let children = assembled.children;
         let assembled = assembled.data;

@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use std::rc::{Rc, Weak};
 mod render;
 use super::*;
-use crate::document::Node;
+use crate::kagura::Node;
 
 pub trait AssembledDemirootComponent {
     type ThisComp: Component;
@@ -14,6 +14,8 @@ pub trait AssembledDemirootComponent {
 
 pub trait AssembledChildComponent {
     type DemirootComp: Component;
+
+    fn as_any(&mut self) -> &mut dyn std::any::Any;
 
     fn set_demiroot(
         &mut self,
@@ -27,7 +29,7 @@ pub trait AssembledChildComponent {
 
     fn load_lazy_cmd(&mut self) -> Option<<Self::DemirootComp as Component>::Msg>;
 
-    fn render(&mut self, children: Vec<Html<Self::DemirootComp>>) -> Vec<Node>;
+    fn render(&mut self, children: Vec<Html<Self::DemirootComp>>) -> VecDeque<Node>;
 }
 
 pub struct AssembledComponentInstance<ThisComp: Update + Render, DemirootComp: Component> {
@@ -83,6 +85,14 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
         let this = Rc::new(RefCell::new(this));
         this.borrow_mut().this = Rc::downgrade(&this);
         this
+    }
+
+    pub fn set_props(&mut self, props: ThisComp::Props) {
+        self.props = props;
+    }
+
+    pub fn set_sub_mapper(&mut self, sub_mapper: Sub<ThisComp::Sub, DemirootComp::Msg>) {
+        self.sub_mapper = sub::Mapper::from(sub_mapper);
     }
 
     fn force_update(&mut self, msg: ThisComp::Msg) {
@@ -153,6 +163,10 @@ impl<ThisComp: Update + Render, DemirootComp: Component> AssembledChildComponent
 {
     type DemirootComp = DemirootComp;
 
+    fn as_any(&mut self) -> &mut dyn std::any::Any {
+        self as &mut dyn std::any::Any
+    }
+
     fn set_demiroot(
         &mut self,
         demiroot: Option<
@@ -187,7 +201,7 @@ impl<ThisComp: Update + Render, DemirootComp: Component> AssembledChildComponent
         None
     }
 
-    fn render(&mut self, children: Vec<Html<Self::DemirootComp>>) -> Vec<Node> {
+    fn render(&mut self, children: Vec<Html<Self::DemirootComp>>) -> VecDeque<Node> {
         self.render(children)
     }
 }

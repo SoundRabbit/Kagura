@@ -1,4 +1,4 @@
-use std::cell::{Ref, RefCell, RefMut};
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use super::*;
@@ -14,12 +14,12 @@ impl<ThisComp: Update + Render> PrepackedComponent<ThisComp> {
         }
     }
 
-    pub fn borrow(&self) -> Ref<ThisComp> {
-        self.borrow()
+    pub fn map<T>(&self, f: impl FnOnce(&ThisComp) -> T) -> T {
+        f(&self.data.borrow())
     }
 
-    pub fn borrow_mut(&mut self) -> RefMut<ThisComp> {
-        self.borrow_mut()
+    pub fn map_mut<T>(&mut self, f: impl FnOnce(&mut ThisComp) -> T) -> T {
+        f(&mut self.data.borrow_mut())
     }
 
     pub fn with_children<DemirootComp: Component>(
