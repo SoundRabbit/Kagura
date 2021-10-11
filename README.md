@@ -14,7 +14,6 @@ A front-end framework that runs on WebAssembly written in Rust.
 extern crate kagura;
 extern crate wasm_bindgen;
 
-
 use kagura::prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -35,3 +34,19 @@ pub fn main() {
     });
 }
 ```
+
+## Usage
+
+### Create a project
+
+See `/project-template/^0.13` in this repogitory. This is a template of project of Kagura. You can custamize to use.
+
+### Mount to web_sys::Node
+
+Kagura only changes children of mounted web_sys::Node.
+
+```rust
+Kagura::mount(web_sys::Node, impl FnMut() -> Vec<Html<Terminator>>)
+```
+
+`Terminator` is a component, which is a marker of root of dom.
