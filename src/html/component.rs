@@ -32,6 +32,21 @@ pub trait Constructor: Update + Render {
             PackedComponentNodeInstance::new(Self::constructor, props, sub, children),
         )))
     }
+
+    fn with_child<DemirootComp: Component>(
+        props: Self::Props,
+        sub: Sub<Self::Sub, DemirootComp::Msg>,
+        child: Html<DemirootComp>,
+    ) -> Html<DemirootComp> {
+        Self::with_children(props, sub, vec![child])
+    }
+
+    fn empty<DemirootComp: Component>(
+        props: Self::Props,
+        sub: Sub<Self::Sub, DemirootComp::Msg>,
+    ) -> Html<DemirootComp> {
+        Self::with_children(props, sub, vec![])
+    }
 }
 
 pub trait Update: Component {
