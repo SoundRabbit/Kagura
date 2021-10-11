@@ -32,7 +32,7 @@ impl<ThisComp: Update + Render, DemirootComp: Component> PackedComponentNode
 
     fn wrap(&mut self) -> Box<dyn Any> {
         let data = self.data.take();
-        Box::new(WrappedPackedComponentNodeInstance {
+        Box::new(WrappedPackedComponentNode {
             data: Box::new(Self { data }),
         })
     }
@@ -71,18 +71,13 @@ impl<ThisComp: Update + Render, DemirootComp: Component> PackedComponentNode
     }
 }
 
-impl<SuperDemirootComp: Component> WrappedPackedComponentNodeInstance<SuperDemirootComp> {
+impl<SuperDemirootComp: Component> WrappedPackedComponentNode<SuperDemirootComp> {
     pub fn assemble(
         &mut self,
         before: Option<Rc<RefCell<dyn AssembledChildComponent<DemirootComp = SuperDemirootComp>>>>,
     ) -> AssembledComponentNode<SuperDemirootComp> {
         self.data.assemble(before)
     }
-}
-
-impl<SuperDemirootComp: Component> WrappedPackedComponentNode
-    for WrappedPackedComponentNodeInstance<SuperDemirootComp>
-{
 }
 
 impl<DemirootComp: Component> AssembledComponentNode<DemirootComp> {
@@ -94,17 +89,12 @@ impl<DemirootComp: Component> AssembledComponentNode<DemirootComp> {
     }
 
     pub fn wrap(self) -> Box<dyn Any> {
-        Box::new(WrappedAssembledComponentNodeInstance { data: Some(self) })
+        Box::new(WrappedAssembledComponentNode { data: Some(self) })
     }
 }
 
-impl<SuperDemirootComp: Component> WrappedAssembledComponentNodeInstance<SuperDemirootComp> {
+impl<SuperDemirootComp: Component> WrappedAssembledComponentNode<SuperDemirootComp> {
     pub fn take(&mut self) -> AssembledComponentNode<SuperDemirootComp> {
         self.data.take().unwrap()
     }
-}
-
-impl<SuperDemirootComp: Component> WrappedAssembledComponentNode
-    for WrappedAssembledComponentNodeInstance<SuperDemirootComp>
-{
 }

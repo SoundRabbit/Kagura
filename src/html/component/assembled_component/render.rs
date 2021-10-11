@@ -153,7 +153,7 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                 }
                 Html::ComponentNode(ComponentNode::WrappedPackedComponentNode(wrapped)) => {
                     let mut wrapped = wrapped
-                        .downcast::<WrappedPackedComponentNodeInstance<DemirootComp>>()
+                        .downcast::<WrappedPackedComponentNode<DemirootComp>>()
                         .unwrap();
                     let assembled = match before_child {
                         ComponentTree::DemirootComp(before_child) => {
@@ -182,7 +182,7 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                 }
                 Html::ComponentNode(ComponentNode::WrappedAssembledComponentNode(wrapped)) => {
                     let assembled = wrapped
-                        .downcast::<WrappedAssembledComponentNodeInstance<DemirootComp>>()
+                        .downcast::<WrappedAssembledComponentNode<DemirootComp>>()
                         .unwrap()
                         .take();
                     let (assembled, nodes) =

@@ -85,9 +85,7 @@ struct PackedComponentNodeInstanceData<ThisComp: Component, DemirootComp: Compon
     children: Vec<Html<DemirootComp>>,
 }
 
-pub trait WrappedPackedComponentNode: 'static {}
-
-pub struct WrappedPackedComponentNodeInstance<SuperDemirootComp: Component> {
+pub struct WrappedPackedComponentNode<SuperDemirootComp: Component> {
     data: Box<dyn PackedComponentNode<DemirootComp = SuperDemirootComp>>,
 }
 
@@ -96,9 +94,7 @@ pub struct AssembledComponentNode<DemirootComp: Component> {
     children: Vec<Html<DemirootComp>>,
 }
 
-pub trait WrappedAssembledComponentNode {}
-
-pub struct WrappedAssembledComponentNodeInstance<SuperDemirootComp: Component> {
+pub struct WrappedAssembledComponentNode<SuperDemirootComp: Component> {
     data: Option<AssembledComponentNode<SuperDemirootComp>>,
 }
 
