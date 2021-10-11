@@ -17,4 +17,7 @@ impl<C: Component> Cmd<C> {
     pub fn batch(batch: impl FnOnce(BatchResolver<C::Msg>) + 'static) -> Self {
         Self::Batch(Box::new(batch))
     }
+    pub fn chain(msg: C::Msg) -> Self {
+        Self::task(|resolve| resolve(msg))
+    }
 }
