@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -57,15 +58,15 @@ pub enum EventHandler<Msg> {
 
 pub enum ComponentNode<DemirootComp: Component> {
     PackedComponentNode(Box<dyn PackedComponentNode<DemirootComp = DemirootComp>>),
-    WrappedPackedComponentNode(Box<dyn WrappedPackedComponentNode>),
+    WrappedPackedComponentNode(Box<dyn Any>),
     AssembledComponentNode(AssembledComponentNode<DemirootComp>),
-    WrappedAssembledComponentNode(Box<dyn WrappedAssembledComponentNode>),
+    WrappedAssembledComponentNode(Box<dyn Any>),
 }
 
 pub trait PackedComponentNode {
     type DemirootComp: Component;
 
-    fn wrap(&mut self) -> Box<dyn WrappedPackedComponentNode>;
+    fn wrap(&mut self) -> Box<dyn Any>;
 
     fn assemble(
         &mut self,
@@ -84,7 +85,7 @@ struct PackedComponentNodeInstanceData<ThisComp: Component, DemirootComp: Compon
     children: Vec<Html<DemirootComp>>,
 }
 
-pub trait WrappedPackedComponentNode {}
+pub trait WrappedPackedComponentNode: 'static {}
 
 pub struct WrappedPackedComponentNodeInstance<SuperDemirootComp: Component> {
     data: Box<dyn PackedComponentNode<DemirootComp = SuperDemirootComp>>,

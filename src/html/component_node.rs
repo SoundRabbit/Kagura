@@ -30,7 +30,7 @@ impl<ThisComp: Update + Render, DemirootComp: Component> PackedComponentNode
 {
     type DemirootComp = DemirootComp;
 
-    fn wrap(&mut self) -> Box<dyn WrappedPackedComponentNode> {
+    fn wrap(&mut self) -> Box<dyn Any> {
         let data = self.data.take();
         Box::new(WrappedPackedComponentNodeInstance {
             data: Box::new(Self { data }),
@@ -93,7 +93,7 @@ impl<DemirootComp: Component> AssembledComponentNode<DemirootComp> {
         Self { data, children }
     }
 
-    pub fn wrap(self) -> Box<dyn WrappedAssembledComponentNode> {
+    pub fn wrap(self) -> Box<dyn Any> {
         Box::new(WrappedAssembledComponentNodeInstance { data: Some(self) })
     }
 }

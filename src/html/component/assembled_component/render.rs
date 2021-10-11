@@ -1,5 +1,3 @@
-use std::any::Any;
-
 use super::*;
 use crate::kagura::node;
 
@@ -153,9 +151,9 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                         .push(ChildComponent::ThisComp(Rc::clone(&assembled)));
                     (ComponentTree::ThisComp(assembled), nodes)
                 }
-                Html::ComponentNode(ComponentNode::WrappedPackedComponentNode(mut wrapped)) => {
-                    let wrapped = (&mut wrapped as &mut dyn Any)
-                        .downcast_mut::<WrappedPackedComponentNodeInstance<DemirootComp>>()
+                Html::ComponentNode(ComponentNode::WrappedPackedComponentNode(wrapped)) => {
+                    let mut wrapped = wrapped
+                        .downcast::<WrappedPackedComponentNodeInstance<DemirootComp>>()
                         .unwrap();
                     let assembled = match before_child {
                         ComponentTree::DemirootComp(before_child) => {
@@ -182,9 +180,9 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                     }
                     (ComponentTree::ThisComp(assembled), nodes)
                 }
-                Html::ComponentNode(ComponentNode::WrappedAssembledComponentNode(mut wrapped)) => {
-                    let assembled = (&mut wrapped as &mut dyn Any)
-                        .downcast_mut::<WrappedAssembledComponentNodeInstance<DemirootComp>>()
+                Html::ComponentNode(ComponentNode::WrappedAssembledComponentNode(wrapped)) => {
+                    let assembled = wrapped
+                        .downcast::<WrappedAssembledComponentNodeInstance<DemirootComp>>()
                         .unwrap()
                         .take();
                     let (assembled, nodes) =

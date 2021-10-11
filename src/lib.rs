@@ -3,6 +3,7 @@ extern crate wasm_bindgen;
 extern crate wasm_bindgen_futures;
 extern crate web_sys;
 
+mod debug;
 mod env;
 pub mod html;
 pub mod kagura;
