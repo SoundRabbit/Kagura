@@ -24,8 +24,19 @@ pub enum Html<DemirootComp: Component> {
         children: Vec<Self>,
         attributes: Attributes,
         events: Events<DemirootComp::Msg>,
+        ref_marker: Vec<RefMarker<DemirootComp>>,
     },
     Fragment(Vec<Self>),
+}
+
+pub enum RefMarker<DemirootComp: Component> {
+    Ref(Ref<DemirootComp>),
+    WrappedRef(Box<dyn FnOnce(web_sys::Node)>),
+}
+
+pub struct Ref<DemirootComp: Component> {
+    name: String,
+    __phantom_demiroot: std::marker::PhantomData<DemirootComp>,
 }
 
 /// Attributes for Html<Msg>
@@ -90,6 +101,15 @@ pub struct WrappedAssembledComponentNodeInstance<SuperDemirootComp: Component> {
     data: Option<AssembledComponentNode<SuperDemirootComp>>,
 }
 
+impl<DemirootComp: Component> Ref<DemirootComp> {
+    pub fn new(name: String) -> Self {
+        Self {
+            name,
+            __phantom_demiroot: std::marker::PhantomData,
+        }
+    }
+}
+
 impl<DemirootComp: Component> std::fmt::Debug for Html<DemirootComp> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -137,12 +157,20 @@ impl<DemirootComp: Component> Html<DemirootComp> {
             children,
             attributes,
             events,
+            ref_marker: vec![],
         }
     }
 
     /// Creates Html which means there is no node
     pub fn none() -> Self {
         Html::Fragment(vec![])
+    }
+
+    pub fn ref_name(mut self, name: impl Into<String>) -> Self {
+        if let Self::ElementNode { ref_marker, .. } = &mut self {
+            ref_marker.push(RefMarker::Ref(Ref::new(name.into())));
+        }
+        self
     }
 
     pub fn a(

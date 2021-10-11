@@ -10,6 +10,7 @@ pub trait AssembledDemirootComponent {
 
     fn post(&mut self, msg: <Self::ThisComp as Component>::Msg);
     fn update(&mut self, msg: <Self::ThisComp as Component>::Msg);
+    fn ref_node(&mut self, name: String, node: web_sys::Node);
 }
 
 pub trait AssembledChildComponent {
@@ -101,10 +102,14 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
         let cmd = self.data.borrow_mut().update(&self.props, msg);
         self.is_updated = true;
         if let Some(sub) = self.load_cmd(cmd) {
-            if let Some(demiroot) = self.demiroot() {
-                if let Some(msg) = self.sub_mapper.try_map(sub) {
-                    demiroot.borrow_mut().post(msg);
-                }
+            self.send_sub(sub);
+        }
+    }
+
+    fn send_sub(&mut self, sub: ThisComp::Sub) {
+        if let Some(demiroot) = self.demiroot() {
+            if let Some(msg) = self.sub_mapper.try_map(sub) {
+                demiroot.borrow_mut().post(msg);
             }
         }
     }
@@ -183,6 +188,13 @@ impl<ThisComp: Update + Render, DemirootComp: Component> AssembledDemirootCompon
 
     fn update(&mut self, msg: ThisComp::Msg) {
         self.force_update(msg);
+    }
+
+    fn ref_node(&mut self, name: String, node: web_sys::Node) {
+        let cmd = self.data.borrow_mut().ref_node(&self.props, name, node);
+        if let Some(sub) = self.load_cmd(cmd) {
+            self.send_sub(sub);
+        }
     }
 }
 

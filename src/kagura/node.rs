@@ -13,6 +13,7 @@ pub struct ElementNode {
     pub attributes: Attributes,
     pub events: Events,
     pub children: VecDeque<Node>,
+    pub ref_marker: Vec<Box<dyn FnOnce(web_sys::Node)>>,
 }
 
 pub struct TextNode {
@@ -48,12 +49,14 @@ impl Node {
         attributes: Attributes,
         events: Events,
         children: VecDeque<Node>,
+        ref_marker: Vec<Box<dyn FnOnce(web_sys::Node)>>,
     ) -> Self {
         Node::Element(ElementNode {
             tag_name: tag_name.into(),
             attributes,
             events,
             children,
+            ref_marker,
         })
     }
 

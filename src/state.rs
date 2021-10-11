@@ -16,5 +16,6 @@ pub fn render() {
             state.render();
         }
     });
+    crate::env::dispatch_ref_node();
     crate::env::dispatch_task();
 }

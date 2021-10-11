@@ -44,6 +44,9 @@ pub trait Update: Component {
     fn on_load(&mut self, _: &Self::Props) -> Cmd<Self> {
         Cmd::None
     }
+    fn ref_node(&mut self, _: &Self::Props, _: String, _: web_sys::Node) -> Cmd<Self> {
+        Cmd::None
+    }
 }
 
 pub trait Render: Component {

@@ -147,6 +147,7 @@ impl Renderer {
             self.diff_render_element_attribute(before.attributes, after.attributes, &r_before);
         after.events = self.force_render_node_event(before.events, after.events, &r_before);
         after.children = self.render_node_list(before.children, after.children, &r_before);
+        self.force_render_ref_node(after.ref_marker.drain(..).collect(), &r_before);
         Node::Element(after)
     }
 
@@ -155,7 +156,21 @@ impl Renderer {
         after.attributes = self.force_render_element_attribute(after.attributes, &r_element);
         after.events = self.force_render_node_event(node::Events::new(), after.events, &r_element);
         after.children = self.render_node_list(VecDeque::new(), after.children, &r_element);
+        self.force_render_ref_node(after.ref_marker.drain(..).collect(), &r_element);
         (Node::Element(after), r_element.into())
+    }
+
+    fn force_render_ref_node(
+        &self,
+        ref_nodes: Vec<Box<dyn FnOnce(web_sys::Node)>>,
+        r_node: &web_sys::Node,
+    ) {
+        for ref_node in ref_nodes {
+            let r_node = r_node.clone();
+            crate::env::add_ref_node(move || {
+                ref_node(r_node);
+            });
+        }
     }
 
     fn diff_render_element_attribute(
