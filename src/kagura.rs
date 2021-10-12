@@ -14,6 +14,7 @@ pub use node::Node;
 use renderer::Renderer;
 pub use terminator::Terminator;
 
+/// The state of framework
 pub struct Kagura {
     instance: Rc<RefCell<AssembledComponentInstance<Document, Terminator>>>,
     children: Box<dyn FnMut() -> Vec<Html<Terminator>>>,
@@ -22,6 +23,30 @@ pub struct Kagura {
 }
 
 impl Kagura {
+    /// Mounts to root_node
+    ///
+    /// - `root_node` - node to mount
+    /// - `children` - Htmls to render
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// pub fn main() {
+    ///     let node = web_sys::window()
+    ///         .unwrap()
+    ///         .document()
+    ///         .unwrap()
+    ///         .get_element_by_id("app")
+    ///         .unwrap();
+    ///     Kagura::mount(node.into(), || {
+    ///         vec![Html::h1(
+    ///             Attributes::new(),
+    ///             Events::new(),
+    ///             vec![Html::text("Hello Kagura")],
+    ///         )]
+    ///     });
+    /// }
+    /// ```
     pub fn mount(
         root_node: web_sys::Node,
         children: impl FnMut() -> Vec<Html<Terminator>> + 'static,
@@ -38,10 +63,10 @@ impl Kagura {
             r_root: root_node,
             renderer: Renderer::new(),
         };
-        crate::state::mount(this);
+        crate::state::mount(this, Self::render);
     }
 
-    pub fn render(&mut self) {
+    fn render(&mut self) {
         let children = (self.children)();
         let afters = self.instance.borrow_mut().render(children);
 

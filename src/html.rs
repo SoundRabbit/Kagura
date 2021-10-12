@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 pub mod attributes;
 pub mod component;
-pub mod component_node;
+mod component_node;
 pub mod events;
 
 pub use component::Component;
