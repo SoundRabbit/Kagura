@@ -53,7 +53,7 @@ dependencies = [
 
 [[package]]
 name = "kagura"
-version = "0.12.0"
+version = "0.13.0"
 dependencies = [
  "js-sys",
  "rand",
