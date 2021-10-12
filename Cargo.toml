@@ -17,12 +17,8 @@ categories = ["gui", "web-programming"]
 path = "./src/lib.rs"
 
 [features]
-WebAudioAPI = []
 
 [dependencies]
-rand = { version = "0.7.0", features = ["wasm-bindgen"] }
-serde = "1.0.101"
-serde_derive = "1.0.101"
 
 [dependencies.js-sys]
 version = "^0.3"
