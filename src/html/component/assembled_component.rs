@@ -62,6 +62,7 @@ enum AssembledCmd<ThisComp: Component, DemirootMsg> {
     Sub(ThisComp::Sub),
     Task(Box<dyn FnOnce(TaskResolver<ThisComp::Msg>)>),
     Batch(Box<dyn FnOnce(BatchResolver<ThisComp::Msg>)>),
+    List(Vec<Cmd<ThisComp>>),
     Msg(DemirootMsg),
 }
 
@@ -101,9 +102,7 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
     fn force_update(&mut self, msg: ThisComp::Msg) {
         let cmd = self.data.borrow_mut().update(&self.props, msg);
         self.is_updated = true;
-        if let Some(sub) = self.load_cmd(cmd) {
-            self.send_sub(sub);
-        }
+        self.load_cmd(cmd, false);
     }
 
     fn send_sub(&mut self, sub: ThisComp::Sub) {
@@ -120,10 +119,17 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
         self.lazy_cmd.push_back(AssembledCmd::from(cmd));
     }
 
-    fn load_cmd(&mut self, cmd: Cmd<ThisComp>) -> Option<ThisComp::Sub> {
+    fn load_cmd(&mut self, cmd: Cmd<ThisComp>, is_lazy_sub: bool) -> Vec<ThisComp::Sub> {
         match cmd {
-            Cmd::None => None,
-            Cmd::Sub(sub) => Some(sub),
+            Cmd::None => vec![],
+            Cmd::Sub(sub) => {
+                if is_lazy_sub {
+                    vec![sub]
+                } else {
+                    self.send_sub(sub);
+                    vec![]
+                }
+            }
             Cmd::Task(task) => {
                 let this = Weak::clone(&self.this);
                 let resolver = Box::new(move |msg| {
@@ -135,7 +141,7 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                 crate::env::add_task(move || {
                     task(resolver);
                 });
-                None
+                vec![]
             }
             Cmd::Batch(batch) => {
                 let this = Weak::clone(&self.this);
@@ -148,7 +154,16 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                 crate::env::add_task(move || {
                     batch(resolver);
                 });
-                None
+                vec![]
+            }
+            Cmd::List(cmds) => {
+                let mut subs = vec![];
+
+                for cmd in cmds {
+                    subs.append(&mut self.load_cmd(cmd, is_lazy_sub));
+                }
+
+                subs
             }
         }
     }
@@ -192,9 +207,7 @@ impl<ThisComp: Update + Render, DemirootComp: Component> AssembledDemirootCompon
 
     fn ref_node(&mut self, name: String, node: web_sys::Node) {
         let cmd = self.data.borrow_mut().ref_node(&self.props, name, node);
-        if let Some(sub) = self.load_cmd(cmd) {
-            self.send_sub(sub);
-        }
+        self.load_cmd(cmd, false);
     }
 }
 
@@ -232,9 +245,12 @@ impl<ThisComp: Update + Render, DemirootComp: Component> AssembledChildComponent
         while let Some(cmd) = self.lazy_cmd.pop_front() {
             if let AssembledCmd::Msg(msg) = cmd {
                 return Some(msg);
-            } else if let Some(sub) = self.load_cmd(cmd.into()) {
-                if let Some(msg) = self.sub_mapper.try_map(sub) {
-                    return Some(msg);
+            } else {
+                let subs = self.load_cmd(cmd.into(), true);
+                for sub in subs {
+                    if let Some(msg) = self.sub_mapper.try_map(sub) {
+                        return Some(msg);
+                    }
                 }
             }
         }
@@ -263,6 +279,7 @@ impl<ThisComp: Component, DemirootMsg> From<Cmd<ThisComp>> for AssembledCmd<This
             Cmd::Sub(sub) => Self::Sub(sub),
             Cmd::Task(task) => Self::Task(task),
             Cmd::Batch(batch) => Self::Batch(batch),
+            Cmd::List(cmds) => Self::List(cmds),
         }
     }
 }
@@ -274,6 +291,7 @@ impl<ThisComp: Component, DemirootMsg> Into<Cmd<ThisComp>> for AssembledCmd<This
             Self::Sub(sub) => Cmd::Sub(sub),
             Self::Task(task) => Cmd::Task(task),
             Self::Batch(batch) => Cmd::Batch(batch),
+            Self::List(cmds) => Cmd::List(cmds),
             Self::Msg(..) => Cmd::None,
         }
     }
