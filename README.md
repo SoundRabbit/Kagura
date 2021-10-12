@@ -37,6 +37,10 @@ pub fn main() {
 
 ## Usage
 
+### Tutorial
+
+[tutorial for v0.13](./docs/^0.13/index.md)
+
 ### Create a project
 
 See `/project-template/^0.13` in this repogitory. This is a template of project of Kagura. You can custamize to use.
