@@ -31,11 +31,11 @@ pub enum Html<DemirootComp: Component> {
 }
 
 pub enum RefMarker<DemirootComp: Component> {
-    Ref(Ref<DemirootComp>),
+    RefString(RefString<DemirootComp>),
     WrappedRef(Box<dyn FnOnce(web_sys::Node)>),
 }
 
-pub struct Ref<DemirootComp: Component> {
+pub struct RefString<DemirootComp: Component> {
     name: String,
     __phantom_demiroot: std::marker::PhantomData<DemirootComp>,
 }
@@ -98,7 +98,7 @@ pub struct WrappedAssembledComponentNode<SuperDemirootComp: Component> {
     data: Option<AssembledComponentNode<SuperDemirootComp>>,
 }
 
-impl<DemirootComp: Component> Ref<DemirootComp> {
+impl<DemirootComp: Component> RefString<DemirootComp> {
     pub fn new(name: String) -> Self {
         Self {
             name,
@@ -165,7 +165,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
 
     pub fn ref_name(mut self, name: impl Into<String>) -> Self {
         if let Self::ElementNode { ref_marker, .. } = &mut self {
-            ref_marker.push(RefMarker::Ref(Ref::new(name.into())));
+            ref_marker.push(RefMarker::RefString(RefString::new(name.into())));
         }
         self
     }

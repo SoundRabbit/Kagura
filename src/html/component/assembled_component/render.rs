@@ -107,7 +107,7 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                 RefMarker::WrappedRef(marker) => {
                     wrapped.push(RefMarker::WrappedRef(marker));
                 }
-                RefMarker::Ref(marker) => {
+                RefMarker::RefString(marker) => {
                     let demiroot = demiroot.as_ref().map(|x| Weak::clone(x));
                     wrapped.push(RefMarker::WrappedRef(Box::new(move |node| {
                         if let Some(demiroot) = demiroot.as_ref().and_then(Weak::upgrade) {
