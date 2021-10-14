@@ -1,5 +1,5 @@
 use super::*;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use wasm_bindgen::{prelude::*, JsCast};
 
 pub struct Renderer {
@@ -33,43 +33,141 @@ impl Renderer {
 
     fn render_node_list(
         &self,
-        mut befores: VecDeque<Node>,
+        befores: VecDeque<Node>,
         afters: VecDeque<Node>,
         r_befores_parent: &web_sys::Node,
     ) -> VecDeque<Node> {
-        let r_befores = r_befores_parent.child_nodes();
-        let r_befores_len = r_befores.length();
-        let mut res = VecDeque::new();
-        let mut idx = 0;
-
-        for after in afters {
-            let before = befores.pop_front();
-            let r_before = r_befores.get(idx);
-
-            let (res_node, r_node) = self.diff_render_node(before, after, r_before.as_ref());
-
-            if let Some(r_node) = r_node {
-                if r_befores_len > idx {
-                    let _ = r_befores_parent.replace_child(&r_node, &r_before.unwrap());
-                } else {
-                    let _ = r_befores_parent.append_child(&r_node);
-                }
+        let mut r_befores = {
+            let r_nodes = r_befores_parent.child_nodes();
+            let mut buf = VecDeque::new();
+            let r_nodes_len = r_nodes.length();
+            for i in 0..r_nodes_len {
+                buf.push_back(r_nodes.get(i));
             }
+            buf
+        };
 
-            res.push_back(res_node);
-            idx += 1;
-        }
+        let mut res = VecDeque::new();
 
-        for _before in befores {
-            let r_before = r_befores.get(idx);
-            if let Some(r_before) = r_before {
-                let _ = r_befores_parent.remove_child(&r_before);
-            } else {
-                break;
+        let mixed_nodes = Self::mix_before_after(befores, afters);
+
+        for (before, after) in mixed_nodes {
+            match (before, after) {
+                (Some(before), Some(after)) => {
+                    let r_before = r_befores.pop_front().and_then(|x| x);
+                    let (res_node, r_node) =
+                        self.diff_render_node(Some(before), after, r_before.as_ref());
+                    if let Some(r_node) = r_node {
+                        if let Some(r_before) = r_before {
+                            let _ = r_befores_parent.replace_child(&r_node, &r_before);
+                        }
+                    }
+                    res.push_back(res_node);
+                }
+                (None, Some(after)) => {
+                    let r_reference_node = r_befores.get(0).and_then(Option::as_ref);
+                    let (res_node, r_node) =
+                        self.diff_render_node(None, after, r_reference_node.clone());
+                    if let Some(r_node) = r_node {
+                        if let Some(r_reference_node) = r_reference_node {
+                            let _ = r_befores_parent.insert_before(&r_node, Some(r_reference_node));
+                        } else {
+                            let _ = r_befores_parent.append_child(&r_node);
+                        }
+                    }
+                    res.push_back(res_node);
+                }
+                (Some(_before), None) => {
+                    let r_before = r_befores.pop_front().and_then(|x| x);
+                    if let Some(r_before) = r_before {
+                        let _ = r_befores_parent.remove_child(&r_before);
+                    }
+                }
+                _ => {}
             }
         }
 
         res
+    }
+
+    fn mix_before_after(
+        mut befores: VecDeque<Node>,
+        mut afters: VecDeque<Node>,
+    ) -> VecDeque<(Option<Node>, Option<Node>)> {
+        if befores.is_empty() {
+            afters.into_iter().map(|x| (None, Some(x))).collect()
+        } else if afters.is_empty() {
+            befores.into_iter().map(|x| (None, Some(x))).collect()
+        } else {
+            let mut d: HashMap<[i32; 2], (i32, usize)> = HashMap::new();
+
+            let cost_to_replace = 10;
+            let cost_to_append = 10;
+            let cost_to_remove = 1;
+
+            for i in 0..(befores.len() + 1) {
+                let i = i as i32 - 1;
+                d.insert([i, -1], (i * cost_to_remove, 2));
+            }
+
+            for i in 0..(afters.len() + 1) {
+                let i = i as i32 - 1;
+                d.insert([-1, i], (i * cost_to_append, 1));
+            }
+
+            d.insert([-1, -1], (0, 0));
+
+            for bi in 0..befores.len() {
+                for ai in 0..afters.len() {
+                    let bii = bi as i32;
+                    let aii = ai as i32;
+                    let replace_cost = if Self::partial_compare_node(
+                        &befores.get(bi).unwrap(),
+                        &afters.get(ai).unwrap(),
+                    ) {
+                        d.get(&[bii - 1, aii - 1]).unwrap().0
+                    } else {
+                        d.get(&[bii - 1, aii - 1]).unwrap().0 + cost_to_replace
+                    };
+                    let append_cost = d.get(&[bii, aii - 1]).unwrap().0 + cost_to_append;
+                    let remove_cost = d.get(&[bii - 1, aii]).unwrap().0 + cost_to_remove;
+
+                    if replace_cost <= append_cost && replace_cost <= remove_cost {
+                        d.insert([bii, aii], (replace_cost, 0));
+                    } else if append_cost <= remove_cost {
+                        d.insert([bii, aii], (append_cost, 1));
+                    } else {
+                        d.insert([bii, aii], (remove_cost, 2));
+                    }
+                }
+            }
+
+            let mut res = VecDeque::new();
+            let (mut bi, mut ai) = (befores.len() as i32 - 1, afters.len() as i32 - 1);
+            while let Some((_, op)) = d.get(&[bi, ai]) {
+                if *op == 0 {
+                    res.push_front((befores.pop_back(), afters.pop_back()));
+                    bi -= 1;
+                    ai -= 1;
+                } else if *op == 1 {
+                    res.push_front((None, afters.pop_back()));
+                    ai -= 1;
+                } else if *op == 2 {
+                    res.push_front((None, befores.pop_back()));
+                    bi -= 1;
+                }
+            }
+
+            res
+        }
+    }
+
+    fn partial_compare_node(x: &Node, y: &Node) -> bool {
+        match (x, y) {
+            (Node::Text(..), Node::Text(..)) => true,
+            (Node::Element(x), Node::Element(y)) => x.tag_name == y.tag_name,
+            _ => false,
+        }
     }
 
     fn diff_render_node(
