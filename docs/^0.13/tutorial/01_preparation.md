@@ -28,6 +28,8 @@ $ cargo new --lib crate-name
 
 and, create sum files like [this](../../../project-template/^0.13/).
 
+next: [hello world](./02_hello_world.md)
+
 <div align="center">files</div>
 
 ```text
