@@ -38,7 +38,7 @@ fn on(
 
 First, when you create a event listenner, it is needed to create a component which receives messages from the event listener.
 
-<div align="center">example_component.rs</div>
+<div align="center">src/example_component.rs</div>
 
 ```rust
 use kagura::html::component::Cmd;
@@ -109,7 +109,7 @@ impl Render for ExampleComponent {
 
 To mount this component to Kagura, it is needed to rewrite `lib.rs` like this:
 
-<div align="center">lib.rs</div>
+<div align="center">src/lib.rs</div>
 
 ```rust
 extern crate isaribi;
