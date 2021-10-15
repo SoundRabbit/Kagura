@@ -9,9 +9,14 @@ pub enum Cmd<C: Component> {
 }
 
 impl<C: Component> Cmd<C> {
-    /// Generate Cmd whitch means nothing to do
+    /// Generates Cmd which means nothing to do
     pub fn none() -> Self {
         Self::None
+    }
+
+    /// Generates Cmd to send Component::Sub
+    pub fn sub(on: C::Sub) -> Self {
+        Self::Sub(on)
     }
 
     /// Task behave like Promise in JS.
