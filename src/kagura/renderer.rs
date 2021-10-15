@@ -19,14 +19,14 @@ impl Renderer {
         let mut befores = VecDeque::new();
         std::mem::swap(&mut self.befores, &mut befores);
 
-        crate::debug::log_1(format!(
-            "{}",
-            afters
-                .iter()
-                .map(|x| format!("{}", x))
-                .collect::<Vec<_>>()
-                .join("\n")
-        ));
+        // crate::debug::log_1(format!(
+        //     "{}",
+        //     afters
+        //         .iter()
+        //         .map(|x| format!("{}", x))
+        //         .collect::<Vec<_>>()
+        //         .join("\n")
+        // ));
 
         self.befores = self.render_node_list(befores, afters, r_befores_parent);
     }
