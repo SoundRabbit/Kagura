@@ -50,7 +50,7 @@ impl<ThisComp: Update + Render, DemirootComp: Component> PackedComponentNode
                     let data = self.data.take().unwrap();
                     before_instance.set_props(data.props);
                     before_instance.set_sub_mapper(data.sub_mapper);
-
+                    before_instance.on_load();
                     (Rc::clone(&before), data.children)
                 })
         });
@@ -65,6 +65,8 @@ impl<ThisComp: Update + Render, DemirootComp: Component> PackedComponentNode
             let data = (data.constructor)(&props);
             let data =
                 AssembledComponentInstance::new_ref(Rc::new(RefCell::new(data)), props, sub_mapper);
+
+            data.borrow_mut().on_assemble();
 
             AssembledComponentNode::new(data, children)
         }

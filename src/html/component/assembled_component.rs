@@ -28,7 +28,7 @@ pub trait AssembledChildComponent {
     fn on_assemble(&mut self);
     fn on_load(&mut self);
 
-    fn load_lazy_cmd(&mut self) -> Option<<Self::DemirootComp as Component>::Msg>;
+    fn load_lazy_cmd(&mut self) -> Vec<<Self::DemirootComp as Component>::Msg>;
 
     fn render(&mut self, children: Vec<Html<Self::DemirootComp>>) -> VecDeque<Node>;
 }
@@ -241,20 +241,21 @@ impl<ThisComp: Update + Render, DemirootComp: Component> AssembledChildComponent
         self.lazy_cmd.push_back(AssembledCmd::from(cmd));
     }
 
-    fn load_lazy_cmd(&mut self) -> Option<DemirootComp::Msg> {
+    fn load_lazy_cmd(&mut self) -> Vec<DemirootComp::Msg> {
+        let mut res = vec![];
         while let Some(cmd) = self.lazy_cmd.pop_front() {
             if let AssembledCmd::Msg(msg) = cmd {
-                return Some(msg);
+                res.push(msg);
             } else {
                 let subs = self.load_cmd(cmd.into(), true);
                 for sub in subs {
                     if let Some(msg) = self.sub_mapper.try_map(sub) {
-                        return Some(msg);
+                        res.push(msg);
                     }
                 }
             }
         }
-        None
+        res
     }
 
     fn render(&mut self, children: Vec<Html<Self::DemirootComp>>) -> VecDeque<Node> {

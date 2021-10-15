@@ -144,7 +144,8 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                     };
                     let (assembled, nodes) =
                         Self::render_assembled(assembled, self.this_as_demiroot());
-                    while let Some(msg) = assembled.borrow_mut().load_lazy_cmd() {
+                    let msgs = assembled.borrow_mut().load_lazy_cmd();
+                    for msg in msgs {
                         self.lazy_update(msg);
                     }
                     self.children
@@ -163,7 +164,8 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                     };
                     let (assembled, nodes) =
                         Self::render_assembled(assembled, self.demiroot_clone());
-                    while let Some(msg) = assembled.borrow_mut().load_lazy_cmd() {
+                    let msgs = assembled.borrow_mut().load_lazy_cmd();
+                    for msg in msgs {
                         self.lazy_cmd.push_back(AssembledCmd::Msg(msg));
                     }
                     self.children
@@ -175,7 +177,8 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                         Self::render_assembled(assembled, self.this_as_demiroot());
                     self.children
                         .push(ChildComponent::ThisComp(Rc::clone(&assembled)));
-                    while let Some(msg) = assembled.borrow_mut().load_lazy_cmd() {
+                    let msgs = assembled.borrow_mut().load_lazy_cmd();
+                    for msg in msgs {
                         self.lazy_update(msg);
                     }
                     (ComponentTree::ThisComp(assembled), nodes)
@@ -187,7 +190,8 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                         .take();
                     let (assembled, nodes) =
                         Self::render_assembled(assembled, self.demiroot_clone());
-                    while let Some(msg) = assembled.borrow_mut().load_lazy_cmd() {
+                    let msgs = assembled.borrow_mut().load_lazy_cmd();
+                    for msg in msgs {
                         self.lazy_cmd.push_back(AssembledCmd::Msg(msg));
                     }
                     self.children
