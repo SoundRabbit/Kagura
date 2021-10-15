@@ -18,7 +18,6 @@ impl Renderer {
     pub fn render(&mut self, afters: VecDeque<Node>, r_befores_parent: &web_sys::Node) {
         let mut befores = VecDeque::new();
         std::mem::swap(&mut self.befores, &mut befores);
-        let afters: VecDeque<_> = afters.into_iter().collect();
 
         self.befores = self.render_node_list(befores, afters, r_befores_parent);
     }
@@ -97,7 +96,7 @@ impl Renderer {
         if befores.is_empty() {
             afters.into_iter().map(|x| (None, Some(x))).collect()
         } else if afters.is_empty() {
-            befores.into_iter().map(|x| (None, Some(x))).collect()
+            befores.into_iter().map(|x| (Some(x), None)).collect()
         } else {
             let mut d: HashMap<[i32; 2], (i32, usize)> = HashMap::new();
 
@@ -105,13 +104,13 @@ impl Renderer {
             let cost_to_append = 10;
             let cost_to_remove = 1;
 
-            for i in 0..(befores.len() + 1) {
-                let i = i as i32 - 1;
+            for i in 0..befores.len() {
+                let i = i as i32;
                 d.insert([i, -1], (i * cost_to_remove, 2));
             }
 
-            for i in 0..(afters.len() + 1) {
-                let i = i as i32 - 1;
+            for i in 0..afters.len() {
+                let i = i as i32;
                 d.insert([-1, i], (i * cost_to_append, 1));
             }
 
@@ -145,6 +144,9 @@ impl Renderer {
             let mut res = VecDeque::new();
             let (mut bi, mut ai) = (befores.len() as i32 - 1, afters.len() as i32 - 1);
             while let Some((_, op)) = d.get(&[bi, ai]) {
+                if ai == -1 && bi == -1 {
+                    break;
+                }
                 if *op == 0 {
                     res.push_front((befores.pop_back(), afters.pop_back()));
                     bi -= 1;
@@ -153,7 +155,7 @@ impl Renderer {
                     res.push_front((None, afters.pop_back()));
                     ai -= 1;
                 } else if *op == 2 {
-                    res.push_front((None, befores.pop_back()));
+                    res.push_front((befores.pop_back(), None));
                     bi -= 1;
                 }
             }
