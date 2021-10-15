@@ -41,18 +41,22 @@ impl<ThisComp: Update + Render, DemirootComp: Component> PackedComponentNode
         &mut self,
         before: Option<Rc<RefCell<dyn AssembledChildComponent<DemirootComp = Self::DemirootComp>>>>,
     ) -> AssembledComponentNode<Self::DemirootComp> {
+        let before = before.and_then(|before| before.borrow_mut().as_any());
         let before = before.and_then(|before| {
-            before
-                .borrow_mut()
-                .as_any()
-                .downcast_mut::<AssembledComponentInstance<ThisComp, DemirootComp>>()
-                .map(|before_instance| {
-                    let data = self.data.take().unwrap();
-                    before_instance.set_props(data.props);
-                    before_instance.set_sub_mapper(data.sub_mapper);
-                    before_instance.on_load();
-                    (Rc::clone(&before), data.children)
-                })
+            let before = Rc::clone(&before);
+
+            let mut before = before.borrow_mut();
+            if let Some(before_instance) =
+                before.downcast_mut::<AssembledComponentInstance<ThisComp, DemirootComp>>()
+            {
+                let data = self.data.take().unwrap();
+                before_instance.set_props(data.props);
+                before_instance.set_sub_mapper(data.sub_mapper);
+                before_instance.on_load();
+                Some((before_instance.this().upgrade().unwrap(), data.children))
+            } else {
+                None
+            }
         });
 
         if let Some((data, children)) = before {
@@ -87,7 +91,20 @@ impl<DemirootComp: Component> AssembledComponentNode<DemirootComp> {
         data: Rc<RefCell<dyn AssembledChildComponent<DemirootComp = DemirootComp>>>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
-        Self { data, children }
+        Self {
+            data,
+            payload: AssembledComponentNodePayload::Children(children),
+        }
+    }
+
+    pub fn rendered(
+        data: Rc<RefCell<dyn AssembledChildComponent<DemirootComp = DemirootComp>>>,
+        rendered: std::collections::VecDeque<crate::kagura::Node>,
+    ) -> Self {
+        Self {
+            data,
+            payload: AssembledComponentNodePayload::Rendered(rendered),
+        }
     }
 
     pub fn wrap(self) -> Box<dyn Any> {

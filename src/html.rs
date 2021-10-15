@@ -91,7 +91,12 @@ pub struct WrappedPackedComponentNode<SuperDemirootComp: Component> {
 
 pub struct AssembledComponentNode<DemirootComp: Component> {
     data: Rc<RefCell<dyn AssembledChildComponent<DemirootComp = DemirootComp>>>,
-    children: Vec<Html<DemirootComp>>,
+    payload: AssembledComponentNodePayload<DemirootComp>,
+}
+
+enum AssembledComponentNodePayload<DemirootComp: Component> {
+    Children(Vec<Html<DemirootComp>>),
+    Rendered(std::collections::VecDeque<crate::kagura::Node>),
 }
 
 pub struct WrappedAssembledComponentNode<SuperDemirootComp: Component> {

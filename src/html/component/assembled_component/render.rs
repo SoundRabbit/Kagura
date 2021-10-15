@@ -1,20 +1,27 @@
 use super::*;
 use crate::kagura::node;
+use crate::libs::diff_mix;
 
 impl<ThisComp: Update + Render, DemirootComp: Component>
     AssembledComponentInstance<ThisComp, DemirootComp>
 {
-    pub fn render(&mut self, children: Vec<Html<DemirootComp>>) -> VecDeque<Node> {
-        let children = children.into_iter().map(|child| self.wrap(child)).collect();
-        let html = self.data.borrow().render(&self.props, children);
+    pub fn render(&mut self, html_children: Vec<Html<DemirootComp>>) -> VecDeque<Node> {
+        let html_children = html_children
+            .into_iter()
+            .map(|child| self.wrap(child))
+            .collect();
+
+        let mut children = vec![];
+        std::mem::swap(&mut self.children, &mut children);
+
+        let (children, html_children) = self.update_children(children.into(), html_children);
+        self.children = children.into();
+        let html = self.data.borrow().render(&self.props, html_children.into());
+
         let mut before = ComponentTree::None;
-        let mut nodes = VecDeque::new();
-
         std::mem::swap(&mut self.children_tree, &mut before);
-        self.children.clear();
 
-        let (after, mut n) = self.render_html(before, html);
-        nodes.append(&mut n);
+        let (after, nodes) = self.render_html(before, html);
 
         self.children_tree = after;
 
@@ -121,17 +128,186 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
         wrapped
     }
 
+    fn update_children(
+        &self,
+        befores: VecDeque<ComponentTree<ThisComp, DemirootComp>>,
+        afters: VecDeque<Html<ThisComp>>,
+    ) -> (
+        VecDeque<ComponentTree<ThisComp, DemirootComp>>,
+        VecDeque<Html<ThisComp>>,
+    ) {
+        let mut mixeds = diff_mix(befores, afters, Self::compare_component_html, 1.0, 1.0, 1.0);
+        let mut res_c = VecDeque::new();
+        let mut res_h = VecDeque::new();
+
+        while let Some((before, after)) = mixeds.pop_front() {
+            match after {
+                None => {}
+                Some(after) => match after {
+                    Html::TextNode { text, events } => {
+                        res_c.push_back(ComponentTree::TextNode);
+                        res_h.push_back(Html::TextNode { text, events });
+                    }
+                    Html::ElementNode {
+                        tag_name,
+                        children,
+                        attributes,
+                        events,
+                        ref_marker,
+                    } => match before {
+                        Some(ComponentTree::Element(befores)) => {
+                            let (children_c, children_h) =
+                                self.update_children(befores, children.into());
+                            res_c.push_back(ComponentTree::Element(children_c));
+                            res_h.push_back(Html::ElementNode {
+                                tag_name,
+                                children: children_h.into(),
+                                attributes,
+                                events,
+                                ref_marker,
+                            });
+                        }
+                        _ => {
+                            let (children_c, children_h) =
+                                self.update_children(VecDeque::new(), children.into());
+                            res_c.push_back(ComponentTree::Element(children_c));
+                            res_h.push_back(Html::ElementNode {
+                                tag_name,
+                                children: children_h.into(),
+                                attributes,
+                                events,
+                                ref_marker,
+                            });
+                        }
+                    },
+
+                    Html::Fragment(afters) => match before {
+                        Some(ComponentTree::Fragment(befores)) => {
+                            let (afters_c, afters_h) = self.update_children(befores, afters.into());
+                            res_c.push_back(ComponentTree::Fragment(afters_c));
+                            res_h.push_back(Html::Fragment(afters_h.into()));
+                        }
+                        _ => {
+                            let (afters_c, afters_h) =
+                                self.update_children(VecDeque::new(), afters.into());
+                            res_c.push_back(ComponentTree::Fragment(afters_c));
+                            res_h.push_back(Html::Fragment(afters_h.into()));
+                        }
+                    },
+
+                    Html::ComponentNode(ComponentNode::PackedComponentNode(mut packed)) => {
+                        let assembled = match before {
+                            Some(ComponentTree::ThisComp(before)) => packed.assemble(Some(before)),
+                            _ => packed.assemble(None),
+                        };
+
+                        let (assembled, rendered) =
+                            Self::render_assembled(assembled, self.this_as_demiroot());
+
+                        res_c.push_back(ComponentTree::ThisComp(Rc::clone(&assembled)));
+                        res_h.push_back(Html::ComponentNode(
+                            ComponentNode::AssembledComponentNode(
+                                AssembledComponentNode::rendered(assembled, rendered),
+                            ),
+                        ));
+                    }
+
+                    Html::ComponentNode(ComponentNode::WrappedPackedComponentNode(wrapped)) => {
+                        let mut wrapped = wrapped
+                            .downcast::<WrappedPackedComponentNode<DemirootComp>>()
+                            .unwrap();
+                        let assembled = match before {
+                            Some(ComponentTree::DemirootComp(before)) => {
+                                wrapped.assemble(Some(before))
+                            }
+                            _ => wrapped.assemble(None),
+                        };
+                        let (assembled, rendered) =
+                            Self::render_assembled(assembled, self.demiroot_clone());
+                        let assembled_node =
+                            AssembledComponentNode::rendered(Rc::clone(&assembled), rendered);
+
+                        res_c.push_back(ComponentTree::DemirootComp(assembled));
+                        res_h.push_back(Html::ComponentNode(
+                            ComponentNode::WrappedAssembledComponentNode(assembled_node.wrap()),
+                        ));
+                    }
+
+                    Html::ComponentNode(ComponentNode::AssembledComponentNode(assembled)) => {
+                        let (assembled, rendered) =
+                            Self::render_assembled(assembled, self.this_as_demiroot());
+
+                        res_c.push_back(ComponentTree::ThisComp(Rc::clone(&assembled)));
+                        res_h.push_back(Html::ComponentNode(
+                            ComponentNode::AssembledComponentNode(
+                                AssembledComponentNode::rendered(assembled, rendered),
+                            ),
+                        ));
+                    }
+
+                    Html::ComponentNode(ComponentNode::WrappedAssembledComponentNode(wrapped)) => {
+                        let assembled = wrapped
+                            .downcast::<WrappedAssembledComponentNode<DemirootComp>>()
+                            .unwrap()
+                            .take();
+                        let (assembled, rendered) =
+                            Self::render_assembled(assembled, self.demiroot_clone());
+                        let assembled_node =
+                            AssembledComponentNode::rendered(Rc::clone(&assembled), rendered);
+
+                        res_c.push_back(ComponentTree::DemirootComp(assembled));
+                        res_h.push_back(Html::ComponentNode(
+                            ComponentNode::WrappedAssembledComponentNode(assembled_node.wrap()),
+                        ));
+                    }
+                },
+            }
+        }
+
+        (res_c, res_h)
+    }
+
+    fn compare_component_html(
+        x: &ComponentTree<ThisComp, DemirootComp>,
+        y: &Html<ThisComp>,
+    ) -> bool {
+        match y {
+            Html::ComponentNode(ComponentNode::PackedComponentNode(_))
+            | Html::ComponentNode(ComponentNode::AssembledComponentNode(_)) => match x {
+                ComponentTree::ThisComp(_) => true,
+                _ => false,
+            },
+            Html::ComponentNode(ComponentNode::WrappedPackedComponentNode(_))
+            | Html::ComponentNode(ComponentNode::WrappedAssembledComponentNode(_)) => match x {
+                ComponentTree::DemirootComp(_) => true,
+                _ => false,
+            },
+            Html::TextNode { .. } => match x {
+                ComponentTree::TextNode => true,
+                _ => false,
+            },
+            Html::ElementNode { .. } => match x {
+                ComponentTree::Element(_) => true,
+                _ => false,
+            },
+            Html::Fragment(_) => match x {
+                ComponentTree::Fragment(_) => true,
+                _ => false,
+            },
+        }
+    }
+
     fn render_html(
         &mut self,
         before: ComponentTree<ThisComp, DemirootComp>,
         after: Html<ThisComp>,
     ) -> (ComponentTree<ThisComp, DemirootComp>, VecDeque<Node>) {
         let mut before = before.into_deq();
-        let after = Self::flatten_html(after);
+        let afters = Self::flatten_html(after);
         let mut mapped = VecDeque::new();
         let mut nodes = VecDeque::new();
 
-        for after in after {
+        for after in afters {
             let before_child = before.pop_front().unwrap_or(ComponentTree::None);
 
             let (m, mut n) = match after {
@@ -148,8 +324,6 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                     for msg in msgs {
                         self.lazy_update(msg);
                     }
-                    self.children
-                        .push(ChildComponent::ThisComp(Rc::clone(&assembled)));
                     (ComponentTree::ThisComp(assembled), nodes)
                 }
                 Html::ComponentNode(ComponentNode::WrappedPackedComponentNode(wrapped)) => {
@@ -168,15 +342,11 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                     for msg in msgs {
                         self.lazy_cmd.push_back(AssembledCmd::Msg(msg));
                     }
-                    self.children
-                        .push(ChildComponent::DemirootComp(Rc::clone(&assembled)));
                     (ComponentTree::DemirootComp(assembled), nodes)
                 }
                 Html::ComponentNode(ComponentNode::AssembledComponentNode(assembled)) => {
                     let (assembled, nodes) =
                         Self::render_assembled(assembled, self.this_as_demiroot());
-                    self.children
-                        .push(ChildComponent::ThisComp(Rc::clone(&assembled)));
                     let msgs = assembled.borrow_mut().load_lazy_cmd();
                     for msg in msgs {
                         self.lazy_update(msg);
@@ -194,8 +364,6 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                     for msg in msgs {
                         self.lazy_cmd.push_back(AssembledCmd::Msg(msg));
                     }
-                    self.children
-                        .push(ChildComponent::DemirootComp(Rc::clone(&assembled)));
                     (ComponentTree::DemirootComp(assembled), nodes)
                 }
                 Html::TextNode { text, events } => (
@@ -253,7 +421,7 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
         }
 
         if mapped.len() == 0 {
-            (ComponentTree::None, nodes)
+            (ComponentTree::None, vec![].into())
         } else if mapped.len() == 1 {
             (mapped.remove(0).unwrap(), nodes)
         } else {
@@ -268,14 +436,15 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
         Rc<RefCell<dyn AssembledChildComponent<DemirootComp = C>>>,
         VecDeque<Node>,
     ) {
-        let children = assembled.children;
-        let assembled = assembled.data;
-
-        assembled.borrow_mut().set_demiroot(demiroot);
-
-        let nodes = assembled.borrow_mut().render(children);
-
-        (assembled, nodes)
+        match assembled.payload {
+            AssembledComponentNodePayload::Children(children) => {
+                let assembled = assembled.data;
+                assembled.borrow_mut().set_demiroot(demiroot);
+                let nodes = assembled.borrow_mut().render(children);
+                (assembled, nodes)
+            }
+            AssembledComponentNodePayload::Rendered(rendered) => (assembled.data, rendered),
+        }
     }
 
     fn get_node_events(&self, events: Events<ThisComp::Msg>) -> node::Events {

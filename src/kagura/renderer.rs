@@ -19,6 +19,15 @@ impl Renderer {
         let mut befores = VecDeque::new();
         std::mem::swap(&mut self.befores, &mut befores);
 
+        crate::debug::log_1(format!(
+            "{}",
+            afters
+                .iter()
+                .map(|x| format!("{}", x))
+                .collect::<Vec<_>>()
+                .join("\n")
+        ));
+
         self.befores = self.render_node_list(befores, afters, r_befores_parent);
     }
 
@@ -93,81 +102,75 @@ impl Renderer {
         mut befores: VecDeque<Node>,
         mut afters: VecDeque<Node>,
     ) -> VecDeque<(Option<Node>, Option<Node>)> {
-        if befores.is_empty() {
-            afters.into_iter().map(|x| (None, Some(x))).collect()
-        } else if afters.is_empty() {
-            befores.into_iter().map(|x| (Some(x), None)).collect()
-        } else {
-            let mut d: HashMap<[i32; 2], (i32, usize)> = HashMap::new();
+        let mut d: HashMap<[i32; 2], (i32, usize)> = HashMap::new();
 
-            let cost_to_replace = 10;
-            let cost_to_append = 10;
-            let cost_to_remove = 1;
+        let cost_to_replace = 10;
+        let cost_to_append = 10;
+        let cost_to_remove = 1;
 
-            for i in 0..befores.len() {
-                let i = i as i32;
-                d.insert([i, -1], (i * cost_to_remove, 2));
-            }
-
-            for i in 0..afters.len() {
-                let i = i as i32;
-                d.insert([-1, i], (i * cost_to_append, 1));
-            }
-
-            d.insert([-1, -1], (0, 0));
-
-            for bi in 0..befores.len() {
-                for ai in 0..afters.len() {
-                    let bii = bi as i32;
-                    let aii = ai as i32;
-                    let replace_cost = if Self::partial_compare_node(
-                        &befores.get(bi).unwrap(),
-                        &afters.get(ai).unwrap(),
-                    ) {
-                        d.get(&[bii - 1, aii - 1]).unwrap().0
-                    } else {
-                        d.get(&[bii - 1, aii - 1]).unwrap().0 + cost_to_replace
-                    };
-                    let append_cost = d.get(&[bii, aii - 1]).unwrap().0 + cost_to_append;
-                    let remove_cost = d.get(&[bii - 1, aii]).unwrap().0 + cost_to_remove;
-
-                    if replace_cost <= append_cost && replace_cost <= remove_cost {
-                        d.insert([bii, aii], (replace_cost, 0));
-                    } else if append_cost <= remove_cost {
-                        d.insert([bii, aii], (append_cost, 1));
-                    } else {
-                        d.insert([bii, aii], (remove_cost, 2));
-                    }
-                }
-            }
-
-            let mut res = VecDeque::new();
-            let (mut bi, mut ai) = (befores.len() as i32 - 1, afters.len() as i32 - 1);
-            while let Some((_, op)) = d.get(&[bi, ai]) {
-                if ai == -1 && bi == -1 {
-                    break;
-                }
-                if *op == 0 {
-                    res.push_front((befores.pop_back(), afters.pop_back()));
-                    bi -= 1;
-                    ai -= 1;
-                } else if *op == 1 {
-                    res.push_front((None, afters.pop_back()));
-                    ai -= 1;
-                } else if *op == 2 {
-                    res.push_front((befores.pop_back(), None));
-                    bi -= 1;
-                }
-            }
-
-            res
+        for i in 0..befores.len() {
+            let i = i as i32;
+            d.insert([i, -1], (i * cost_to_remove, 2));
         }
+
+        for i in 0..afters.len() {
+            let i = i as i32;
+            d.insert([-1, i], (i * cost_to_append, 1));
+        }
+
+        d.insert([-1, -1], (0, 0));
+
+        for bi in 0..befores.len() {
+            for ai in 0..afters.len() {
+                let bii = bi as i32;
+                let aii = ai as i32;
+                let replace_cost = if Self::partial_compare_node(
+                    &befores.get(bi).unwrap(),
+                    &afters.get(ai).unwrap(),
+                ) {
+                    d.get(&[bii - 1, aii - 1]).unwrap().0
+                } else {
+                    d.get(&[bii - 1, aii - 1]).unwrap().0 + cost_to_replace
+                };
+                let append_cost = d.get(&[bii, aii - 1]).unwrap().0 + cost_to_append;
+                let remove_cost = d.get(&[bii - 1, aii]).unwrap().0 + cost_to_remove;
+
+                if replace_cost <= append_cost && replace_cost <= remove_cost {
+                    d.insert([bii, aii], (replace_cost, 0));
+                } else if append_cost <= remove_cost {
+                    d.insert([bii, aii], (append_cost, 1));
+                } else {
+                    d.insert([bii, aii], (remove_cost, 2));
+                }
+            }
+        }
+
+        let mut res = VecDeque::new();
+        let (mut bi, mut ai) = (befores.len() as i32 - 1, afters.len() as i32 - 1);
+        while let Some((_, op)) = d.get(&[bi, ai]) {
+            if ai == -1 && bi == -1 {
+                break;
+            }
+            if *op == 0 {
+                res.push_front((befores.pop_back(), afters.pop_back()));
+                bi -= 1;
+                ai -= 1;
+            } else if *op == 1 {
+                res.push_front((None, afters.pop_back()));
+                ai -= 1;
+            } else if *op == 2 {
+                res.push_front((befores.pop_back(), None));
+                bi -= 1;
+            }
+        }
+
+        res
     }
 
     fn partial_compare_node(x: &Node, y: &Node) -> bool {
         match (x, y) {
             (Node::Text(..), Node::Text(..)) => true,
-            (Node::Element(x), Node::Element(y)) => x.tag_name == y.tag_name,
+            (Node::Element(x), Node::Element(y)) => *x.tag_name == *y.tag_name,
             _ => false,
         }
     }

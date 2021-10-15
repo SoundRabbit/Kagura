@@ -68,6 +68,32 @@ impl Node {
     }
 }
 
+impl std::fmt::Display for Node {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Element(node) => write!(f, "{}", node),
+            Self::Text(node) => write!(f, "{}", node),
+        }
+    }
+}
+
+impl std::fmt::Display for ElementNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let children: Vec<_> = self
+            .children
+            .iter()
+            .map(|child| format!("\t{}", child))
+            .collect();
+        write!(f, "[{}]\n{}", &self.tag_name, children.join("\n"))
+    }
+}
+
+impl std::fmt::Display for TextNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "\"{}\"\n", &self.text)
+    }
+}
+
 impl Attributes {
     pub fn new() -> Self {
         let mut attr = Self {

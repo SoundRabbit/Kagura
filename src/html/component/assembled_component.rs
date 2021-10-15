@@ -16,7 +16,7 @@ pub trait AssembledDemirootComponent {
 pub trait AssembledChildComponent {
     type DemirootComp: Component;
 
-    fn as_any(&mut self) -> &mut dyn std::any::Any;
+    fn as_any(&mut self) -> Option<Rc<RefCell<dyn std::any::Any + 'static>>>;
 
     fn set_demiroot(
         &mut self,
@@ -42,17 +42,14 @@ pub struct AssembledComponentInstance<ThisComp: Update + Render, DemirootComp: C
     is_updated: bool,
     lazy_cmd: VecDeque<AssembledCmd<ThisComp, DemirootComp::Msg>>,
     children_tree: ComponentTree<ThisComp, DemirootComp>,
-    children: Vec<ChildComponent<ThisComp, DemirootComp>>,
+    children: Vec<ComponentTree<ThisComp, DemirootComp>>,
 }
 
 enum ComponentTree<ThisComp: Component, DemirootComp: Component> {
     None,
+    TextNode,
     Fragment(VecDeque<Self>),
-    ThisComp(Rc<RefCell<dyn AssembledChildComponent<DemirootComp = ThisComp>>>),
-    DemirootComp(Rc<RefCell<dyn AssembledChildComponent<DemirootComp = DemirootComp>>>),
-}
-
-enum ChildComponent<ThisComp: Component, DemirootComp: Component> {
+    Element(VecDeque<Self>),
     ThisComp(Rc<RefCell<dyn AssembledChildComponent<DemirootComp = ThisComp>>>),
     DemirootComp(Rc<RefCell<dyn AssembledChildComponent<DemirootComp = DemirootComp>>>),
 }
@@ -190,6 +187,10 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
         let this = Weak::clone(&self.this);
         Some(this)
     }
+
+    pub fn this(&self) -> Weak<RefCell<Self>> {
+        Weak::clone(&self.this)
+    }
 }
 
 impl<ThisComp: Update + Render, DemirootComp: Component> AssembledDemirootComponent
@@ -216,8 +217,12 @@ impl<ThisComp: Update + Render, DemirootComp: Component> AssembledChildComponent
 {
     type DemirootComp = DemirootComp;
 
-    fn as_any(&mut self) -> &mut dyn std::any::Any {
-        self as &mut dyn std::any::Any
+    fn as_any(&mut self) -> Option<Rc<RefCell<dyn std::any::Any>>> {
+        if let Some(this) = self.this.upgrade() {
+            Some(this as Rc<RefCell<dyn std::any::Any>>)
+        } else {
+            None
+        }
     }
 
     fn set_demiroot(
