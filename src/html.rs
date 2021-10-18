@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -58,16 +57,12 @@ pub enum EventHandler<Msg> {
 
 pub enum ComponentNode<DemirootComp: Component> {
     PackedComponentNode(Box<dyn PackedComponentNode<DemirootComp = DemirootComp>>),
-    WrappedPackedComponentNode(Box<dyn Any>),
     AssembledComponentNode(AssembledComponentNode<DemirootComp>),
-    WrappedAssembledComponentNode(Box<dyn Any>),
+    WrappedAssembledComponentNode(WrappedAssembledComponentNode<DemirootComp>),
 }
 
 pub trait PackedComponentNode {
     type DemirootComp: Component;
-
-    fn wrap(&mut self) -> Box<dyn Any>;
-
     fn assemble(
         &mut self,
         before: Option<Rc<RefCell<dyn AssembledChildComponent<DemirootComp = Self::DemirootComp>>>>,
@@ -91,16 +86,12 @@ pub struct WrappedPackedComponentNode<SuperDemirootComp: Component> {
 
 pub struct AssembledComponentNode<DemirootComp: Component> {
     data: Rc<RefCell<dyn AssembledChildComponent<DemirootComp = DemirootComp>>>,
-    payload: AssembledComponentNodePayload<DemirootComp>,
+    children: Vec<Html<DemirootComp>>,
 }
 
-enum AssembledComponentNodePayload<DemirootComp: Component> {
-    Children(Vec<Html<DemirootComp>>),
-    Rendered(std::collections::VecDeque<crate::kagura::Node>),
-}
-
-pub struct WrappedAssembledComponentNode<SuperDemirootComp: Component> {
-    data: Option<AssembledComponentNode<SuperDemirootComp>>,
+pub struct WrappedAssembledComponentNode<VDemirootComp: Component> {
+    data: Rc<RefCell<dyn AssembledChildComponent<DemirootComp = VDemirootComp>>>,
+    rendered: std::collections::VecDeque<crate::kagura::Node>,
 }
 
 impl<DemirootComp: Component> RefString<DemirootComp> {

@@ -29,14 +29,6 @@ impl<ThisComp: Update + Render, DemirootComp: Component> PackedComponentNode
     for PackedComponentNodeInstance<ThisComp, DemirootComp>
 {
     type DemirootComp = DemirootComp;
-
-    fn wrap(&mut self) -> Box<dyn Any> {
-        let data = self.data.take();
-        Box::new(WrappedPackedComponentNode {
-            data: Box::new(Self { data }),
-        })
-    }
-
     fn assemble(
         &mut self,
         before: Option<Rc<RefCell<dyn AssembledChildComponent<DemirootComp = Self::DemirootComp>>>>,
@@ -93,27 +85,7 @@ impl<DemirootComp: Component> AssembledComponentNode<DemirootComp> {
     ) -> Self {
         Self {
             data,
-            payload: AssembledComponentNodePayload::Children(children),
+            children: children,
         }
-    }
-
-    pub fn rendered(
-        data: Rc<RefCell<dyn AssembledChildComponent<DemirootComp = DemirootComp>>>,
-        rendered: std::collections::VecDeque<crate::kagura::Node>,
-    ) -> Self {
-        Self {
-            data,
-            payload: AssembledComponentNodePayload::Rendered(rendered),
-        }
-    }
-
-    pub fn wrap(self) -> Box<dyn Any> {
-        Box::new(WrappedAssembledComponentNode { data: Some(self) })
-    }
-}
-
-impl<SuperDemirootComp: Component> WrappedAssembledComponentNode<SuperDemirootComp> {
-    pub fn take(&mut self) -> AssembledComponentNode<SuperDemirootComp> {
-        self.data.take().unwrap()
     }
 }

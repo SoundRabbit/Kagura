@@ -2,13 +2,21 @@ use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::rc::{Rc, Weak};
 mod render;
+mod wrapped_assembled_component;
 use super::*;
 use crate::kagura::Node;
+use std::any::Any;
+use wrapped_assembled_component::WrappedAssembledComponentInstance;
+
+pub enum Msg<ThisComp: Component> {
+    Wrapped(Box<dyn Any>),
+    Data(ThisComp::Msg),
+}
 
 pub trait AssembledDemirootComponent {
     type ThisComp: Component;
 
-    fn post(&mut self, msg: <Self::ThisComp as Component>::Msg);
+    fn post(&mut self, msg: Msg<Self::ThisComp>);
     fn update(&mut self, msg: <Self::ThisComp as Component>::Msg);
     fn ref_node(&mut self, name: String, node: web_sys::Node);
 }
@@ -18,19 +26,19 @@ pub trait AssembledChildComponent {
 
     fn as_any(&mut self) -> Option<Rc<RefCell<dyn std::any::Any + 'static>>>;
 
+    fn on_assemble(&mut self);
+    fn on_load(&mut self);
+
+    fn load_lazy_cmd(&mut self) -> Vec<Msg<Self::DemirootComp>>;
+
+    fn render(&mut self, children: Vec<Html<Self::DemirootComp>>) -> VecDeque<Node>;
+
     fn set_demiroot(
         &mut self,
         demiroot: Option<
             Weak<RefCell<dyn AssembledDemirootComponent<ThisComp = Self::DemirootComp>>>,
         >,
     );
-
-    fn on_assemble(&mut self);
-    fn on_load(&mut self);
-
-    fn load_lazy_cmd(&mut self) -> Vec<<Self::DemirootComp as Component>::Msg>;
-
-    fn render(&mut self, children: Vec<Html<Self::DemirootComp>>) -> VecDeque<Node>;
 }
 
 pub struct AssembledComponentInstance<ThisComp: Update + Render, DemirootComp: Component> {
@@ -40,7 +48,7 @@ pub struct AssembledComponentInstance<ThisComp: Update + Render, DemirootComp: C
     props: ThisComp::Props,
     sub_mapper: sub::Mapper<ThisComp::Sub, DemirootComp::Msg>,
     is_updated: bool,
-    lazy_cmd: VecDeque<AssembledCmd<ThisComp, DemirootComp::Msg>>,
+    lazy_cmd: VecDeque<AssembledCmd<ThisComp, DemirootComp>>,
     children_tree: ComponentTree<ThisComp, DemirootComp>,
     children: Vec<ComponentTree<ThisComp, DemirootComp>>,
 }
@@ -54,13 +62,13 @@ enum ComponentTree<ThisComp: Component, DemirootComp: Component> {
     DemirootComp(Rc<RefCell<dyn AssembledChildComponent<DemirootComp = DemirootComp>>>),
 }
 
-enum AssembledCmd<ThisComp: Component, DemirootMsg> {
+enum AssembledCmd<ThisComp: Component, DemirootComp: Component> {
     None,
     Sub(ThisComp::Sub),
     Task(Box<dyn FnOnce(TaskResolver<ThisComp::Msg>)>),
     Batch(Box<dyn FnOnce(BatchResolver<ThisComp::Msg>)>),
     List(Vec<Cmd<ThisComp>>),
-    Msg(DemirootMsg),
+    Msg(Msg<DemirootComp>),
 }
 
 impl<ThisComp: Update + Render, DemirootComp: Component>
@@ -103,10 +111,14 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
     }
 
     fn send_sub(&mut self, sub: ThisComp::Sub) {
+        if let Some(msg) = self.sub_mapper.try_map(sub) {
+            self.send_msg(Msg::Data(msg));
+        }
+    }
+
+    fn send_msg(&self, msg: Msg<DemirootComp>) {
         if let Some(demiroot) = self.demiroot() {
-            if let Some(msg) = self.sub_mapper.try_map(sub) {
-                demiroot.borrow_mut().post(msg);
-            }
+            demiroot.borrow_mut().post(msg);
         }
     }
 
@@ -114,6 +126,19 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
         let cmd = self.data.borrow_mut().update(&self.props, msg);
         self.is_updated = true;
         self.lazy_cmd.push_back(AssembledCmd::from(cmd));
+    }
+
+    fn lazy_post(&mut self, msg: Msg<ThisComp>) {
+        match msg {
+            Msg::Data(msg) => {
+                self.lazy_update(msg);
+            }
+            Msg::Wrapped(msg) => {
+                if let Ok(msg) = msg.downcast::<Msg<DemirootComp>>() {
+                    self.lazy_cmd.push_back(AssembledCmd::Msg(*msg))
+                }
+            }
+        }
     }
 
     fn load_cmd(&mut self, cmd: Cmd<ThisComp>, is_lazy_sub: bool) -> Vec<ThisComp::Sub> {
@@ -131,7 +156,7 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                 let this = Weak::clone(&self.this);
                 let resolver = Box::new(move |msg| {
                     if let Some(this) = this.upgrade() {
-                        this.borrow_mut().update(msg);
+                        this.borrow_mut().force_update(msg);
                         crate::state::render();
                     }
                 });
@@ -144,7 +169,7 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                 let this = Weak::clone(&self.this);
                 let resolver = Box::new(move |msg| {
                     if let Some(this) = this.upgrade() {
-                        this.borrow_mut().update(msg);
+                        this.borrow_mut().force_update(msg);
                         crate::state::render();
                     }
                 });
@@ -198,8 +223,17 @@ impl<ThisComp: Update + Render, DemirootComp: Component> AssembledDemirootCompon
 {
     type ThisComp = ThisComp;
 
-    fn post(&mut self, msg: ThisComp::Msg) {
-        self.force_update(msg);
+    fn post(&mut self, msg: Msg<ThisComp>) {
+        match msg {
+            Msg::Data(msg) => {
+                self.force_update(msg);
+            }
+            Msg::Wrapped(msg) => {
+                if let Ok(msg) = msg.downcast::<Msg<DemirootComp>>() {
+                    self.send_msg(*msg);
+                }
+            }
+        }
     }
 
     fn update(&mut self, msg: ThisComp::Msg) {
@@ -225,15 +259,6 @@ impl<ThisComp: Update + Render, DemirootComp: Component> AssembledChildComponent
         }
     }
 
-    fn set_demiroot(
-        &mut self,
-        demiroot: Option<
-            Weak<RefCell<dyn AssembledDemirootComponent<ThisComp = Self::DemirootComp>>>,
-        >,
-    ) {
-        self.demiroot = demiroot;
-    }
-
     fn on_assemble(&mut self) {
         let cmd = self.data.borrow_mut().on_assemble(&self.props);
         self.is_updated = true;
@@ -246,7 +271,7 @@ impl<ThisComp: Update + Render, DemirootComp: Component> AssembledChildComponent
         self.lazy_cmd.push_back(AssembledCmd::from(cmd));
     }
 
-    fn load_lazy_cmd(&mut self) -> Vec<DemirootComp::Msg> {
+    fn load_lazy_cmd(&mut self) -> Vec<Msg<DemirootComp>> {
         let mut res = vec![];
         while let Some(cmd) = self.lazy_cmd.pop_front() {
             if let AssembledCmd::Msg(msg) = cmd {
@@ -255,7 +280,7 @@ impl<ThisComp: Update + Render, DemirootComp: Component> AssembledChildComponent
                 let subs = self.load_cmd(cmd.into(), true);
                 for sub in subs {
                     if let Some(msg) = self.sub_mapper.try_map(sub) {
-                        res.push(msg);
+                        res.push(Msg::Data(msg));
                     }
                 }
             }
@@ -265,6 +290,15 @@ impl<ThisComp: Update + Render, DemirootComp: Component> AssembledChildComponent
 
     fn render(&mut self, children: Vec<Html<Self::DemirootComp>>) -> VecDeque<Node> {
         self.render(children)
+    }
+
+    fn set_demiroot(
+        &mut self,
+        demiroot: Option<
+            Weak<RefCell<dyn AssembledDemirootComponent<ThisComp = Self::DemirootComp>>>,
+        >,
+    ) {
+        self.demiroot = demiroot;
     }
 }
 
@@ -278,7 +312,9 @@ impl<ThisComp: Component, DemirootComp: Component> ComponentTree<ThisComp, Demir
     }
 }
 
-impl<ThisComp: Component, DemirootMsg> From<Cmd<ThisComp>> for AssembledCmd<ThisComp, DemirootMsg> {
+impl<ThisComp: Component, DemirootComp: Component> From<Cmd<ThisComp>>
+    for AssembledCmd<ThisComp, DemirootComp>
+{
     fn from(cmd: Cmd<ThisComp>) -> Self {
         match cmd {
             Cmd::None => Self::None,
@@ -290,7 +326,9 @@ impl<ThisComp: Component, DemirootMsg> From<Cmd<ThisComp>> for AssembledCmd<This
     }
 }
 
-impl<ThisComp: Component, DemirootMsg> Into<Cmd<ThisComp>> for AssembledCmd<ThisComp, DemirootMsg> {
+impl<ThisComp: Component, DemirootComp: Component> Into<Cmd<ThisComp>>
+    for AssembledCmd<ThisComp, DemirootComp>
+{
     fn into(self) -> Cmd<ThisComp> {
         match self {
             Self::None => Cmd::None,
