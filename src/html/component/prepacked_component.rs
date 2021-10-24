@@ -28,9 +28,12 @@ impl<ThisComp: Update + Render> PrepackedComponent<ThisComp> {
         sub: Sub<ThisComp::Sub, DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Html<DemirootComp> {
-        let assembled = AssembledComponentInstance::new_ref(Rc::clone(&self.data), props, sub);
-        Html::ComponentNode(ComponentNode::AssembledComponentNode(
-            AssembledComponentNode::new(assembled, children),
-        ))
+        Html::ComponentNode(ComponentNode::PrepackedComponentNode(Box::new(
+            PrepackedComponentNodeInstance::new(Rc::clone(&self.data), props, sub, children),
+        )))
+    }
+
+    pub fn update(&mut self, f: impl FnOnce(&mut ThisComp)) {
+        self.map_mut(f);
     }
 }

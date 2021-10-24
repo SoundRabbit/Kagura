@@ -12,7 +12,6 @@ pub type TaskResolver<Msg> = Box<dyn FnOnce(Msg)>;
 pub type BatchResolver<Msg> = Box<dyn FnMut(Msg)>;
 
 use super::*;
-use assembled_component::AssembledComponentInstance;
 
 pub trait Component: Sized + 'static {
     type Props;

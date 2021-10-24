@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 pub mod attributes;
 pub mod component;
-mod component_node;
+pub mod component_node;
 pub mod events;
 
 pub use component::Component;
@@ -57,7 +57,7 @@ pub enum EventHandler<Msg> {
 
 pub enum ComponentNode<DemirootComp: Component> {
     PackedComponentNode(Box<dyn PackedComponentNode<DemirootComp = DemirootComp>>),
-    AssembledComponentNode(AssembledComponentNode<DemirootComp>),
+    PrepackedComponentNode(Box<dyn PrepackedComponentNode<DemirootComp = DemirootComp>>),
     WrappedAssembledComponentNode(WrappedAssembledComponentNode<DemirootComp>),
 }
 
@@ -66,7 +66,10 @@ pub trait PackedComponentNode {
     fn assemble(
         &mut self,
         before: Option<Rc<RefCell<dyn AssembledChildComponent<DemirootComp = Self::DemirootComp>>>>,
-    ) -> AssembledComponentNode<Self::DemirootComp>;
+    ) -> (
+        Rc<RefCell<dyn AssembledChildComponent<DemirootComp = Self::DemirootComp>>>,
+        Vec<Html<Self::DemirootComp>>,
+    );
 }
 
 pub struct PackedComponentNodeInstance<ThisComp: Component, DemirootComp: Component> {
@@ -80,12 +83,26 @@ struct PackedComponentNodeInstanceData<ThisComp: Component, DemirootComp: Compon
     children: Vec<Html<DemirootComp>>,
 }
 
-pub struct WrappedPackedComponentNode<SuperDemirootComp: Component> {
-    data: Box<dyn PackedComponentNode<DemirootComp = SuperDemirootComp>>,
+pub trait PrepackedComponentNode {
+    type DemirootComp: Component;
+
+    fn assemble(
+        &mut self,
+        before: Option<Rc<RefCell<dyn AssembledChildComponent<DemirootComp = Self::DemirootComp>>>>,
+    ) -> (
+        Rc<RefCell<dyn AssembledChildComponent<DemirootComp = Self::DemirootComp>>>,
+        Vec<Html<Self::DemirootComp>>,
+    );
 }
 
-pub struct AssembledComponentNode<DemirootComp: Component> {
-    data: Rc<RefCell<dyn AssembledChildComponent<DemirootComp = DemirootComp>>>,
+pub struct PrepackedComponentNodeInstance<ThisComp: Component, DemirootComp: Component> {
+    data: Option<PrepackedComponentNodeInstanceData<ThisComp, DemirootComp>>,
+}
+
+struct PrepackedComponentNodeInstanceData<ThisComp: Component, DemirootComp: Component> {
+    data: Rc<RefCell<ThisComp>>,
+    props: ThisComp::Props,
+    sub_mapper: component::Sub<ThisComp::Sub, DemirootComp::Msg>,
     children: Vec<Html<DemirootComp>>,
 }
 

@@ -104,6 +104,10 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
         self.sub_mapper = sub::Mapper::from(sub_mapper);
     }
 
+    pub fn set_data(&mut self, data: Rc<RefCell<ThisComp>>) {
+        self.data = data;
+    }
+
     fn force_update(&mut self, msg: ThisComp::Msg) {
         let cmd = self.data.borrow_mut().update(&self.props, msg);
         self.is_updated = true;

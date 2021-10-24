@@ -185,7 +185,14 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                         ));
                     }
 
-                    Html::ComponentNode(ComponentNode::AssembledComponentNode(assembled)) => {
+                    Html::ComponentNode(ComponentNode::PrepackedComponentNode(mut prepacked)) => {
+                        let assembled = match before {
+                            Some(ComponentTree::DemirootComp(before)) => {
+                                prepacked.assemble(Some(before))
+                            }
+                            _ => prepacked.assemble(None),
+                        };
+
                         let (assembled, rendered) =
                             Self::render_assembled(assembled, self.demiroot_clone());
 
@@ -226,7 +233,7 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
     ) -> bool {
         match y {
             Html::ComponentNode(ComponentNode::PackedComponentNode(_))
-            | Html::ComponentNode(ComponentNode::AssembledComponentNode(_)) => match x {
+            | Html::ComponentNode(ComponentNode::PrepackedComponentNode(_)) => match x {
                 ComponentTree::ThisComp(_) => true,
                 _ => false,
             },
@@ -267,7 +274,12 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                 }
                 (ComponentTree::ThisComp(assembled), nodes)
             }
-            Html::ComponentNode(ComponentNode::AssembledComponentNode(assembled)) => {
+            Html::ComponentNode(ComponentNode::PrepackedComponentNode(mut prepacked)) => {
+                let assembled = match before {
+                    ComponentTree::ThisComp(before_child) => prepacked.assemble(Some(before_child)),
+                    _ => prepacked.assemble(None),
+                };
+
                 let (assembled, nodes) = Self::render_assembled(assembled, self.this_as_demiroot());
                 let msgs = assembled.borrow_mut().load_lazy_cmd();
                 for msg in msgs {
@@ -351,14 +363,17 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
     }
 
     fn render_assembled<C: Component>(
-        assembled: AssembledComponentNode<C>,
+        assembled: (
+            Rc<RefCell<dyn AssembledChildComponent<DemirootComp = C>>>,
+            Vec<Html<C>>,
+        ),
         demiroot: Option<Weak<RefCell<dyn AssembledDemirootComponent<ThisComp = C>>>>,
     ) -> (
         Rc<RefCell<dyn AssembledChildComponent<DemirootComp = C>>>,
         VecDeque<Node>,
     ) {
-        let children = assembled.children;
-        let assembled = assembled.data;
+        let children = assembled.1;
+        let assembled = assembled.0;
         assembled.borrow_mut().set_demiroot(demiroot);
         let nodes = assembled.borrow_mut().render(children);
         (assembled, nodes)
