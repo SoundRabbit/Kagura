@@ -775,7 +775,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
         Self::node("rtc", attributes, events, children)
     }
 
-    pub fn rubu(
+    pub fn ruby(
         attributes: Attributes,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
