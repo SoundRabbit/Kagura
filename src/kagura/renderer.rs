@@ -101,7 +101,7 @@ impl Renderer {
         befores: VecDeque<Node>,
         afters: VecDeque<Node>,
     ) -> VecDeque<(Option<Node>, Option<Node>)> {
-        let cost_to_replace = 10.0;
+        let cost_to_replace = 5.0;
         let cost_to_append = 10.0;
         let cost_to_remove = 1.0;
 
