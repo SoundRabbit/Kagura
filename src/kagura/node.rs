@@ -14,6 +14,14 @@ pub struct ElementNode {
     pub events: Events,
     pub children: VecDeque<Node>,
     pub ref_marker: Vec<Box<dyn FnOnce(web_sys::Node)>>,
+    pub key: Key,
+}
+
+#[derive(PartialEq)]
+pub enum Key {
+    Custom(String),
+    Component(String),
+    Default(String),
 }
 
 pub struct TextNode {
@@ -50,6 +58,7 @@ impl Node {
         events: Events,
         children: VecDeque<Node>,
         ref_marker: Vec<Box<dyn FnOnce(web_sys::Node)>>,
+        key: Key,
     ) -> Self {
         Node::Element(ElementNode {
             tag_name: tag_name.into(),
@@ -57,6 +66,7 @@ impl Node {
             events,
             children,
             ref_marker,
+            key,
         })
     }
 
@@ -172,6 +182,15 @@ impl Event {
         match handler {
             Self::Handler(handler) => Some(handler),
             _ => None,
+        }
+    }
+}
+
+impl Key {
+    pub fn is_custom(&self) -> bool {
+        match self {
+            Self::Custom(..) => true,
+            _ => false,
         }
     }
 }

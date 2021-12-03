@@ -22,16 +22,23 @@ pub enum Html<DemirootComp: Component> {
     ElementNode {
         tag_name: String,
         children: Vec<Self>,
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
-        ref_marker: Vec<RefMarker<DemirootComp>>,
     },
     Fragment(Vec<Self>),
 }
 
+/// Attributes for Html<Msg>
+#[derive(Clone)]
+pub struct Attributes<DemirootComp: Component> {
+    attributes: node::Attributes,
+    key: Option<String>,
+    ref_marker: Vec<RefMarker<DemirootComp>>,
+}
+
 pub enum RefMarker<DemirootComp: Component> {
     RefString(RefString<DemirootComp>),
-    WrappedRef(Box<dyn FnOnce(web_sys::Node)>),
+    WrappedRef(WrappedRef),
 }
 
 pub struct RefString<DemirootComp: Component> {
@@ -39,10 +46,8 @@ pub struct RefString<DemirootComp: Component> {
     __phantom_demiroot: std::marker::PhantomData<DemirootComp>,
 }
 
-/// Attributes for Html<Msg>
-#[derive(Clone)]
-pub struct Attributes {
-    attributes: node::Attributes,
+pub struct WrappedRef {
+    data: Rc<RefCell<Box<dyn FnMut(web_sys::Node)>>>,
 }
 
 /// Events for Html<Msg>
@@ -111,11 +116,45 @@ pub struct WrappedAssembledComponentNode<VDemirootComp: Component> {
     rendered: std::collections::VecDeque<crate::kagura::Node>,
 }
 
+impl<DemirootComp: Component> Clone for RefMarker<DemirootComp> {
+    fn clone(&self) -> Self {
+        match self {
+            Self::RefString(data) => Self::RefString(data.clone()),
+            Self::WrappedRef(data) => Self::WrappedRef(data.clone()),
+        }
+    }
+}
+
+impl<DemirootComp: Component> Clone for RefString<DemirootComp> {
+    fn clone(&self) -> Self {
+        Self {
+            name: self.name.clone(),
+            __phantom_demiroot: std::marker::PhantomData,
+        }
+    }
+}
+
 impl<DemirootComp: Component> RefString<DemirootComp> {
     pub fn new(name: String) -> Self {
         Self {
             name,
             __phantom_demiroot: std::marker::PhantomData,
+        }
+    }
+}
+
+impl Clone for WrappedRef {
+    fn clone(&self) -> Self {
+        Self {
+            data: Rc::clone(&self.data),
+        }
+    }
+}
+
+impl WrappedRef {
+    pub fn new(f: impl FnMut(web_sys::Node) + 'static) -> Self {
+        Self {
+            data: Rc::new(RefCell::new(Box::new(f))),
         }
     }
 }
@@ -158,7 +197,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     /// Creates Html from element
     pub fn node(
         tag_name: impl Into<String>,
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -167,7 +206,6 @@ impl<DemirootComp: Component> Html<DemirootComp> {
             children,
             attributes,
             events,
-            ref_marker: vec![],
         }
     }
 
@@ -176,15 +214,8 @@ impl<DemirootComp: Component> Html<DemirootComp> {
         Html::Fragment(vec![])
     }
 
-    pub fn ref_name(mut self, name: impl Into<String>) -> Self {
-        if let Self::ElementNode { ref_marker, .. } = &mut self {
-            ref_marker.push(RefMarker::RefString(RefString::new(name.into())));
-        }
-        self
-    }
-
     pub fn a(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -192,7 +223,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn abbr(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -200,7 +231,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn address(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -208,7 +239,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn area(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -216,7 +247,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn article(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -224,7 +255,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn aside(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -232,7 +263,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn audio(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -240,7 +271,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn b(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -248,7 +279,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn bdi(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -256,7 +287,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn bdo(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -264,7 +295,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn blockquote(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -272,7 +303,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn button(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -280,7 +311,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn br(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -288,7 +319,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn cite(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -296,7 +327,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn caption(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -304,7 +335,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn canvas(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -312,7 +343,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn code(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -320,7 +351,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn col(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -328,7 +359,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn colgroup(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -336,7 +367,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn datalist(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -344,7 +375,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn details(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -352,7 +383,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn dd(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -360,7 +391,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn dfn(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -368,7 +399,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn div(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -376,7 +407,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn data(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -384,7 +415,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn del(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -392,7 +423,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn dl(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -400,7 +431,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn dt(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -408,7 +439,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn em(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -416,7 +447,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn embed(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -424,7 +455,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn fieldset(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -432,7 +463,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn figcaption(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -440,7 +471,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn figure(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -448,7 +479,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn footer(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -456,7 +487,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn form(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -464,7 +495,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn h1(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -472,7 +503,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn h2(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -480,7 +511,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn h3(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -488,7 +519,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn h4(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -496,7 +527,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn h5(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -504,7 +535,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn h6(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -512,7 +543,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn header(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -520,7 +551,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn hr(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -528,7 +559,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn i(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -536,7 +567,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn iframe(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -544,7 +575,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn img(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -552,7 +583,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn input(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -560,7 +591,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn ins(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -568,7 +599,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn kbd(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -576,7 +607,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn label(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -584,7 +615,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn legend(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -592,7 +623,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn li(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -600,7 +631,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn main(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -608,7 +639,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn mark(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -616,7 +647,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn map(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -624,7 +655,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn menu(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -632,7 +663,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn menuitem(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -640,7 +671,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn meter(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -648,7 +679,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn nav(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -656,7 +687,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn object(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -664,7 +695,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn ol(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -672,7 +703,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn optgroup(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -680,7 +711,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn option(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -688,7 +719,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn output(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -696,7 +727,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn p(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -704,7 +735,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn param(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -712,7 +743,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn picture(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -720,7 +751,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn pre(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -728,7 +759,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn progress(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -736,7 +767,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn q(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -744,7 +775,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn rb(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -752,7 +783,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn rp(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -760,7 +791,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn rt(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -768,7 +799,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn rtc(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -776,7 +807,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn ruby(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -784,7 +815,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn s(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -792,7 +823,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn samp(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -800,7 +831,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn section(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -808,7 +839,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn select(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -816,7 +847,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn small(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -824,7 +855,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn source(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -832,7 +863,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn span(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -840,7 +871,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn strong(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -848,7 +879,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn sub(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -856,7 +887,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn summary(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -864,7 +895,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn sup(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -872,7 +903,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn table(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -880,7 +911,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn tbody(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -888,7 +919,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn td(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -896,7 +927,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn textarea(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -904,7 +935,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn tfoot(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -912,7 +943,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn th(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -920,7 +951,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn thead(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -928,7 +959,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn time(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -936,7 +967,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn tr(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -944,7 +975,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn track(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -952,7 +983,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn u(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -960,7 +991,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn ul(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -968,7 +999,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn var(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -976,7 +1007,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn video(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {
@@ -984,7 +1015,7 @@ impl<DemirootComp: Component> Html<DemirootComp> {
     }
 
     pub fn wbr(
-        attributes: Attributes,
+        attributes: Attributes<DemirootComp>,
         events: Events<DemirootComp::Msg>,
         children: Vec<Html<DemirootComp>>,
     ) -> Self {

@@ -3,24 +3,26 @@ use std::rc::Rc;
 
 use super::*;
 
-impl Deref for Attributes {
+impl<DemirootComp: Component> Deref for Attributes<DemirootComp> {
     type Target = node::Attributes;
     fn deref(&self) -> &node::Attributes {
         &self.attributes
     }
 }
 
-impl Into<node::Attributes> for Attributes {
+impl<DemirootComp: Component> Into<node::Attributes> for Attributes<DemirootComp> {
     fn into(self) -> node::Attributes {
         self.attributes
     }
 }
 
-impl Attributes {
+impl<DemirootComp: Component> Attributes<DemirootComp> {
     /// Creates new empty Attributs
     pub fn new() -> Self {
         Self {
             attributes: node::Attributes::new(),
+            key: None,
+            ref_marker: vec![],
         }
     }
 
@@ -57,6 +59,28 @@ impl Attributes {
     pub fn delimit(mut self, attr: impl Into<String>, dlm: impl Into<String>) -> Self {
         self.attributes.delimit(attr, dlm);
         self
+    }
+
+    /// Sets key of Element
+    pub fn key_name(mut self, key: impl Into<String>) -> Self {
+        self.key = Some(key.into());
+        self
+    }
+
+    /// Sets reference to Element
+    pub fn ref_name(mut self, ref_name: impl Into<String>) -> Self {
+        self.ref_marker
+            .push(RefMarker::RefString(RefString::new(ref_name.into())));
+        self
+    }
+
+    /// Gets attributes
+    pub fn restricted<C: Component>(&self) -> Attributes<C> {
+        Attributes {
+            attributes: self.attributes.clone(),
+            key: None,
+            ref_marker: vec![],
+        }
     }
 
     pub fn checked(self) -> Self {

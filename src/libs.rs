@@ -14,6 +14,24 @@ pub fn diff_mix<X, Y>(
     append_cost: f64,
     remove_cost: f64,
 ) -> VecDeque<(Option<X>, Option<Y>)> {
+    if xs.len() == 0 {
+        let mut res = VecDeque::new();
+        for y in ys {
+            res.push_back((None, Some(y)));
+        }
+
+        return res;
+    }
+
+    if ys.len() == 0 {
+        let mut res = VecDeque::new();
+        for x in xs {
+            res.push_back((Some(x), None));
+        }
+
+        return res;
+    }
+
     let mut d: HashMap<[i32; 2], (f64, Edit)> = HashMap::new();
 
     for i in 0..xs.len() {

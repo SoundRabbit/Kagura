@@ -1,6 +1,9 @@
 use super::*;
 use crate::kagura::node;
 use crate::libs::diff_mix;
+use std::any;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::Hasher;
 
 impl<ThisComp: Update + Render, DemirootComp: Component>
     AssembledComponentInstance<ThisComp, DemirootComp>
@@ -16,7 +19,22 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
         let mut before = ComponentTree::None;
         std::mem::swap(&mut self.children_tree, &mut before);
 
-        let (after, nodes) = self.render_html(before, html);
+        let (after, mut nodes) = self.render_html(before, html);
+
+        for root_node in &mut nodes {
+            if let node::Node::Element(root_node) = root_node {
+                let mut hasher = DefaultHasher::new();
+                hasher.write(any::type_name::<ThisComp>().as_bytes());
+
+                let component_key = if let node::Key::Custom(key) = &root_node.key {
+                    format!("{:X}/{}", hasher.finish(), key)
+                } else {
+                    format!("{:X}/{}", hasher.finish(), root_node.tag_name)
+                };
+
+                root_node.key = node::Key::Component(component_key);
+            }
+        }
 
         self.children_tree = after;
 
@@ -56,6 +74,19 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
         wrapped
     }
 
+    fn wrap_attributes<T: Component, D: Component>(
+        attributes: Attributes<D>,
+        demiroot: &Option<Weak<RefCell<dyn AssembledDemirootComponent<ThisComp = D>>>>,
+    ) -> Attributes<T> {
+        let ref_marker = Self::wrap_ref_marker(attributes.ref_marker, demiroot);
+
+        Attributes {
+            attributes: attributes.attributes,
+            key: attributes.key,
+            ref_marker,
+        }
+    }
+
     fn wrap_ref_marker<T: Component, D: Component>(
         ref_markers: Vec<RefMarker<D>>,
         demiroot: &Option<Weak<RefCell<dyn AssembledDemirootComponent<ThisComp = D>>>>,
@@ -69,9 +100,9 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                 }
                 RefMarker::RefString(marker) => {
                     let demiroot = demiroot.as_ref().map(|x| Weak::clone(x));
-                    wrapped.push(RefMarker::WrappedRef(Box::new(move |node| {
+                    wrapped.push(RefMarker::WrappedRef(WrappedRef::new(move |node| {
                         if let Some(demiroot) = demiroot.as_ref().and_then(Weak::upgrade) {
-                            demiroot.borrow_mut().ref_node(marker.name, node);
+                            demiroot.borrow_mut().ref_node(marker.name.clone(), node);
                         }
                     })));
                 }
@@ -112,7 +143,6 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                         children,
                         attributes,
                         events,
-                        ref_marker,
                     } => match before {
                         Some(ComponentTree::Element(befores)) => {
                             let (children_c, children_h) =
@@ -121,12 +151,14 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                             res_h.push_back(Html::ElementNode {
                                 tag_name,
                                 children: children_h.into(),
-                                attributes,
+                                attributes: Self::wrap_attributes::<ThisComp, DemirootComp>(
+                                    attributes,
+                                    &self.demiroot,
+                                ),
                                 events: Self::wrap_events::<ThisComp, DemirootComp>(
                                     events,
                                     &self.demiroot,
                                 ),
-                                ref_marker: Self::wrap_ref_marker(ref_marker, &self.demiroot),
                             });
                         }
                         _ => {
@@ -136,12 +168,14 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                             res_h.push_back(Html::ElementNode {
                                 tag_name,
                                 children: children_h.into(),
-                                attributes,
+                                attributes: Self::wrap_attributes::<ThisComp, DemirootComp>(
+                                    attributes,
+                                    &self.demiroot,
+                                ),
                                 events: Self::wrap_events::<ThisComp, DemirootComp>(
                                     events,
                                     &self.demiroot,
                                 ),
-                                ref_marker: Self::wrap_ref_marker(ref_marker, &self.demiroot),
                             });
                         }
                     },
@@ -305,7 +339,6 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                 children,
                 attributes,
                 events,
-                ref_marker,
             } => {
                 let mut before_children = match before {
                     ComponentTree::Fragment(before_children)
@@ -322,16 +355,25 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                 }
 
                 let ref_marker = Self::wrap_ref_marker::<ThisComp, ThisComp>(
-                    ref_marker,
+                    attributes.ref_marker,
                     &self.this_as_demiroot(),
                 );
                 let ref_marker = ref_marker
                     .into_iter()
                     .filter_map(|marker| match marker {
-                        RefMarker::WrappedRef(marker) => Some(marker),
+                        RefMarker::WrappedRef(marker) => {
+                            Some(Box::new(move |node: web_sys::Node| {
+                                (marker.data.borrow_mut())(node);
+                            }) as Box<dyn FnOnce(_)>)
+                        }
                         _ => None,
                     })
                     .collect();
+
+                let key = attributes
+                    .key
+                    .map(|key| node::Key::Custom(key))
+                    .unwrap_or_else(|| node::Key::Default(tag_name.clone()));
 
                 let node = Node::element(
                     tag_name,
@@ -339,6 +381,7 @@ impl<ThisComp: Update + Render, DemirootComp: Component>
                     self.get_node_events(events),
                     nodes,
                     ref_marker,
+                    key,
                 );
                 (ComponentTree::Element(fragment), vec![node].into())
             }
