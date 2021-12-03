@@ -99,6 +99,10 @@ impl<DemirootComp: Component> Attributes<DemirootComp> {
         }
     }
 
+    pub fn height(self, val: u64) -> Self {
+        self.nut("height", val)
+    }
+
     pub fn hidden(self) -> Self {
         self.flag("hidden")
     }
@@ -137,5 +141,9 @@ impl<DemirootComp: Component> Attributes<DemirootComp> {
 
     pub fn value(self, value: impl Into<String>) -> Self {
         self.string("value", value)
+    }
+
+    pub fn width(self, val: u64) -> Self {
+        self.nut("width", val)
     }
 }
