@@ -47,7 +47,7 @@ dependencies = [
 
 [[package]]
 name = "kagura"
-version = "0.13.4"
+version = "0.13.5"
 dependencies = [
  "js-sys",
  "wasm-bindgen",

@@ -136,11 +136,10 @@ impl Update for ExampleComponent {
 impl Render for ExampleComponent {
     fn render(&self, _props: &Props, _children: Vec<Html<Self>>) -> Html<Self> {
         Html::canvas(
-            Attributes::new().nut("width", 300).nut("height", 300),
+            Attributes::new().ref_name("canvas").nut("width", 300).nut("height", 300),
             Events::new(),
             vec![],
         )
-        .ref_name("canvas")
     }
 }
 ```
