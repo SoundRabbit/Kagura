@@ -20,6 +20,9 @@ path = "./src/lib.rs"
 
 [dependencies]
 
+[dependencies.async-trait]
+version = "^0.1"
+
 [dependencies.js-sys]
 version = "^0.3"
 
