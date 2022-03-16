@@ -1,6 +1,6 @@
 <div align="center">
 
-![logo](kagura.png)
+![logo](./kagura/kagura.png)
 
 # Kagura
 
