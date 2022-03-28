@@ -7,3 +7,15 @@ edition = "2021"
 
 [dependencies]
 kagura = { path = "../kagura"}
+wasm-bindgen = "^0.2"
+
+[dependencies.web-sys]
+version = "^0.3"
+features = [
+    "DragEvent",
+    "Event",
+    "HtmlInputElement",
+    "HtmlTextAreaElement",
+    "KeyboardEvent",
+    "MouseEvent",
+]

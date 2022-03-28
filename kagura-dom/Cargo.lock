@@ -304,6 +304,8 @@ name = "kagura-dom"
 version = "0.1.0"
 dependencies = [
  "kagura",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]

@@ -1,3 +1,4 @@
+use crate::Component;
 use std::any::Any;
 use std::cell::RefCell;
 use std::future::Future;
@@ -20,12 +21,12 @@ impl Msg {
         }
     }
 
-    pub fn target_id<Component>(target: &Component) -> usize {
-        target as *const Component as usize
+    pub fn target_id<Target: Component>(target: &Target) -> usize {
+        target as *const Target as usize
     }
 
-    pub fn target_is<Component>(&self, c: &Component) -> bool {
-        self.target == c as *const Component as usize
+    pub fn target_is<Target: Component>(&self, c: &Target) -> bool {
+        self.target == c as *const Target as usize
     }
 
     pub fn take(&mut self) -> Option<Box<dyn Any>> {

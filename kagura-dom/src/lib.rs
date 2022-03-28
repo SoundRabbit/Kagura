@@ -1,17 +1,19 @@
 extern crate kagura;
+extern crate wasm_bindgen;
 
-mod dom_renderer;
-mod html;
-mod html_component;
-mod html_node;
-mod html_prefab;
-mod html_renderer;
-mod v_node;
+pub mod dom_renderer;
+pub mod html;
+pub mod html_component;
+pub mod html_node;
+pub mod html_prefab;
+pub mod html_renderer;
+pub mod util;
+pub mod v_node;
 
-use dom_renderer::DomRenderer;
-use html::Html;
-use html_component::HtmlComponent;
-use html_node::HtmlNode;
-use html_prefab::HtmlPrefab;
-use html_renderer::HtmlRenderer;
-use v_node::VNode;
+pub use dom_renderer::DomRenderer;
+pub use html::Html;
+pub use html_component::HtmlComponent;
+pub use html_node::HtmlNode;
+pub use html_prefab::HtmlPrefab;
+pub use html_renderer::HtmlRenderer;
+pub use v_node::VNode;

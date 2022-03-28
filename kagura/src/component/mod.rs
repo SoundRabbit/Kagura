@@ -23,5 +23,6 @@ pub trait Update: Component {
 
 pub trait Render<T>: Component {
     type Children: Default;
-    fn render(&self, children: Self::Children) -> T;
+    type Context;
+    fn render(&self, context: Self::Context, children: Self::Children) -> T;
 }
