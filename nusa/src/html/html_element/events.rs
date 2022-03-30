@@ -1,29 +1,23 @@
-use crate::v_node::v_element::VEvent;
+use crate::v_node::v_element::{VEvent, VEvents};
 use kagura::node::{BasicNodeMsg, Msg};
 use kagura::Component;
 use std::collections::HashMap;
 use wasm_bindgen::JsCast;
 
 pub struct Events {
-    handler_table: HashMap<String, Vec<Box<dyn FnOnce(VEvent) -> Msg>>>,
+    events: VEvents,
 }
 
-macro_rules! event_type {
-    ($event_ty:tt as $f_name:ident) => {
-        pub fn $f_name<Target: Component + 'static>(
-            self,
-            target: &Target,
-            handler: impl FnOnce(VEvent) -> Target::Msg + 'static,
-        ) -> Self {
-            self.on($event_ty, target, handler)
-        }
-    };
+impl Into<VEvents> for Events {
+    fn into(self) -> VEvents {
+        self.events
+    }
 }
 
 impl Events {
     pub fn new() -> Self {
         Self {
-            handler_table: HashMap::new(),
+            events: HashMap::new(),
         }
     }
 
@@ -35,7 +29,7 @@ impl Events {
     ) -> Self {
         let type_ = type_.into();
         let target_id = Msg::target_id(target);
-        let mut handelrs = if let Some(handlers) = self.handler_table.remove(&type_) {
+        let mut handelrs = if let Some(handlers) = self.events.remove(&type_) {
             handlers
         } else {
             vec![]
@@ -45,7 +39,7 @@ impl Events {
             let msg = BasicNodeMsg::<Target>::ComponentMsg(msg);
             Msg::new(target_id, Box::new(msg))
         }));
-        self.handler_table.insert(type_, handelrs);
+        self.events.insert(type_, handelrs);
         self
     }
 
@@ -65,7 +59,21 @@ impl Events {
             handler(String::new())
         })
     }
+}
 
+macro_rules! event_type {
+    ($event_ty:tt as $f_name:ident) => {
+        pub fn $f_name<Target: Component + 'static>(
+            self,
+            target: &Target,
+            handler: impl FnOnce(VEvent) -> Target::Msg + 'static,
+        ) -> Self {
+            self.on($event_ty, target, handler)
+        }
+    };
+}
+
+impl Events {
     event_type!("load" as on_load);
 
     event_type!("drag" as on_drag);
