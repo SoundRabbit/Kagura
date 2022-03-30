@@ -1,13 +1,10 @@
 use crate::dom_renderer::VEventListeners;
-use async_std::sync::{Arc, Mutex};
-use js_sys::Promise;
 use kagura::node::{FutureMsg, Msg};
 use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use wasm_bindgen::{prelude::*, JsCast};
 
 pub mod dom_event;
 

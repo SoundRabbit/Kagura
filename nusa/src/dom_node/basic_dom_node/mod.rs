@@ -1,8 +1,7 @@
 use super::DomNode;
 use crate::DomEvents;
-use crate::{DomRenderer, Html, HtmlComponent, HtmlNode, HtmlRenderer};
+use crate::{DomRenderer, Html, HtmlRenderer};
 use kagura::node::{FutureMsg, Msg, RenderNode, UpdateNode};
-use kagura::Component;
 use std::collections::VecDeque;
 use std::pin::Pin;
 

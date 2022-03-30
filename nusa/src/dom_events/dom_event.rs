@@ -26,7 +26,7 @@ impl DomEvent {
                 });
             }
         }) as Box<dyn FnMut(web_sys::Event)>);
-        target.add_event_listener_with_callback(event_type, a.as_ref().unchecked_ref());
+        let _ = target.add_event_listener_with_callback(event_type, a.as_ref().unchecked_ref());
         a.forget();
 
         Self { event_queue }
@@ -42,7 +42,7 @@ impl DomEvent {
 impl Future for DomEventPoller {
     type Output = web_sys::Event;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+    fn poll(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
         if let Some(mut event_queue) = self.as_mut().event_queue.try_lock() {
             if let Some(event) = event_queue.pop_front() {
                 return Poll::Ready(event);
