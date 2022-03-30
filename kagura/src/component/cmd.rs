@@ -6,6 +6,5 @@ pub enum Cmd<C: Component> {
     None,
     Sub(C::Sub),
     Msg(C::Msg),
-    Task(Pin<Box<dyn Future<Output = Cmd<C>>>>),
     List(Vec<Cmd<C>>),
 }

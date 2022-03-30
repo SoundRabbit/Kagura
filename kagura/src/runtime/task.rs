@@ -45,8 +45,8 @@ impl Future for TaskPoller {
                     Poll::Pending => {
                         new_tasks.push_back(task);
                     }
-                    Poll::Ready(msg) => {
-                        output.push(msg);
+                    Poll::Ready(mut msg) => {
+                        output.append(&mut msg);
                     }
                 }
             }

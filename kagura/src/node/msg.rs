@@ -11,7 +11,7 @@ pub struct Msg {
     data: Rc<RefCell<Option<Box<dyn Any>>>>,
 }
 
-pub type FutureMsg = Pin<Box<dyn Future<Output = Msg>>>;
+pub type FutureMsg = Pin<Box<dyn Future<Output = Vec<Msg>>>>;
 
 impl Msg {
     pub fn new(target: usize, data: Box<dyn Any>) -> Self {
@@ -27,6 +27,10 @@ impl Msg {
 
     pub fn target_is<Target: Component>(&self, c: &Target) -> bool {
         self.target == c as *const Target as usize
+    }
+
+    pub fn target(&self) -> usize {
+        self.target
     }
 
     pub fn take(&mut self) -> Option<Box<dyn Any>> {

@@ -1,6 +1,5 @@
 mod cmd;
 
-use async_trait::async_trait;
 use std::pin::Pin;
 
 pub use cmd::Cmd;
@@ -16,13 +15,18 @@ pub trait Constructor: Component {
 }
 
 pub trait Update: Component {
-    fn on_assemble(self: Pin<&mut Self>) -> Cmd<Self>;
-    fn on_load(self: Pin<&mut Self>, props: Self::Props) -> Cmd<Self>;
-    fn update(self: Pin<&mut Self>, msg: Self::Msg) -> Cmd<Self>;
+    fn on_assemble(self: Pin<&mut Self>) -> Cmd<Self> {
+        Cmd::None
+    }
+    fn on_load(self: Pin<&mut Self>, _props: Self::Props) -> Cmd<Self> {
+        Cmd::None
+    }
+    fn update(self: Pin<&mut Self>, _msg: Self::Msg) -> Cmd<Self> {
+        Cmd::None
+    }
 }
 
 pub trait Render<T>: Component {
     type Children: Default;
-    type Context;
-    fn render(&self, context: Self::Context, children: Self::Children) -> T;
+    fn render(&self, children: Self::Children) -> T;
 }
