@@ -6,6 +6,13 @@ pub struct Attributes {
 }
 
 impl Attributes {
+    pub fn new() -> Self {
+        Self {
+            index_id: None,
+            data: VAttributes::new(),
+        }
+    }
+
     pub fn into_attributes(self) -> (Option<String>, VAttributes) {
         (self.index_id, self.data)
     }

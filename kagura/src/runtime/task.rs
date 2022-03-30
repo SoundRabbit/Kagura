@@ -27,7 +27,7 @@ impl Task {
     }
 
     pub async fn append(&mut self, new_tasks: &mut VecDeque<FutureMsg>) {
-        let mut tasks = self.tasks.lock().await;
+        let mut tasks = self.tasks.lock_arc().await;
         tasks.append(new_tasks);
     }
 }
@@ -36,7 +36,7 @@ impl Future for TaskPoller {
     type Output = Vec<Msg>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        if let Some(mut tasks) = self.as_mut().tasks.try_lock() {
+        if let Some(mut tasks) = self.as_mut().tasks.try_lock_arc() {
             let mut new_tasks = VecDeque::new();
             let mut output = vec![];
 

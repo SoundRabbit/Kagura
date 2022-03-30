@@ -14,11 +14,14 @@ pub struct BasicDomNode {
     dom_renderer: DomRenderer,
     dom_events: DomEvents,
     html_renderer: HtmlRenderer<BasicDomComponent>,
-    render: Box<dyn FnMut() -> Vec<Html>>,
+    render: Box<dyn FnMut(&BasicDomComponent) -> Vec<Html>>,
 }
 
 impl BasicDomNode {
-    pub fn new(entry: web_sys::Node, render: impl FnMut() -> Vec<Html> + 'static) -> Self {
+    pub fn new(
+        entry: web_sys::Node,
+        render: impl FnMut(&BasicDomComponent) -> Vec<Html> + 'static,
+    ) -> Self {
         let dummy_state = Box::pin(BasicDomComponent::new());
         let dom_renderer = DomRenderer::new(entry.clone());
         let dom_events = DomEvents::new(entry.into());
@@ -42,7 +45,8 @@ impl UpdateNode for BasicDomNode {
 
 impl RenderNode<VecDeque<FutureMsg>> for BasicDomNode {
     fn render(&mut self) -> VecDeque<FutureMsg> {
-        self.html_renderer.set_children((self.render)());
+        self.html_renderer
+            .set_children((self.render)(&self.dummy_state.as_ref()));
         let v_nodes = self.html_renderer.render(&self.dummy_state);
         let event_listeners = self.dom_renderer.render(v_nodes);
 

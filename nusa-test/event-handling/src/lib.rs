@@ -5,23 +5,26 @@ extern crate wasm_bindgen;
 extern crate wasm_bindgen_futures;
 extern crate web_sys;
 
-use nusa::html::html_element::Attributes;
-use nusa::html::html_element::Events;
-use nusa::Html;
+use nusa::HtmlComponent;
 use wasm_bindgen::prelude::*;
+
+mod test_component;
+
+use test_component::TestComponent;
 
 #[wasm_bindgen(start)]
 pub fn main() {
-    wasm_bindgen_futures::spawn_local(async {
-        kagura::Runtime::run(nusa::dom_node::BasicDomNode::new(entry_point(), |_| {
-            vec![Html::h1(
-                Attributes::new(),
-                Events::new(),
-                vec![Html::text("Hello World")],
+    wasm_bindgen_futures::spawn_local(kagura::Runtime::run(nusa::dom_node::BasicDomNode::new(
+        entry_point(),
+        |this| {
+            vec![TestComponent::empty(
+                this,
+                None,
+                test_component::Props {},
+                Some(|_| ()),
             )]
-        }))
-        .await;
-    });
+        },
+    )));
 }
 
 fn entry_point() -> web_sys::Node {

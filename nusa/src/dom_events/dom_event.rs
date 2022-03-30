@@ -2,39 +2,51 @@ use async_std::sync::{Arc, Mutex};
 use std::collections::VecDeque;
 use std::future::Future;
 use std::pin::Pin;
-use std::task::{Context, Poll};
+use std::task::{Context, Poll, Waker};
 use wasm_bindgen::{prelude::*, JsCast};
 
 pub struct DomEvent {
-    event_queue: Arc<Mutex<VecDeque<web_sys::Event>>>,
+    state: Arc<Mutex<State>>,
 }
 
 pub struct DomEventPoller {
-    event_queue: Arc<Mutex<VecDeque<web_sys::Event>>>,
+    state: Arc<Mutex<State>>,
+}
+
+struct State {
+    event_queue: VecDeque<web_sys::Event>,
+    waker: Option<Waker>,
 }
 
 impl DomEvent {
     pub fn new(target: &web_sys::EventTarget, event_type: &str) -> Self {
-        let event_queue = Arc::new(Mutex::new(VecDeque::new()));
+        let state = Arc::new(Mutex::new(State {
+            event_queue: VecDeque::new(),
+            waker: None,
+        }));
 
         let a = Closure::wrap(Box::new({
-            let event_queue = Arc::clone(&event_queue);
+            let state = Arc::clone(&state);
             move |e| {
-                let event_queue = Arc::clone(&event_queue);
+                let state = Arc::clone(&state);
                 wasm_bindgen_futures::spawn_local(async move {
-                    event_queue.lock().await.push_back(e);
+                    let mut state = state.lock_arc().await;
+                    state.event_queue.push_back(e);
+                    if let Some(waker) = state.waker.take() {
+                        waker.wake();
+                    }
                 });
             }
         }) as Box<dyn FnMut(web_sys::Event)>);
         let _ = target.add_event_listener_with_callback(event_type, a.as_ref().unchecked_ref());
         a.forget();
 
-        Self { event_queue }
+        Self { state }
     }
 
     pub fn poll(&self) -> impl Future<Output = web_sys::Event> {
         DomEventPoller {
-            event_queue: Arc::clone(&self.event_queue),
+            state: Arc::clone(&self.state),
         }
     }
 }
@@ -42,10 +54,12 @@ impl DomEvent {
 impl Future for DomEventPoller {
     type Output = web_sys::Event;
 
-    fn poll(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
-        if let Some(mut event_queue) = self.as_mut().event_queue.try_lock() {
-            if let Some(event) = event_queue.pop_front() {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        if let Some(mut state) = self.as_mut().state.try_lock_arc() {
+            if let Some(event) = state.event_queue.pop_front() {
                 return Poll::Ready(event);
+            } else {
+                state.waker = Some(cx.waker().clone())
             }
         }
         Poll::Pending
