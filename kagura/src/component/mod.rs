@@ -6,7 +6,7 @@ pub use cmd::Cmd;
 
 pub trait Component: Sized {
     type Props;
-    type Sub;
+    type Event;
     type Msg;
 }
 

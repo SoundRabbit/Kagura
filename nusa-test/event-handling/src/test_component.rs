@@ -10,7 +10,7 @@ pub enum Msg {
     SetCount(usize),
 }
 
-pub enum Sub {}
+pub enum On {}
 
 pub struct TestComponent {
     count: usize,
@@ -19,7 +19,7 @@ pub struct TestComponent {
 impl Component for TestComponent {
     type Props = Props;
     type Msg = Msg;
-    type Sub = Sub;
+    type Event = On;
 }
 
 impl Constructor for TestComponent {

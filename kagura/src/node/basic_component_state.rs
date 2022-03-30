@@ -6,7 +6,7 @@ use std::collections::VecDeque;
 use std::pin::Pin;
 
 #[allow(type_alias_bounds)]
-pub type SubHandler<C: Component> = Box<dyn FnMut(C::Sub) -> Msg>;
+pub type SubHandler<This: Component> = Box<dyn FnMut(This::Event) -> Msg>;
 
 pub struct BasicComponentState<C: Update + 'static> {
     state: Pin<Box<C>>,
@@ -31,8 +31,8 @@ impl<C: Update> BasicComponentState<C> {
                 .map(|cmd| self.eval_cmd(cmd))
                 .flatten()
                 .collect(),
-            Cmd::Msg(msg) => self.on_update(msg),
-            Cmd::Sub(sub) => {
+            Cmd::Chain(msg) => self.on_update(msg),
+            Cmd::Submit(sub) => {
                 if let Some(sub_handler) = &mut self.sub_handler {
                     let msg = sub_handler(sub);
                     vec![Box::pin(std::future::ready(vec![msg])) as FutureMsg].into()

@@ -5,6 +5,7 @@ extern crate wasm_bindgen;
 extern crate wasm_bindgen_futures;
 extern crate web_sys;
 
+use nusa::html_component::Sub;
 use nusa::HtmlComponent;
 use wasm_bindgen::prelude::*;
 
@@ -21,7 +22,7 @@ pub fn main() {
                 this,
                 None,
                 test_component::Props {},
-                Some(|_| ()),
+                Sub::none(),
             )]
         },
     )));

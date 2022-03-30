@@ -4,7 +4,7 @@ use std::pin::Pin;
 
 pub enum Cmd<C: Component> {
     None,
-    Sub(C::Sub),
-    Msg(C::Msg),
+    Submit(C::Event),
+    Chain(C::Msg),
     List(Vec<Cmd<C>>),
 }

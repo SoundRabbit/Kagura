@@ -6,6 +6,20 @@ use kagura::node::{BasicNodeMsg, Msg, SubHandler};
 use kagura::Component;
 use std::pin::Pin;
 
+pub struct Sub {}
+
+impl Sub {
+    pub fn none<Event, TargetMsg>() -> Option<Box<dyn FnMut(Event) -> TargetMsg>> {
+        None
+    }
+
+    pub fn map<Event, TargetMsg>(
+        map: impl FnMut(Event) -> TargetMsg + 'static,
+    ) -> Option<Box<dyn FnMut(Event) -> TargetMsg>> {
+        Some(Box::new(map))
+    }
+}
+
 pub trait HtmlComponent: Update + Render<Html> + Constructor + 'static {
     fn node_constructor(
         index_id: Option<String>,
@@ -19,7 +33,7 @@ pub trait HtmlComponent: Update + Render<Html> + Constructor + 'static {
         target: &Target,
         index_id: Option<String>,
         props: Self::Props,
-        sub_handler: Option<impl FnMut(Self::Sub) -> Target::Msg + 'static>,
+        sub_handler: Option<Box<dyn FnMut(Self::Event) -> Target::Msg>>,
         children: Self::Children,
     ) -> Html {
         let target_id = Msg::target_id(target);
@@ -43,7 +57,7 @@ pub trait HtmlComponent: Update + Render<Html> + Constructor + 'static {
         target: &Target,
         index_id: Option<String>,
         props: Self::Props,
-        sub_handler: Option<impl FnMut(Self::Sub) -> Target::Msg + 'static>,
+        sub_handler: Option<Box<dyn FnMut(Self::Event) -> Target::Msg>>,
     ) -> Html {
         Self::new(
             target,

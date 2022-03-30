@@ -7,7 +7,7 @@ pub struct BasicDomComponent {}
 impl Component for BasicDomComponent {
     type Props = ();
     type Msg = ();
-    type Sub = ();
+    type Event = ();
 }
 
 impl Constructor for BasicDomComponent {
