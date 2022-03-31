@@ -32,6 +32,15 @@ impl<C: Update> BasicComponentState<C> {
                 .flatten()
                 .collect(),
             Cmd::Chain(msg) => self.on_update(msg),
+            Cmd::Task(task) => {
+                let target_id = self.target_id();
+                let future_msg = async move {
+                    let cmd = task.await;
+                    let msg = Msg::new(target_id, Box::new(BasicNodeMsg::ComponentCmd(cmd)));
+                    vec![msg]
+                };
+                vec![Box::pin(future_msg) as FutureMsg].into()
+            }
             Cmd::Submit(sub) => {
                 if let Some(sub_handler) = &mut self.sub_handler {
                     let msg = sub_handler(sub);
