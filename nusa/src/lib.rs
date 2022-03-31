@@ -24,3 +24,10 @@ pub use html_node::HtmlNode;
 pub use html_prefab::HtmlPrefab;
 pub use html_renderer::HtmlRenderer;
 pub use v_node::VNode;
+
+pub mod prelude {
+    pub use crate::html::html_element::{Attributes, Events};
+    pub use crate::html_component::Sub;
+    pub use crate::{Html, HtmlComponent};
+    pub use std::pin::Pin;
+}

@@ -27,6 +27,7 @@ pub enum VAttributeValue {
     Nut(u64),
     Int(i64),
     Num(f64),
+    None,
 }
 
 pub type VEventHandler = Box<dyn FnOnce(VEvent) -> Msg>;
@@ -69,6 +70,7 @@ impl std::string::ToString for VAttributeValue {
             Self::Int(v) => v.to_string(),
             Self::Num(v) => v.to_string(),
             Self::Nut(v) => v.to_string(),
+            Self::None => String::from(""),
         }
     }
 }
