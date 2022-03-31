@@ -34,6 +34,14 @@ impl Html {
             index_id,
         })
     }
+
+    pub fn none() -> Self {
+        Self::None
+    }
+
+    pub fn fragment(htmls: Vec<Html>) -> Self {
+        Self::Fragment(htmls)
+    }
 }
 
 macro_rules! element {
@@ -122,7 +130,7 @@ impl Html {
     element!("rp" as rp);
     element!("rt" as rt);
     element!("rtc" as rtc);
-    element!("rubu" as rubu);
+    element!("ruby" as ruby);
     element!("s" as s);
     element!("samp" as samp);
     element!("section" as section);
