@@ -4,6 +4,10 @@
 
 When you create a web page, `kagura` needs `nusa`. `nusa` gives `kagura` features to manuplate DOM by virtual-DOM.
 
+## Tutorial
+
+<https://github.com/SoundRabbit/Kagura/blob/master/docs/%5E0.14/tutorial/01_preparation.md>
+
 ## Creating a web page
 
 `kagura` needs `nusa` to generate a web page. like this:
