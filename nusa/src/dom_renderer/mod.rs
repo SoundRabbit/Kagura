@@ -142,6 +142,7 @@ impl DomRenderer {
                 prev.tag_name == now.tag_name && prev.index_id == now.index_id
             }
             (VNode::VText(..), VNode::VText(..)) => true,
+            (VNode::RNode(prev), VNode::RNode(now)) => prev.is_same_node(Some(&now)),
             _ => false,
         }
     }
@@ -158,6 +159,7 @@ impl DomRenderer {
                 let raw = self.document.create_text_node(&now.text);
                 (VEventListeners::new(), raw.into())
             }
+            VNode::RNode(now_raw) => (VEventListeners::new(), now_raw),
         };
 
         if let Some(raw_after) = raw_after {
@@ -189,6 +191,7 @@ impl DomRenderer {
                 let raw = self.document.create_text_node(&now.text);
                 (VEventListeners::new(), raw.into())
             }
+            VNode::RNode(now_raw) => (VEventListeners::new(), now_raw),
         };
 
         let _ = raw_parent.replace_child(&now_raw, &prev_raw);

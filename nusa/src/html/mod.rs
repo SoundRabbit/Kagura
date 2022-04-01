@@ -11,6 +11,7 @@ pub enum Html {
     HtmlElement(HtmlElement),
     HtmlText(HtmlText),
     Fragment(Vec<Html>),
+    RNode(web_sys::Node),
     None,
 }
 
@@ -41,6 +42,10 @@ impl Html {
 
     pub fn fragment(htmls: Vec<Html>) -> Self {
         Self::Fragment(htmls)
+    }
+
+    pub fn node(node: web_sys::Node) -> Self {
+        Self::RNode(node)
     }
 }
 

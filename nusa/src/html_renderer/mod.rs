@@ -10,6 +10,7 @@ use std::rc::Rc;
 
 enum RenderedNode {
     None,
+    RNode(web_sys::Node),
     Text,
     Fragment(VecDeque<RenderedNode>),
     Element(VecDeque<RenderedNode>),
@@ -56,6 +57,7 @@ impl<This: Render<Html>> HtmlRenderer<This> {
                 }
                 tasks
             }
+            RenderedNode::RNode(..) => VecDeque::new(),
             RenderedNode::None => VecDeque::new(),
             RenderedNode::Text => VecDeque::new(),
         }
@@ -127,6 +129,10 @@ impl<This: Render<Html>> HtmlRenderer<This> {
                 })]
                 .into(),
             ),
+            Html::RNode(r_node) => (
+                RenderedNode::RNode(r_node.clone()),
+                vec![VNode::RNode(r_node)].into(),
+            ),
             Html::None => (RenderedNode::None, VecDeque::new()),
         }
     }
@@ -172,6 +178,10 @@ impl<This: Render<Html>> HtmlRenderer<This> {
         match rendered_node {
             RenderedNode::Component(component) => match html {
                 Html::Component(prefab) => component.is(prefab.as_ref()),
+                _ => false,
+            },
+            RenderedNode::RNode(prev_r_node) => match html {
+                Html::RNode(now_r_node) => prev_r_node.is_same_node(Some(&now_r_node)),
                 _ => false,
             },
             RenderedNode::Element(..) => match html {
