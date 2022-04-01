@@ -2,7 +2,11 @@
 
 The features for `kagura` to generate web page by virtual-DOM.
 
-## usage
+## Documents
+
+<https://kagura.gitbook.io/kagura-nusa-en/>
+
+## Usage
 
 ### mount to real-DOM
 

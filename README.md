@@ -25,3 +25,7 @@ This crate works in WebAssembly.
 This crate appends kagura features for WebAudioAPI.
 
 This crate works in WebAssembly.
+
+## Documents
+
+<https://kagura.gitbook.io/kagura-nusa-en/>
