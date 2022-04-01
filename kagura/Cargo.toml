@@ -1,12 +1,11 @@
 [package]
 name = "kagura"
-version = "0.14.0"
+version = "0.14.1"
 authors = ["SoundRabbit <soundrabbitstd@gmail.com>"]
 edition = "2021"
-description = "Frontend frame-work for wasm on Rust."
+description = "component-oriented GUI framework"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/SoundRabbit/Kagura"
-homepage = "https://soundrabbit.github.io/Kagura/"
 readme = "./README.md"
 keywords = ["web", "wasm", "front-end", "kagura"]
 categories = ["gui", "web-programming"]
