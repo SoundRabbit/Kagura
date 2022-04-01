@@ -1,3 +1,0 @@
-# Subscribing a component
-
-
