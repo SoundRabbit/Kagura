@@ -13,7 +13,11 @@ pub struct VElement {
 }
 
 pub type VAttributes = HashMap<String, VAttributeValues>;
-pub type VEvents = HashMap<String, Vec<VEventHandler>>;
+
+pub struct VEvents {
+    pub events: HashMap<String, Vec<VEventHandler>>,
+    pub refers: Vec<VReferHandler>,
+}
 
 #[derive(Clone, PartialEq)]
 pub struct VAttributeValues {
@@ -32,6 +36,11 @@ pub enum VAttributeValue {
 
 pub type VEventHandler = Box<dyn FnOnce(VEvent) -> Msg>;
 
+pub struct VReferHandler {
+    pub target: usize,
+    handler: Option<Box<dyn FnOnce(web_sys::Node) -> Msg>>,
+}
+
 pub struct VEvent {
     data: web_sys::Event,
     stop_propagation: Rc<Cell<bool>>,
@@ -42,7 +51,7 @@ impl VElement {
         Self {
             tag_name: Rc::clone(&self.tag_name),
             attributes: self.attributes.clone(),
-            events: HashMap::new(),
+            events: self.events.as_rendered(),
             children: self
                 .children
                 .iter()
@@ -75,6 +84,26 @@ impl std::string::ToString for VAttributeValue {
     }
 }
 
+impl VEvents {
+    pub fn new() -> Self {
+        Self {
+            events: HashMap::new(),
+            refers: vec![],
+        }
+    }
+
+    pub fn as_rendered(&self) -> Self {
+        Self {
+            events: HashMap::new(),
+            refers: self
+                .refers
+                .iter()
+                .map(|refer| refer.as_rendered())
+                .collect(),
+        }
+    }
+}
+
 impl VEvent {
     pub fn new(data: web_sys::Event, stop_propagation: Rc<Cell<bool>>) -> Self {
         Self {
@@ -89,6 +118,26 @@ impl VEvent {
 
     pub fn stop_propagation(&self) {
         self.stop_propagation.set(true);
+    }
+}
+
+impl VReferHandler {
+    pub fn new(target: usize, handler: Box<dyn FnOnce(web_sys::Node) -> Msg>) -> Self {
+        Self {
+            target,
+            handler: Some(handler),
+        }
+    }
+
+    pub fn take(&mut self) -> Option<Box<dyn FnOnce(web_sys::Node) -> Msg>> {
+        self.handler.take()
+    }
+
+    pub fn as_rendered(&self) -> Self {
+        Self {
+            target: self.target,
+            handler: None,
+        }
     }
 }
 

@@ -1,7 +1,6 @@
-use crate::v_node::v_element::{VEvent, VEvents};
+use crate::v_node::v_element::{VEvent, VEvents, VReferHandler};
 use kagura::node::{BasicNodeMsg, Msg};
 use kagura::Component;
-use std::collections::HashMap;
 use wasm_bindgen::JsCast;
 
 pub struct Events {
@@ -17,7 +16,7 @@ impl Into<VEvents> for Events {
 impl Events {
     pub fn new() -> Self {
         Self {
-            events: HashMap::new(),
+            events: VEvents::new(),
         }
     }
 
@@ -29,7 +28,7 @@ impl Events {
     ) -> Self {
         let type_ = type_.into();
         let target_id = Msg::target_id(target);
-        let mut handelrs = if let Some(handlers) = self.events.remove(&type_) {
+        let mut handelrs = if let Some(handlers) = self.events.events.remove(&type_) {
             handlers
         } else {
             vec![]
@@ -39,7 +38,23 @@ impl Events {
             let msg = BasicNodeMsg::<Target>::ComponentMsg(msg);
             Msg::new(target_id, Box::new(msg))
         }));
-        self.events.insert(type_, handelrs);
+        self.events.events.insert(type_, handelrs);
+        self
+    }
+
+    pub fn refer<Target: Component + 'static>(
+        mut self,
+        target: &Target,
+        handler: impl FnOnce(web_sys::Node) -> Target::Msg + 'static,
+    ) -> Self {
+        let target_id = Msg::target_id(target);
+        let handler = Box::new(move |el| {
+            let msg = handler(el);
+            let msg = BasicNodeMsg::<Target>::ComponentMsg(msg);
+            Msg::new(target_id, Box::new(msg))
+        });
+        let refer_handler = VReferHandler::new(target_id, handler);
+        self.events.refers.push(refer_handler);
         self
     }
 

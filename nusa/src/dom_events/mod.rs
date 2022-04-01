@@ -1,4 +1,4 @@
-use crate::dom_renderer::VEventListeners;
+use crate::dom_renderer::VEventListener;
 use kagura::node::{FutureMsg, Msg};
 use std::collections::HashMap;
 use std::collections::VecDeque;
@@ -27,7 +27,7 @@ impl DomEvents {
         }
     }
 
-    pub fn listen(&mut self, event_listeners: VEventListeners) -> FutureMsg {
+    pub fn listen(&mut self, event_listeners: HashMap<String, VEventListener>) -> FutureMsg {
         let mut event_pollers = VecDeque::new();
 
         for (event_type, event_listener) in event_listeners {

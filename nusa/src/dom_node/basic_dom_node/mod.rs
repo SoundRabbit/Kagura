@@ -3,6 +3,7 @@ use crate::DomEvents;
 use crate::{DomRenderer, Html, HtmlRenderer};
 use kagura::node::{FutureMsg, Msg, RenderNode, UpdateNode};
 use std::collections::VecDeque;
+use std::future;
 use std::pin::Pin;
 
 pub mod basic_dom_component;
@@ -51,7 +52,13 @@ impl RenderNode<VecDeque<FutureMsg>> for BasicDomNode {
         let event_listeners = self.dom_renderer.render(v_nodes);
 
         let mut tasks = VecDeque::new();
-        tasks.push_back(self.dom_events.listen(event_listeners));
+
+        for rendered_handler in event_listeners.rendered_handlers {
+            let msg = rendered_handler();
+            tasks.push_back(Box::pin(future::ready(vec![msg])) as FutureMsg);
+        }
+
+        tasks.push_back(self.dom_events.listen(event_listeners.event_listeners));
 
         tasks
     }

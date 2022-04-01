@@ -3,12 +3,17 @@ use crate::v_node::{VElement, VText};
 use crate::VNode;
 use kagura::node::Msg;
 use std::cell::Cell;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::rc::Rc;
 use wasm_bindgen::JsCast;
 
 pub type VEventListener = Box<dyn FnOnce(web_sys::Event) -> (bool, VecDeque<Msg>)>;
-pub type VEventListeners = HashMap<String, VEventListener>;
+pub type VRenderedHandler = Box<dyn FnOnce() -> Msg>;
+
+pub struct VEventListeners {
+    pub event_listeners: HashMap<String, VEventListener>,
+    pub rendered_handlers: Vec<VRenderedHandler>,
+}
 
 pub struct DomRenderer {
     root: web_sys::Node,
@@ -54,18 +59,22 @@ impl DomRenderer {
             buf
         };
 
-        let events = mixeds
-            .into_iter()
-            .fold(HashMap::new(), |mut events, mixed| {
+        let (events, rendered_handlers) = mixeds.into_iter().fold(
+            (HashMap::new(), vec![]),
+            |(mut events, mut rendereds), mixed| {
                 match mixed {
                     crate::util::mix::Edit::Append(now) => {
                         let event_lsiteners = self.append_node(now, &raw_parent, raws.front());
-                        Self::append_events(&mut events, event_lsiteners);
+                        let mut rendered_handlers =
+                            Self::append_events(&mut events, event_lsiteners);
+                        rendereds.append(&mut rendered_handlers);
                     }
                     crate::util::mix::Edit::Keep(prev, now) => {
                         if let Some(raw) = raws.pop_front() {
                             let event_lsiteners = self.keep_node(prev, now, &raw);
-                            Self::append_events(&mut events, event_lsiteners);
+                            let mut rendered_handlers =
+                                Self::append_events(&mut events, event_lsiteners);
+                            rendereds.append(&mut rendered_handlers);
                         }
                     }
                     crate::util::mix::Edit::Remove(..) => {
@@ -76,13 +85,16 @@ impl DomRenderer {
                     crate::util::mix::Edit::Replace(_, now) => {
                         if let Some(raw) = raws.pop_front() {
                             let event_lsiteners = self.replace_node(now, &raw_parent, &raw);
-                            Self::append_events(&mut events, event_lsiteners);
+                            let mut rendered_handlers =
+                                Self::append_events(&mut events, event_lsiteners);
+                            rendereds.append(&mut rendered_handlers);
                         }
                     }
                 }
 
-                events
-            });
+                (events, rendereds)
+            },
+        );
 
         let event_listeners = events.into_iter().fold(
             HashMap::new(),
@@ -104,20 +116,24 @@ impl DomRenderer {
             },
         );
 
-        event_listeners
+        VEventListeners {
+            event_listeners,
+            rendered_handlers,
+        }
     }
 
     fn append_events(
         events: &mut HashMap<String, Vec<VEventListener>>,
         event_listeners: VEventListeners,
-    ) {
-        for (event_type, event_listener) in event_listeners {
+    ) -> Vec<VRenderedHandler> {
+        for (event_type, event_listener) in event_listeners.event_listeners {
             if let Some(event_listener_list) = events.get_mut(&event_type) {
                 event_listener_list.push(event_listener);
             } else {
                 events.insert(event_type, vec![event_listener]);
             }
         }
+        event_listeners.rendered_handlers
     }
 
     fn compare_nodes(prev: &VNode, now: &VNode) -> bool {
@@ -137,10 +153,10 @@ impl DomRenderer {
         raw_after: Option<&web_sys::Node>,
     ) -> VEventListeners {
         let (event_listeners, raw) = match now {
-            VNode::VElement(now) => self.create_element(now),
+            VNode::VElement(now) => self.create_element(now, &VEvents::new()),
             VNode::VText(now) => {
                 let raw = self.document.create_text_node(&now.text);
-                (HashMap::new(), raw.into())
+                (VEventListeners::new(), raw.into())
             }
         };
 
@@ -157,7 +173,7 @@ impl DomRenderer {
         match (prev, now) {
             (VNode::VElement(prev), VNode::VElement(now)) => self.keep_element(prev, now, raw),
             (VNode::VText(prev), VNode::VText(now)) => self.keep_text(prev, now, raw),
-            _ => HashMap::new(),
+            _ => VEventListeners::new(),
         }
     }
 
@@ -168,10 +184,10 @@ impl DomRenderer {
         prev_raw: &web_sys::Node,
     ) -> VEventListeners {
         let (event_listeners, now_raw) = match now {
-            VNode::VElement(now) => self.create_element(now),
+            VNode::VElement(now) => self.create_element(now, &VEvents::new()),
             VNode::VText(now) => {
                 let raw = self.document.create_text_node(&now.text);
-                (HashMap::new(), raw.into())
+                (VEventListeners::new(), raw.into())
             }
         };
 
@@ -187,11 +203,11 @@ impl DomRenderer {
             Self::update_attributes(&prev.attributes, &now.attributes, &raw);
 
             let event_listeners =
-                Self::create_event_listeners(now.events, child_event_listeners, raw);
+                Self::create_event_listeners(now.events, child_event_listeners, raw, &prev.events);
 
             event_listeners
         } else {
-            HashMap::new()
+            VEventListeners::new()
         }
     }
 
@@ -231,10 +247,10 @@ impl DomRenderer {
         if let Some(raw) = raw.dyn_ref::<web_sys::CharacterData>() {
             let _ = raw.replace_data(0, prev.text.len() as u32, &now.text);
         }
-        HashMap::new()
+        VEventListeners::new()
     }
 
-    fn create_element(&self, now: VElement) -> (VEventListeners, web_sys::Node) {
+    fn create_element(&self, now: VElement, prev: &VEvents) -> (VEventListeners, web_sys::Node) {
         let raw = self.document.create_element(&now.tag_name).unwrap();
 
         let child_event_listeners = self.render_nodes(VecDeque::new(), now.children, &raw);
@@ -243,7 +259,8 @@ impl DomRenderer {
             Self::set_attribute(&attr_name, &attr_values, &raw);
         }
 
-        let event_listeners = Self::create_event_listeners(now.events, child_event_listeners, &raw);
+        let event_listeners =
+            Self::create_event_listeners(now.events, child_event_listeners, &raw, &prev);
 
         (event_listeners, raw.into())
     }
@@ -252,10 +269,13 @@ impl DomRenderer {
         events: VEvents,
         mut child_event_listeners: VEventListeners,
         raw: &web_sys::Node,
+        prev: &VEvents,
     ) -> VEventListeners {
         let mut event_listeners = HashMap::new();
-        for (event_type, event_handlers) in events {
-            if let Some(child_event_listener) = child_event_listeners.remove(&event_type) {
+        for (event_type, event_handlers) in events.events {
+            if let Some(child_event_listener) =
+                child_event_listeners.event_listeners.remove(&event_type)
+            {
                 let raw = raw.clone();
                 event_listeners.insert(
                     event_type,
@@ -299,11 +319,30 @@ impl DomRenderer {
             }
         }
 
-        for (event_type, event_listener) in child_event_listeners {
+        for (event_type, event_listener) in child_event_listeners.event_listeners {
             event_listeners.insert(event_type, event_listener);
         }
 
-        event_listeners
+        let mut rendered_handlers = child_event_listeners.rendered_handlers;
+        let prev_targets = prev
+            .refers
+            .iter()
+            .map(|prev| prev.target)
+            .collect::<HashSet<_>>();
+
+        for mut refer in events.refers {
+            if !prev_targets.contains(&refer.target) {
+                if let Some(handler) = refer.take() {
+                    let raw = raw.clone();
+                    rendered_handlers.push(Box::new(move || handler(raw)));
+                }
+            }
+        }
+
+        VEventListeners {
+            event_listeners,
+            rendered_handlers,
+        }
     }
 
     fn attach_events(
@@ -318,5 +357,14 @@ impl DomRenderer {
             msgs.push_back(msg);
         }
         (stop_propagation.get(), msgs)
+    }
+}
+
+impl VEventListeners {
+    pub fn new() -> Self {
+        Self {
+            event_listeners: HashMap::new(),
+            rendered_handlers: vec![],
+        }
     }
 }
