@@ -278,7 +278,7 @@ dependencies = [
 
 [[package]]
 name = "kagura"
-version = "0.14.1"
+version = "0.14.2"
 dependencies = [
  "async-std",
 ]
