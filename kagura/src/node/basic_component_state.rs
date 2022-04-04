@@ -52,6 +52,11 @@ impl<C: Update> BasicComponentState<C> {
         }
     }
 
+    pub fn on_assemble(&mut self) -> VecDeque<FutureMsg> {
+        let cmd = self.state.as_mut().on_assemble();
+        self.eval_cmd(cmd)
+    }
+
     pub fn on_load(&mut self, props: C::Props) -> VecDeque<FutureMsg> {
         let cmd = self.state.as_mut().on_load(props);
         self.eval_cmd(cmd)
