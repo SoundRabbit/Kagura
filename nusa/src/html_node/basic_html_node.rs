@@ -46,8 +46,10 @@ impl<This: Render<Html> + Update> UpdateNode for BasicHtmlNode<This> {
     }
 }
 
-impl<This: Render<Html> + Update> RenderNode<VecDeque<VNode>> for BasicHtmlNode<This> {
-    fn render(&mut self) -> VecDeque<VNode> {
+impl<This: Render<Html> + Update> RenderNode<(VecDeque<VNode>, VecDeque<FutureMsg>)>
+    for BasicHtmlNode<This>
+{
+    fn render(&mut self) -> (VecDeque<VNode>, VecDeque<FutureMsg>) {
         self.html_renderer.render(&self.state)
     }
 }
@@ -61,16 +63,21 @@ impl<This: Render<Html> + Update> HtmlNode for BasicHtmlNode<This> {
         )
     }
 
-    fn update_by_prefab(&mut self, prefab: Box<dyn HtmlPrefab>) {
+    fn on_assemble(&mut self) -> VecDeque<FutureMsg> {
+        self.state.on_assemble()
+    }
+
+    fn update_by_prefab(&mut self, prefab: Box<dyn HtmlPrefab>) -> VecDeque<FutureMsg> {
         if self.is(prefab.as_ref()) {
             if let Ok(prefab) = prefab.into_any().downcast::<BasicHtmlPrefab<This>>() {
                 let (props, index_id, sub_handler, children) = prefab.into_data();
                 self.index_id = index_id;
                 self.html_renderer.set_children(children);
                 self.state.set_sub_handler(sub_handler);
-                self.state.on_load(props);
+                return self.state.on_load(props);
             }
         }
+        VecDeque::new()
     }
 }
 

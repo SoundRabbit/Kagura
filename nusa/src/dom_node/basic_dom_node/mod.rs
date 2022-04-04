@@ -48,10 +48,8 @@ impl RenderNode<VecDeque<FutureMsg>> for BasicDomNode {
     fn render(&mut self) -> VecDeque<FutureMsg> {
         self.html_renderer
             .set_children((self.render)(&self.dummy_state.as_ref()));
-        let v_nodes = self.html_renderer.render(&self.dummy_state);
+        let (v_nodes, mut tasks) = self.html_renderer.render(&self.dummy_state);
         let event_listeners = self.dom_renderer.render(v_nodes);
-
-        let mut tasks = VecDeque::new();
 
         for rendered_handler in event_listeners.rendered_handlers {
             let msg = rendered_handler();
