@@ -10,13 +10,26 @@
 //!
 //! enum Msg {
 //!     SetCount(usize)
-//!     WaitCount,
 //! }
 //!
 //! enum On {}
 //!
+//! struct Timer {
+//!     interval: u64,
+//! }
+//!
 //! struct MyComponent {
 //!     count: usize,
+//! }
+//!
+//! impl BatchProcess<MyComponent> for Timer {
+//!     fn poll(&mut self) -> Pin<Box<dyn Future<Output = Cmd<MyComponent>>>> {
+//!         let duration = Duration::from_millis(self.interval);
+//!         Box::pin(async move {
+//!             time::sleep(duration).await;
+//!             Cmd::chain(Msg::SetCount(count + 1))
+//!         })
+//!     }
 //! }
 //!
 //! impl Component for MyComponent {
@@ -33,7 +46,9 @@
 //!
 //! impl Update for MyComponent {
 //!     fn on_assemble(self: Pin<&mut Self>) -> Cmd<Self> {
-//!         Cmd::chain(Msg::WaitCount)
+//!         Cmd::batch(Timer {
+//!             interval: 1000
+//!         })
 //!     }
 //!
 //!     fn on_load(self: Pin<&mut Self>, props: Props) -> Cmd<Self> {
@@ -48,13 +63,6 @@
 //!             Msg::SetCount(count) => {
 //!                 self.count = count;
 //!                 Cmd::none()
-//!             }
-//!             Msg::WaitCount => {
-//!                 let count = self.count;
-//!                 Cmd::task(async move {
-//!                     time::sleep(Duration::from_millis(1000)).await;
-//!                     Cmd::chain(Msg::SetCount(count + 1))
-//!                 })
 //!             }
 //!         }
 //!     }
