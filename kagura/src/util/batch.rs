@@ -1,3 +1,5 @@
+use crate::component::{BatchProcess, Cmd};
+use crate::Component;
 use async_std::sync::{Arc, Mutex};
 use std::collections::VecDeque;
 use std::future::Future;
@@ -46,6 +48,12 @@ impl<T> Batch<T> {
         BatchPoller {
             state: Arc::clone(&self.state),
         }
+    }
+}
+
+impl<C: Component> BatchProcess<C> for Batch<Cmd<C>> {
+    fn poll(&mut self) -> Pin<Box<dyn Future<Output = Cmd<C>>>> {
+        Box::pin(Batch::poll(self))
     }
 }
 

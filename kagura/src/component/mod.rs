@@ -68,10 +68,11 @@
 //! }
 //! ```
 
-mod cmd;
+pub mod cmd;
 
 use std::pin::Pin;
 
+pub use cmd::BatchProcess;
 pub use cmd::Cmd;
 
 /// `Component` trait is a common component in Kagura-component.  

@@ -1,6 +1,6 @@
 use super::msg::{FutureMsg, Msg};
-use crate::component::Cmd;
-use crate::component::Update;
+use crate::component::cmd::BatchProcess;
+use crate::component::{Cmd, Update};
 use crate::Component;
 use std::collections::VecDeque;
 use std::pin::Pin;
@@ -11,6 +11,7 @@ pub type SubHandler<This: Component> = Box<dyn FnMut(This::Event) -> Msg>;
 pub struct BasicComponentState<C: Update + 'static> {
     state: Pin<Box<C>>,
     sub_handler: Option<SubHandler<C>>,
+    batch: Vec<Box<dyn BatchProcess<C>>>,
 }
 
 pub enum BasicNodeMsg<C: Component + 'static> {
@@ -20,7 +21,11 @@ pub enum BasicNodeMsg<C: Component + 'static> {
 
 impl<C: Update> BasicComponentState<C> {
     pub fn new(state: Pin<Box<C>>, sub_handler: Option<SubHandler<C>>) -> Self {
-        Self { state, sub_handler }
+        Self {
+            state,
+            sub_handler,
+            batch: vec![],
+        }
     }
 
     pub fn eval_cmd(&mut self, cmd: Cmd<C>) -> VecDeque<FutureMsg> {
@@ -41,6 +46,10 @@ impl<C: Update> BasicComponentState<C> {
                 };
                 vec![Box::pin(future_msg) as FutureMsg].into()
             }
+            Cmd::Batch(batch) => {
+                self.batch.push(batch);
+                VecDeque::new()
+            }
             Cmd::Submit(sub) => {
                 if let Some(sub_handler) = &mut self.sub_handler {
                     let msg = sub_handler(sub);
@@ -52,19 +61,40 @@ impl<C: Update> BasicComponentState<C> {
         }
     }
 
+    pub fn load_batch(&mut self) -> VecDeque<FutureMsg> {
+        let mut tasks = vec![];
+        let target_id = self.target_id();
+        for batch in &mut self.batch {
+            let task = batch.poll();
+            let future_msg = async move {
+                let cmd = task.await;
+                let msg = Msg::new(target_id, Box::new(BasicNodeMsg::ComponentCmd(cmd)));
+                vec![msg]
+            };
+            tasks.push(Box::pin(future_msg) as FutureMsg);
+        }
+        tasks.into()
+    }
+
     pub fn on_assemble(&mut self) -> VecDeque<FutureMsg> {
         let cmd = self.state.as_mut().on_assemble();
-        self.eval_cmd(cmd)
+        let mut tasks = self.eval_cmd(cmd);
+        tasks.append(&mut self.load_batch());
+        tasks
     }
 
     pub fn on_load(&mut self, props: C::Props) -> VecDeque<FutureMsg> {
         let cmd = self.state.as_mut().on_load(props);
-        self.eval_cmd(cmd)
+        let mut tasks = self.eval_cmd(cmd);
+        tasks.append(&mut self.load_batch());
+        tasks
     }
 
     pub fn on_update(&mut self, msg: C::Msg) -> VecDeque<FutureMsg> {
         let cmd = self.state.as_mut().update(msg);
-        self.eval_cmd(cmd)
+        let mut tasks = self.eval_cmd(cmd);
+        tasks.append(&mut self.load_batch());
+        tasks
     }
 
     pub fn update(&mut self, msg: BasicNodeMsg<C>) -> VecDeque<FutureMsg> {
