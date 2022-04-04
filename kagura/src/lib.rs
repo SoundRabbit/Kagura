@@ -9,6 +9,6 @@ pub use component::Component;
 pub use runtime::Runtime;
 
 pub mod prelude {
-    pub use crate::component::{Cmd, Constructor, Render, Update};
+    pub use crate::component::{BatchProcess, Cmd, Constructor, Render, Update};
     pub use crate::Component;
 }
