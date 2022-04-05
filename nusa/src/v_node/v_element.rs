@@ -15,7 +15,7 @@ pub struct VElement {
 pub type VAttributes = HashMap<String, VAttributeValues>;
 
 pub struct VEvents {
-    pub events: HashMap<String, Vec<VEventHandler>>,
+    pub events: HashMap<String, VEventHandlers>,
     pub refers: Vec<VReferHandler>,
 }
 
@@ -32,6 +32,11 @@ pub enum VAttributeValue {
     Int(i64),
     Num(f64),
     None,
+}
+
+pub struct VEventHandlers {
+    pub bubbles: Vec<VEventHandler>,
+    pub captures: Vec<VEventHandler>,
 }
 
 pub type VEventHandler = Box<dyn FnOnce(VEvent) -> Msg>;
@@ -100,6 +105,15 @@ impl VEvents {
                 .iter()
                 .map(|refer| refer.as_rendered())
                 .collect(),
+        }
+    }
+}
+
+impl VEventHandlers {
+    pub fn new() -> Self {
+        Self {
+            bubbles: vec![],
+            captures: vec![],
         }
     }
 }

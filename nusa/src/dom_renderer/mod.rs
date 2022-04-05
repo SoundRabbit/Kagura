@@ -276,50 +276,46 @@ impl DomRenderer {
     ) -> VEventListeners {
         let mut event_listeners = HashMap::new();
         for (event_type, event_handlers) in events.events {
-            if let Some(child_event_listener) =
+            let child_event_listener = if let Some(child_event_listener) =
                 child_event_listeners.event_listeners.remove(&event_type)
             {
-                let raw = raw.clone();
-                event_listeners.insert(
-                    event_type,
-                    Box::new(move |e: web_sys::Event| {
-                        if raw.contains(
-                            e.target()
-                                .as_ref()
-                                .and_then(|target| target.dyn_ref::<web_sys::Node>()),
-                        ) {
-                            let (stop_propagation, mut msgs) = child_event_listener(e.clone());
-
-                            if !stop_propagation {
-                                let (stop_propagation, mut additional_msgs) =
-                                    Self::attach_events(&e, event_handlers);
-                                msgs.append(&mut additional_msgs);
-                                (stop_propagation, msgs)
-                            } else {
-                                (stop_propagation, msgs)
-                            }
-                        } else {
-                            (false, VecDeque::new())
-                        }
-                    }) as VEventListener,
-                );
+                child_event_listener
             } else {
-                let raw = raw.clone();
-                event_listeners.insert(
-                    event_type,
-                    Box::new(move |e: web_sys::Event| {
-                        if raw.contains(
-                            e.target()
-                                .as_ref()
-                                .and_then(|target| target.dyn_ref::<web_sys::Node>()),
-                        ) {
-                            Self::attach_events(&e, event_handlers)
-                        } else {
-                            (false, VecDeque::new())
+                Box::new(|_e: web_sys::Event| (false, VecDeque::new()))
+            };
+            let raw = raw.clone();
+            event_listeners.insert(
+                event_type,
+                Box::new(move |e: web_sys::Event| {
+                    if raw.contains(
+                        e.target()
+                            .as_ref()
+                            .and_then(|target| target.dyn_ref::<web_sys::Node>()),
+                    ) {
+                        let (stop_propagation, mut msgs) =
+                            Self::attach_events(&e, event_handlers.captures);
+
+                        if stop_propagation {
+                            return (stop_propagation, msgs);
                         }
-                    }) as VEventListener,
-                );
-            }
+
+                        let (stop_propagation, mut additional_msgs) =
+                            child_event_listener(e.clone());
+                        msgs.append(&mut additional_msgs);
+
+                        if stop_propagation {
+                            return (stop_propagation, msgs);
+                        }
+
+                        let (stop_propagation, mut additional_msgs) =
+                            Self::attach_events(&e, event_handlers.bubbles);
+                        msgs.append(&mut additional_msgs);
+                        (stop_propagation, msgs)
+                    } else {
+                        (false, VecDeque::new())
+                    }
+                }) as VEventListener,
+            );
         }
 
         for (event_type, event_listener) in child_event_listeners.event_listeners {
