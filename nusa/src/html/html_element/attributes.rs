@@ -134,17 +134,17 @@ macro_rules! attr {
 }
 
 impl Attributes {
-    attr!("checked": bool / "" as checked);
-    attr!("class": String / "" as class);
-    attr!("draggable": String / "" as draggable);
-    attr!("hidden": bool / "" as hidden);
-    attr!("href": String / "" as href);
-    attr!("id": String / "" as id);
+    attr!("checked": bool / " " as checked);
+    attr!("class": String / " " as class);
+    attr!("draggable": String / " " as draggable);
+    attr!("hidden": bool / " " as hidden);
+    attr!("href": String / " " as href);
+    attr!("id": String / " " as id);
     attr!("placeholder": String / "" as placeholder);
-    attr!("src": String / "" as src);
-    attr!("title": String / "" as title);
-    attr!("type_": String / "" as type_);
-    attr!("value": String / "" as value);
+    attr!("src": String / " " as src);
+    attr!("title": String / " " as title);
+    attr!("type_": String / " " as type_);
+    attr!("value": String / " " as value);
 }
 
 impl std::default::Default for Attributes {
