@@ -146,3 +146,9 @@ impl Attributes {
     attr!("type_": String / "" as type_);
     attr!("value": String / "" as value);
 }
+
+impl std::default::Default for Attributes {
+    fn default() -> Self {
+        Self::new()
+    }
+}

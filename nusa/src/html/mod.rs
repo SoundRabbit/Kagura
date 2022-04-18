@@ -163,3 +163,9 @@ impl Html {
     element!("video" as video);
     element!("wbr" as wbr);
 }
+
+impl std::default::Default for Html {
+    fn default() -> Self {
+        Self::none()
+    }
+}

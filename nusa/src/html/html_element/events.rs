@@ -143,3 +143,9 @@ impl Events {
     event_type!("keypress" as on_keypress / capture_on_keypress);
     event_type!("keyup" as on_keyup / capture_on_keyup);
 }
+
+impl std::default::Default for Events {
+    fn default() -> Self {
+        Self::new()
+    }
+}
