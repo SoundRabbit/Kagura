@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct VText {
     pub text: Rc<String>,
 }

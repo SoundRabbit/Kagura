@@ -5,6 +5,7 @@ use kagura::node::Msg;
 use std::cell::Cell;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::rc::Rc;
+use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
 pub type VEventListener = Box<dyn FnOnce(web_sys::Event) -> (bool, VecDeque<Msg>)>;

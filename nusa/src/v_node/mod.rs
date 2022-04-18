@@ -4,6 +4,7 @@ pub mod v_text;
 pub use v_element::VElement;
 pub use v_text::VText;
 
+#[derive(Debug)]
 pub enum VNode {
     VElement(VElement),
     VText(VText),

@@ -4,6 +4,7 @@ use std::cell::Cell;
 use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
 
+#[derive(Debug)]
 pub struct VElement {
     pub tag_name: Rc<String>,
     pub attributes: VAttributes,
@@ -14,18 +15,19 @@ pub struct VElement {
 
 pub type VAttributes = HashMap<String, VAttributeValues>;
 
+#[derive(Debug)]
 pub struct VEvents {
     pub events: HashMap<String, VEventHandlers>,
     pub refers: Vec<VReferHandler>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct VAttributeValues {
     pub values: VecDeque<VAttributeValue>,
     pub delimiter: String,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum VAttributeValue {
     Str(Rc<String>),
     Nut(u64),
@@ -118,6 +120,12 @@ impl VEventHandlers {
     }
 }
 
+impl std::fmt::Debug for VEventHandlers {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "VEventHandlers")
+    }
+}
+
 impl VEvent {
     pub fn new(data: web_sys::Event, stop_propagation: Rc<Cell<bool>>) -> Self {
         Self {
@@ -152,6 +160,12 @@ impl VReferHandler {
             target: self.target,
             handler: None,
         }
+    }
+}
+
+impl std::fmt::Debug for VReferHandler {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "VReferHandler")
     }
 }
 
