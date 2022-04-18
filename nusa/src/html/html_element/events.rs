@@ -130,6 +130,7 @@ impl Events {
     event_type!("drop" as on_drop / capture_on_drop);
 
     event_type!("click" as on_click / capture_on_click);
+    event_type!("contextmenu" as on_click / capture_on_click);
     event_type!("dblclick" as on_dblclick / capture_on_dblclick);
     event_type!("mousedown" as on_mousedown / capture_on_mousedown);
     event_type!("mouseenter" as on_mouseenter / capture_on_mouseenter);
