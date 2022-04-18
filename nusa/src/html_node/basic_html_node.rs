@@ -20,10 +20,13 @@ impl<This: Render<Html> + Update> BasicHtmlNode<This> {
         index_id: Option<String>,
         sub_handler: Option<SubHandler<This>>,
         state: Pin<Box<This>>,
+        children: This::Children,
     ) -> Self {
+        let mut html_renderer = HtmlRenderer::new();
+        html_renderer.set_children(children);
         Self {
             state: BasicComponentState::new(state, sub_handler),
-            html_renderer: HtmlRenderer::new(),
+            html_renderer,
             index_id,
         }
     }

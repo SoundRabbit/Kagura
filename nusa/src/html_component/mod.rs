@@ -25,8 +25,9 @@ pub trait HtmlComponent: Update + Render<Html> + Constructor + 'static {
         index_id: Option<String>,
         sub_handler: Option<SubHandler<Self>>,
         state: Pin<Box<Self>>,
+        children: Self::Children,
     ) -> Box<dyn HtmlNode> {
-        Box::new(BasicHtmlNode::new(index_id, sub_handler, state))
+        Box::new(BasicHtmlNode::new(index_id, sub_handler, state, children))
     }
 
     fn new<Target: Component + 'static>(

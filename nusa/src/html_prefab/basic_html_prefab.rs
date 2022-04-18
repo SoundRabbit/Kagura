@@ -12,13 +12,23 @@ pub struct BasicHtmlPrefab<This: Update + Render<Html> + 'static> {
     index_id: Option<String>,
     sub_handler: Option<SubHandler<This>>,
     node_constructor: Box<
-        dyn FnOnce(Option<String>, Option<SubHandler<This>>, Pin<Box<This>>) -> Box<dyn HtmlNode>,
+        dyn FnOnce(
+            Option<String>,
+            Option<SubHandler<This>>,
+            Pin<Box<This>>,
+            This::Children,
+        ) -> Box<dyn HtmlNode>,
     >,
 }
 
 impl<This: Update + Render<Html>> BasicHtmlPrefab<This> {
     pub fn new(
-        node_constructor: impl FnOnce(Option<String>, Option<SubHandler<This>>, Pin<Box<This>>) -> Box<dyn HtmlNode>
+        node_constructor: impl FnOnce(
+                Option<String>,
+                Option<SubHandler<This>>,
+                Pin<Box<This>>,
+                This::Children,
+            ) -> Box<dyn HtmlNode>
             + 'static,
         constructor: impl FnOnce(This::Props) -> This + 'static,
         index_id: Option<String>,
@@ -69,6 +79,6 @@ impl<This: Update + Render<Html>> HtmlPrefab for BasicHtmlPrefab<This> {
         let state = (self.constructor)(self.props);
         let index_id = self.index_id;
         let sub_handler = self.sub_handler;
-        (self.node_constructor)(index_id, sub_handler, Box::pin(state))
+        (self.node_constructor)(index_id, sub_handler, Box::pin(state), self.children)
     }
 }
