@@ -338,12 +338,12 @@ impl DomRenderer {
             .collect::<HashSet<_>>();
 
         for mut refer in events.refers {
-            // if !prev_targets.contains(&refer.target) {
-            //     if let Some(handler) = refer.take() {
-            //         let raw = raw.clone();
-            //         rendered_handlers.push(Box::new(move || handler(raw)));
-            //     }
-            // }
+            if !prev_targets.contains(&refer.target) {
+                if let Some(handler) = refer.take() {
+                    let raw = raw.clone();
+                    rendered_handlers.push(Box::new(move || handler(raw)));
+                }
+            }
         }
 
         VEventListeners {
