@@ -1,0 +1,17 @@
+{
+  "name": "subscription-2",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "./node_modules/.bin/webpack-dev-server",
+    "make": "./node_modules/.bin/webpack"
+  },
+  "devDependencies": {
+    "@wasm-tool/wasm-pack-plugin": "^1.6.0",
+    "html-webpack-plugin": "^5.3.2",
+    "webpack": "^5.70",
+    "webpack-cli": "^4.9.0",
+    "webpack-dev-server": "^4.3.1"
+  }
+}
