@@ -290,7 +290,7 @@ dependencies = [
 
 [[package]]
 name = "kagura"
-version = "0.14.1"
+version = "0.14.3"
 dependencies = [
  "async-std",
 ]
@@ -344,7 +344,7 @@ dependencies = [
 
 [[package]]
 name = "nusa"
-version = "0.1.0"
+version = "0.1.4"
 dependencies = [
  "async-std",
  "js-sys",

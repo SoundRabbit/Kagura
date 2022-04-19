@@ -34,7 +34,7 @@ impl<This: Render<Html> + Update> BasicHtmlNode<This> {
 
 impl<This: Render<Html> + Update> UpdateNode for BasicHtmlNode<This> {
     fn update(&mut self, mut msg: Msg) -> VecDeque<FutureMsg> {
-        if msg.target() == self.state.target_id() {
+        if msg.target() == self.state.target_id() && msg.type_is::<BasicNodeMsg<This>>() {
             if let Some(msg) = msg
                 .take()
                 .and_then(|msg| msg.downcast::<BasicNodeMsg<This>>().ok())

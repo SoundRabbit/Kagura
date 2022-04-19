@@ -36,4 +36,12 @@ impl Msg {
     pub fn take(&mut self) -> Option<Box<dyn Any>> {
         self.data.borrow_mut().take()
     }
+
+    pub fn type_is<T: Any>(&self) -> bool {
+        if let Some(data) = self.data.borrow().as_ref() {
+            data.downcast_ref::<T>().is_some()
+        } else {
+            false
+        }
+    }
 }
