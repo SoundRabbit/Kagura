@@ -147,11 +147,11 @@ impl<This: Render<Html>> HtmlRenderer<This> {
     }
 
     fn render_html_group(
-        rendered_nodes: VecDeque<RenderedNode>,
+        prev_rendered_nodes: VecDeque<RenderedNode>,
         htmls: VecDeque<Html>,
     ) -> (VecDeque<RenderedNode>, VecDeque<VNode>, VecDeque<FutureMsg>) {
         let mixeds = crate::util::mix(
-            rendered_nodes,
+            prev_rendered_nodes,
             htmls.into(),
             Self::compare_node_and_html,
             1.0,
@@ -161,25 +161,25 @@ impl<This: Render<Html>> HtmlRenderer<This> {
 
         mixeds.into_iter().fold(
             (VecDeque::new(), VecDeque::new(), VecDeque::new()),
-            |(mut rendered_nodes, mut v_nodes, mut tasks), mixed| {
+            |(mut now_rendered_nodes, mut v_nodes, mut tasks), mixed| {
                 let rendered = match mixed {
                     crate::util::mix::Edit::Append(html) => {
                         Some(Self::render_html(RenderedNode::None, html))
                     }
-                    crate::util::mix::Edit::Keep(rendered_node, html) => {
-                        Some(Self::render_html(rendered_node, html))
+                    crate::util::mix::Edit::Keep(prev_rendered_node, html) => {
+                        Some(Self::render_html(prev_rendered_node, html))
                     }
                     crate::util::mix::Edit::Remove(..) => None,
-                    crate::util::mix::Edit::Replace(rendered_node, html) => {
-                        Some(Self::render_html(rendered_node, html))
+                    crate::util::mix::Edit::Replace(prev_rendered_node, html) => {
+                        Some(Self::render_html(prev_rendered_node, html))
                     }
                 };
                 if let Some(mut rendered) = rendered {
-                    rendered_nodes.push_back(rendered.0);
+                    now_rendered_nodes.push_back(rendered.0);
                     v_nodes.append(&mut rendered.1);
                     tasks.append(&mut rendered.2);
                 }
-                (rendered_nodes, v_nodes, tasks)
+                (now_rendered_nodes, v_nodes, tasks)
             },
         )
     }

@@ -31,12 +31,13 @@ impl DomRenderer {
     }
 
     pub fn render(&mut self, nows: VecDeque<VNode>) -> VEventListeners {
-        let mut prevs = nows
+        let rendered_nows = nows
             .iter()
             .map(|now| now.as_rendered())
             .collect::<VecDeque<_>>();
-        std::mem::swap(&mut self.prevs, &mut prevs);
-        let event_listeners = self.render_nodes(prevs, nows, &self.root);
+        let preves = self.prevs.drain(..).collect::<VecDeque<_>>();
+        let event_listeners = self.render_nodes(preves, nows, &self.root);
+        self.prevs = rendered_nows;
         event_listeners
     }
 
@@ -46,48 +47,55 @@ impl DomRenderer {
         nows: VecDeque<VNode>,
         raw_parent: &web_sys::Node,
     ) -> VEventListeners {
-        let mixeds = crate::util::mix(prevs, nows, Self::compare_nodes, 5.0, 10.0, 1.0);
         let mut raws = {
             let raws = raw_parent.child_nodes();
             let mut buf = VecDeque::new();
             let raws_len = raws.length();
             for i in 0..raws_len {
                 if let Some(raw) = raws.get(i) {
-                    buf.push_back(raw);
+                    let node_type = raw.node_type();
+                    if node_type == 1 || node_type == 3 {
+                        buf.push_back(raw);
+                    }
                 }
             }
             buf
         };
 
+        let mixeds = crate::util::mix(prevs, nows, Self::compare_nodes, 5.0, 10.0, 1.0);
+
+        let mut raw_idx = 0;
         let (events, rendered_handlers) = mixeds.into_iter().fold(
             (HashMap::new(), vec![]),
             |(mut events, mut rendereds), mixed| {
                 match mixed {
                     crate::util::mix::Edit::Append(now) => {
-                        let event_lsiteners = self.append_node(now, &raw_parent, raws.front());
+                        let event_lsiteners = self.append_node(now, &raw_parent, raws.get(raw_idx));
                         let mut rendered_handlers =
                             Self::append_events(&mut events, event_lsiteners);
                         rendereds.append(&mut rendered_handlers);
                     }
                     crate::util::mix::Edit::Keep(prev, now) => {
-                        if let Some(raw) = raws.pop_front() {
+                        if let Some(raw) = raws.get(raw_idx) {
                             let event_lsiteners = self.keep_node(prev, now, &raw);
                             let mut rendered_handlers =
                                 Self::append_events(&mut events, event_lsiteners);
                             rendereds.append(&mut rendered_handlers);
+                            raw_idx += 1;
                         }
                     }
                     crate::util::mix::Edit::Remove(..) => {
-                        if let Some(raw_remove) = raws.pop_front() {
+                        if let Some(raw_remove) = raws.remove(raw_idx) {
                             let _ = raw_parent.remove_child(&raw_remove);
                         }
                     }
                     crate::util::mix::Edit::Replace(_, now) => {
-                        if let Some(raw) = raws.pop_front() {
+                        if let Some(raw) = raws.get(raw_idx) {
                             let event_lsiteners = self.replace_node(now, &raw_parent, &raw);
                             let mut rendered_handlers =
                                 Self::append_events(&mut events, event_lsiteners);
                             rendereds.append(&mut rendered_handlers);
+                            raw_idx += 1;
                         }
                     }
                 }
@@ -139,7 +147,7 @@ impl DomRenderer {
     fn compare_nodes(prev: &VNode, now: &VNode) -> bool {
         match (prev, now) {
             (VNode::VElement(prev), VNode::VElement(now)) => {
-                prev.tag_name == now.tag_name && prev.index_id == now.index_id
+                *prev.tag_name == *now.tag_name && prev.index_id == now.index_id
             }
             (VNode::VText(..), VNode::VText(..)) => true,
             (VNode::RNode(prev), VNode::RNode(now)) => prev.is_same_node(Some(&now)),
@@ -162,10 +170,9 @@ impl DomRenderer {
             VNode::RNode(now_raw) => (VEventListeners::new(), now_raw),
         };
 
-        if let Some(raw_after) = raw_after {
-            let _ = raw_parent.insert_before(raw_after, Some(&raw));
-        } else {
-            let _ = raw_parent.append_child(&raw);
+        if let Err(err) = raw_parent.insert_before(&raw, raw_after) {
+            web_sys::console::log_1(&err);
+            panic!();
         }
 
         event_listeners
@@ -175,7 +182,8 @@ impl DomRenderer {
         match (prev, now) {
             (VNode::VElement(prev), VNode::VElement(now)) => self.keep_element(prev, now, raw),
             (VNode::VText(prev), VNode::VText(now)) => self.keep_text(prev, now, raw),
-            _ => VEventListeners::new(),
+            (VNode::RNode(..), VNode::RNode(..)) => VEventListeners::new(),
+            _ => unreachable!(),
         }
     }
 
@@ -210,7 +218,7 @@ impl DomRenderer {
 
             event_listeners
         } else {
-            VEventListeners::new()
+            unreachable!();
         }
     }
 
@@ -254,18 +262,18 @@ impl DomRenderer {
     }
 
     fn create_element(&self, now: VElement, prev: &VEvents) -> (VEventListeners, web_sys::Node) {
-        let raw = self.document.create_element(&now.tag_name).unwrap();
+        let raw_element = self.document.create_element(&now.tag_name).unwrap();
 
-        let child_event_listeners = self.render_nodes(VecDeque::new(), now.children, &raw);
+        let child_event_listeners = self.render_nodes(VecDeque::new(), now.children, &raw_element);
 
         for (attr_name, attr_values) in now.attributes {
-            Self::set_attribute(&attr_name, &attr_values, &raw);
+            Self::set_attribute(&attr_name, &attr_values, &raw_element);
         }
 
         let event_listeners =
-            Self::create_event_listeners(now.events, child_event_listeners, &raw, &prev);
+            Self::create_event_listeners(now.events, child_event_listeners, &raw_element, &prev);
 
-        (event_listeners, raw.into())
+        (event_listeners, raw_element.into())
     }
 
     fn create_event_listeners(
@@ -330,12 +338,12 @@ impl DomRenderer {
             .collect::<HashSet<_>>();
 
         for mut refer in events.refers {
-            if !prev_targets.contains(&refer.target) {
-                if let Some(handler) = refer.take() {
-                    let raw = raw.clone();
-                    rendered_handlers.push(Box::new(move || handler(raw)));
-                }
-            }
+            // if !prev_targets.contains(&refer.target) {
+            //     if let Some(handler) = refer.take() {
+            //         let raw = raw.clone();
+            //         rendered_handlers.push(Box::new(move || handler(raw)));
+            //     }
+            // }
         }
 
         VEventListeners {

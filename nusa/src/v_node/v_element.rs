@@ -4,7 +4,6 @@ use std::cell::Cell;
 use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
 
-#[derive(Debug)]
 pub struct VElement {
     pub tag_name: Rc<String>,
     pub attributes: VAttributes,
@@ -66,6 +65,14 @@ impl VElement {
                 .collect(),
             index_id: self.index_id.clone(),
         }
+    }
+}
+
+impl std::fmt::Debug for VElement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct(&self.tag_name)
+            .field("children", &self.children)
+            .finish()
     }
 }
 
