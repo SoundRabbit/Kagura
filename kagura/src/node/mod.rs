@@ -10,6 +10,7 @@ pub use basic_component_state::SubHandler;
 pub use msg::Msg;
 
 pub struct NodeCmd {
+    msgs: VecDeque<Msg>,
     scedules: VecDeque<FutureMsg>,
 }
 
@@ -23,11 +24,43 @@ pub trait RenderNode<T> {
 
 impl NodeCmd {
     pub fn new(scedules: VecDeque<FutureMsg>) -> Self {
-        Self { scedules }
+        Self {
+            scedules,
+            msgs: VecDeque::new(),
+        }
     }
 
-    pub fn scedules(self) -> VecDeque<FutureMsg> {
+    pub fn append(&mut self, other: &mut Self) {
+        self.append_msgs(&mut other.msgs);
+        self.append_scedules(&mut other.scedules);
+    }
+
+    pub fn into_scedules(self) -> VecDeque<FutureMsg> {
         self.scedules
+    }
+
+    pub fn append_scedules(&mut self, scedules: &mut VecDeque<FutureMsg>) {
+        self.scedules.append(scedules);
+    }
+
+    pub fn into_msgs(self) -> VecDeque<Msg> {
+        self.msgs
+    }
+
+    pub fn msgs(&self) -> &VecDeque<Msg> {
+        &self.msgs
+    }
+
+    pub fn msgs_mut(&mut self) -> &mut VecDeque<Msg> {
+        &mut self.msgs
+    }
+
+    pub fn push_msg(&mut self, msg: Msg) {
+        self.msgs.push_back(msg);
+    }
+
+    pub fn append_msgs(&mut self, msgs: &mut VecDeque<Msg>) {
+        self.msgs.append(msgs);
     }
 }
 

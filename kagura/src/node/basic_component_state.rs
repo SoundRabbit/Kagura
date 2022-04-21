@@ -41,12 +41,14 @@ impl<C: Update> BasicComponentState<C> {
     pub fn eval_cmd(&mut self, cmd: Cmd<C>) -> NodeCmd {
         match cmd {
             Cmd::None => NodeCmd::new(VecDeque::new()),
-            Cmd::List(cmds) => NodeCmd::new(
+            Cmd::List(cmds) => {
                 cmds.into_iter()
-                    .map(|cmd| self.eval_cmd(cmd).scedules())
-                    .flatten()
-                    .collect(),
-            ),
+                    .fold(NodeCmd::new(VecDeque::new()), |mut node_cmd, child_cmd| {
+                        let mut child_node_cmd = self.eval_cmd(child_cmd);
+                        node_cmd.append(&mut child_node_cmd);
+                        node_cmd
+                    })
+            }
             Cmd::Chain(msg) => self.on_update(msg),
             Cmd::Task(task) => {
                 let target_id = self.target_id();
@@ -68,9 +70,9 @@ impl<C: Update> BasicComponentState<C> {
             Cmd::Submit(sub) => {
                 if let Some(sub_handler) = &mut self.sub_handler {
                     let msg = sub_handler(sub);
-                    NodeCmd::new(
-                        vec![FutureMsg::Task(Box::pin(std::future::ready(vec![msg])))].into(),
-                    )
+                    let mut node_cmd = NodeCmd::new(VecDeque::new());
+                    node_cmd.push_msg(msg);
+                    node_cmd
                 } else {
                     NodeCmd::new(VecDeque::new())
                 }
