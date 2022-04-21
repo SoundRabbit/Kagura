@@ -31,7 +31,6 @@ impl DomRenderer {
     }
 
     pub fn render(&mut self, nows: VecDeque<VNode>) -> VEventListeners {
-        web_sys::console::log_1(&wasm_bindgen::JsValue::from("render nodes"));
         let rendered_nows = nows
             .iter()
             .map(|now| now.as_rendered())

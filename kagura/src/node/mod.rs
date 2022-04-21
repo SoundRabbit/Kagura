@@ -10,7 +10,6 @@ pub use basic_component_state::SubHandler;
 pub use msg::Msg;
 
 pub struct NodeCmd {
-    is_lazy: bool,
     scedules: VecDeque<FutureMsg>,
 }
 
@@ -23,16 +22,8 @@ pub trait RenderNode<T> {
 }
 
 impl NodeCmd {
-    pub fn new(is_lazy: bool, scedules: VecDeque<FutureMsg>) -> Self {
-        Self { is_lazy, scedules }
-    }
-
-    pub fn set_as_busy(&mut self) {
-        self.is_lazy = false;
-    }
-
-    pub fn is_lazy(&self) -> bool {
-        self.is_lazy
+    pub fn new(scedules: VecDeque<FutureMsg>) -> Self {
+        Self { scedules }
     }
 
     pub fn scedules(self) -> VecDeque<FutureMsg> {

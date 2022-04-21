@@ -41,7 +41,7 @@ impl<This: Render<Html> + Update> UpdateNode for BasicHtmlNode<This> {
             {
                 self.state.update(*msg)
             } else {
-                NodeCmd::new(true, VecDeque::new())
+                NodeCmd::new(VecDeque::new())
             }
         } else {
             self.html_renderer.update(msg)
@@ -78,7 +78,7 @@ impl<This: Render<Html> + Update> HtmlNode for BasicHtmlNode<This> {
                 return self.state.on_load(props);
             }
         }
-        NodeCmd::new(true, VecDeque::new())
+        NodeCmd::new(VecDeque::new())
     }
 }
 

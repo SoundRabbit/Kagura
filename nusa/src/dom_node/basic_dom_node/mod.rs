@@ -62,7 +62,6 @@ impl RenderNode<NodeCmd> for BasicDomNode {
 
         if self.is_first_render {
             node_cmd.push_back(FutureMsg::Batch(Box::new(self.dom_events.batch())));
-            node_cmd.set_as_busy();
         }
 
         node_cmd

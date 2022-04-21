@@ -42,32 +42,24 @@ impl<This: Render<Html>> HtmlRenderer<This> {
         match node {
             RenderedNode::Component(node) => node.update(msg),
             RenderedNode::Element(children) => {
-                let mut scedules = VecDeque::new();
-                let mut is_busy = false;
+                let mut scedules = NodeCmd::new(VecDeque::new());
                 for child in children {
                     let mut node_cmd = Self::update_rendered(child, msg.clone());
                     scedules.append(&mut node_cmd);
-                    if !node_cmd.is_lazy() {
-                        is_busy = true;
-                    }
                 }
-                NodeCmd::new(!is_busy, scedules)
+                scedules
             }
             RenderedNode::Fragment(children) => {
-                let mut scedules = VecDeque::new();
-                let mut is_busy = false;
+                let mut scedules = NodeCmd::new(VecDeque::new());
                 for child in children {
                     let mut node_cmd = Self::update_rendered(child, msg.clone());
                     scedules.append(&mut node_cmd);
-                    if !node_cmd.is_lazy() {
-                        is_busy = true;
-                    }
                 }
-                NodeCmd::new(!is_busy, scedules)
+                scedules
             }
-            RenderedNode::RNode(..) => NodeCmd::new(true, VecDeque::new()),
-            RenderedNode::None => NodeCmd::new(true, VecDeque::new()),
-            RenderedNode::Text => NodeCmd::new(true, VecDeque::new()),
+            RenderedNode::RNode(..) => NodeCmd::new(VecDeque::new()),
+            RenderedNode::None => NodeCmd::new(VecDeque::new()),
+            RenderedNode::Text => NodeCmd::new(VecDeque::new()),
         }
     }
 
@@ -127,9 +119,6 @@ impl<This: Render<Html>> HtmlRenderer<This> {
                     let mut node_cmd = component.update_by_prefab(prefab);
                     let (v_nodes, mut child_node_cmd) = component.render();
                     node_cmd.append(&mut child_node_cmd);
-                    if !child_node_cmd.is_lazy() {
-                        node_cmd.set_as_busy();
-                    }
                     (RenderedNode::Component(component), v_nodes, node_cmd)
                 }
                 _ => {
@@ -137,9 +126,6 @@ impl<This: Render<Html>> HtmlRenderer<This> {
                     let mut node_cmd = component.on_assemble();
                     let (v_nodes, mut child_node_cmd) = component.render();
                     node_cmd.append(&mut child_node_cmd);
-                    if !child_node_cmd.is_lazy() {
-                        node_cmd.set_as_busy();
-                    }
                     (RenderedNode::Component(component), v_nodes, node_cmd)
                 }
             },
@@ -149,17 +135,17 @@ impl<This: Render<Html>> HtmlRenderer<This> {
                     text: Rc::new(text.text),
                 })]
                 .into(),
-                NodeCmd::new(true, VecDeque::new()),
+                NodeCmd::new(VecDeque::new()),
             ),
             Html::RNode(r_node) => (
                 RenderedNode::RNode(r_node.clone()),
                 vec![VNode::RNode(r_node)].into(),
-                NodeCmd::new(true, VecDeque::new()),
+                NodeCmd::new(VecDeque::new()),
             ),
             Html::None => (
                 RenderedNode::None,
                 VecDeque::new(),
-                NodeCmd::new(true, VecDeque::new()),
+                NodeCmd::new(VecDeque::new()),
             ),
         }
     }
@@ -181,7 +167,7 @@ impl<This: Render<Html>> HtmlRenderer<This> {
             (
                 VecDeque::new(),
                 VecDeque::new(),
-                NodeCmd::new(true, VecDeque::new()),
+                NodeCmd::new(VecDeque::new()),
             ),
             |(mut now_rendered_nodes, mut v_nodes, mut node_cmd), mixed| {
                 let rendered = match mixed {
@@ -200,9 +186,6 @@ impl<This: Render<Html>> HtmlRenderer<This> {
                     now_rendered_nodes.push_back(rendered.0);
                     v_nodes.append(&mut rendered.1);
                     node_cmd.append(&mut rendered.2);
-                    if !rendered.2.is_lazy() {
-                        node_cmd.set_as_busy();
-                    }
                 }
                 (now_rendered_nodes, v_nodes, node_cmd)
             },

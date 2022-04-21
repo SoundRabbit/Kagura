@@ -47,7 +47,7 @@ pub trait HtmlComponent: Update + Render<Html> + Constructor + 'static {
                 Box::new(move |e| {
                     let msg = x(e);
                     let msg = BasicNodeMsg::ComponentMsg::<Target>(msg);
-                    Msg::busy(target_id, Box::new(msg))
+                    Msg::new(target_id, Box::new(msg))
                 }) as SubHandler<Self>
             }),
             children,

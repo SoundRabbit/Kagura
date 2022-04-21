@@ -7,23 +7,13 @@ use std::rc::Rc;
 pub struct Msg {
     target: usize,
     data: Rc<RefCell<Option<Box<dyn Any>>>>,
-    is_lazy: bool,
 }
 
 impl Msg {
-    pub fn busy(target: usize, data: Box<dyn Any>) -> Self {
+    pub fn new(target: usize, data: Box<dyn Any>) -> Self {
         Self {
             target,
             data: Rc::new(RefCell::new(Some(data))),
-            is_lazy: false,
-        }
-    }
-
-    pub fn lazy(target: usize, data: Box<dyn Any>) -> Self {
-        Self {
-            target,
-            data: Rc::new(RefCell::new(Some(data))),
-            is_lazy: true,
         }
     }
 
@@ -49,9 +39,5 @@ impl Msg {
         } else {
             false
         }
-    }
-
-    pub fn is_lazy(&self) -> bool {
-        self.is_lazy
     }
 }

@@ -40,9 +40,8 @@ impl<C: Update> BasicComponentState<C> {
 
     pub fn eval_cmd(&mut self, cmd: Cmd<C>) -> NodeCmd {
         match cmd {
-            Cmd::None => NodeCmd::new(false, VecDeque::new()),
+            Cmd::None => NodeCmd::new(VecDeque::new()),
             Cmd::List(cmds) => NodeCmd::new(
-                false,
                 cmds.into_iter()
                     .map(|cmd| self.eval_cmd(cmd).scedules())
                     .flatten()
@@ -53,13 +52,12 @@ impl<C: Update> BasicComponentState<C> {
                 let target_id = self.target_id();
                 let future_msg = async move {
                     let cmd = task.await;
-                    let msg = Msg::busy(target_id, Box::new(BasicNodeMsg::ComponentCmd(cmd)));
+                    let msg = Msg::new(target_id, Box::new(BasicNodeMsg::ComponentCmd(cmd)));
                     vec![msg]
                 };
-                NodeCmd::new(false, vec![FutureMsg::Task(Box::pin(future_msg))].into())
+                NodeCmd::new(vec![FutureMsg::Task(Box::pin(future_msg))].into())
             }
             Cmd::Batch(batch) => NodeCmd::new(
-                false,
                 vec![FutureMsg::Batch(Box::new(BasicNodeBatch::new(
                     self.target_id(),
                     Arc::clone(&self.batch_is_enable),
@@ -71,11 +69,10 @@ impl<C: Update> BasicComponentState<C> {
                 if let Some(sub_handler) = &mut self.sub_handler {
                     let msg = sub_handler(sub);
                     NodeCmd::new(
-                        true,
                         vec![FutureMsg::Task(Box::pin(std::future::ready(vec![msg])))].into(),
                     )
                 } else {
-                    NodeCmd::new(false, VecDeque::new())
+                    NodeCmd::new(VecDeque::new())
                 }
             }
         }
@@ -155,7 +152,7 @@ impl<C: Component> Batch for BasicNodeBatch<C> {
             let target_id = self.target_id;
             let task = Box::pin(async move {
                 let cmd = task.await;
-                let msg = Msg::busy(target_id, Box::new(BasicNodeMsg::ComponentCmd(cmd)));
+                let msg = Msg::new(target_id, Box::new(BasicNodeMsg::ComponentCmd(cmd)));
                 vec![msg]
             }) as crate::future_msg::Task;
             Some(task)
