@@ -1,9 +1,13 @@
-use super::msg::{FutureMsg, Msg};
+use super::msg::Msg;
+use super::NodeCmd;
 use crate::component::cmd::BatchProcess;
 use crate::component::{Cmd, Update};
-use crate::Component;
+use crate::future_msg::Batch;
+use crate::{Component, FutureMsg};
+use std::cell::Cell;
 use std::collections::VecDeque;
 use std::pin::Pin;
+use std::sync::Arc;
 
 #[allow(type_alias_bounds)]
 pub type SubHandler<This: Component> = Box<dyn FnMut(This::Event) -> Msg>;
@@ -11,7 +15,7 @@ pub type SubHandler<This: Component> = Box<dyn FnMut(This::Event) -> Msg>;
 pub struct BasicComponentState<C: Update + 'static> {
     state: Pin<Box<C>>,
     sub_handler: Option<SubHandler<C>>,
-    batch: Vec<Box<dyn BatchProcess<C>>>,
+    batch_is_enable: Arc<Cell<bool>>,
 }
 
 pub enum BasicNodeMsg<C: Component + 'static> {
@@ -19,85 +23,83 @@ pub enum BasicNodeMsg<C: Component + 'static> {
     ComponentCmd(Cmd<C>),
 }
 
+pub struct BasicNodeBatch<C: Component + 'static> {
+    is_enable: Arc<Cell<bool>>,
+    target_id: usize,
+    batch: Box<dyn BatchProcess<C>>,
+}
+
 impl<C: Update> BasicComponentState<C> {
     pub fn new(state: Pin<Box<C>>, sub_handler: Option<SubHandler<C>>) -> Self {
         Self {
             state,
             sub_handler,
-            batch: vec![],
+            batch_is_enable: Arc::new(Cell::new(true)),
         }
     }
 
-    pub fn eval_cmd(&mut self, cmd: Cmd<C>) -> VecDeque<FutureMsg> {
+    pub fn eval_cmd(&mut self, cmd: Cmd<C>) -> NodeCmd {
         match cmd {
-            Cmd::None => VecDeque::new(),
-            Cmd::List(cmds) => cmds
-                .into_iter()
-                .map(|cmd| self.eval_cmd(cmd))
-                .flatten()
-                .collect(),
+            Cmd::None => NodeCmd::new(false, VecDeque::new()),
+            Cmd::List(cmds) => NodeCmd::new(
+                false,
+                cmds.into_iter()
+                    .map(|cmd| self.eval_cmd(cmd).scedules())
+                    .flatten()
+                    .collect(),
+            ),
             Cmd::Chain(msg) => self.on_update(msg),
             Cmd::Task(task) => {
                 let target_id = self.target_id();
                 let future_msg = async move {
                     let cmd = task.await;
-                    let msg = Msg::new(target_id, Box::new(BasicNodeMsg::ComponentCmd(cmd)));
+                    let msg = Msg::busy(target_id, Box::new(BasicNodeMsg::ComponentCmd(cmd)));
                     vec![msg]
                 };
-                vec![Box::pin(future_msg) as FutureMsg].into()
+                NodeCmd::new(false, vec![FutureMsg::Task(Box::pin(future_msg))].into())
             }
-            Cmd::Batch(batch) => {
-                self.batch.push(batch);
-                VecDeque::new()
-            }
+            Cmd::Batch(batch) => NodeCmd::new(
+                false,
+                vec![FutureMsg::Batch(Box::new(BasicNodeBatch::new(
+                    self.target_id(),
+                    Arc::clone(&self.batch_is_enable),
+                    batch,
+                )))]
+                .into(),
+            ),
             Cmd::Submit(sub) => {
                 if let Some(sub_handler) = &mut self.sub_handler {
                     let msg = sub_handler(sub);
-                    vec![Box::pin(std::future::ready(vec![msg])) as FutureMsg].into()
+                    NodeCmd::new(
+                        true,
+                        vec![FutureMsg::Task(Box::pin(std::future::ready(vec![msg])))].into(),
+                    )
                 } else {
-                    VecDeque::new()
+                    NodeCmd::new(false, VecDeque::new())
                 }
             }
         }
     }
 
-    pub fn load_batch(&mut self) -> VecDeque<FutureMsg> {
-        let mut tasks = vec![];
-        let target_id = self.target_id();
-        for batch in &mut self.batch {
-            let task = batch.poll();
-            let future_msg = async move {
-                let cmd = task.await;
-                let msg = Msg::new(target_id, Box::new(BasicNodeMsg::ComponentCmd(cmd)));
-                vec![msg]
-            };
-            tasks.push(Box::pin(future_msg) as FutureMsg);
-        }
-        tasks.into()
-    }
-
-    pub fn on_assemble(&mut self) -> VecDeque<FutureMsg> {
+    pub fn on_assemble(&mut self) -> NodeCmd {
         let cmd = self.state.as_mut().on_assemble();
-        let mut tasks = self.eval_cmd(cmd);
-        tasks.append(&mut self.load_batch());
+        let tasks = self.eval_cmd(cmd);
         tasks
     }
 
-    pub fn on_load(&mut self, props: C::Props) -> VecDeque<FutureMsg> {
+    pub fn on_load(&mut self, props: C::Props) -> NodeCmd {
         let cmd = self.state.as_mut().on_load(props);
-        let mut tasks = self.eval_cmd(cmd);
-        tasks.append(&mut self.load_batch());
+        let tasks = self.eval_cmd(cmd);
         tasks
     }
 
-    pub fn on_update(&mut self, msg: C::Msg) -> VecDeque<FutureMsg> {
+    pub fn on_update(&mut self, msg: C::Msg) -> NodeCmd {
         let cmd = self.state.as_mut().update(msg);
-        let mut tasks = self.eval_cmd(cmd);
-        tasks.append(&mut self.load_batch());
+        let tasks = self.eval_cmd(cmd);
         tasks
     }
 
-    pub fn update(&mut self, msg: BasicNodeMsg<C>) -> VecDeque<FutureMsg> {
+    pub fn update(&mut self, msg: BasicNodeMsg<C>) -> NodeCmd {
         match msg {
             BasicNodeMsg::ComponentCmd(cmd) => self.eval_cmd(cmd),
             BasicNodeMsg::ComponentMsg(msg) => self.on_update(msg),
@@ -123,5 +125,42 @@ impl<C: Update> std::ops::Deref for BasicComponentState<C> {
 impl<C: Update> std::ops::DerefMut for BasicComponentState<C> {
     fn deref_mut(&mut self) -> &mut Pin<Box<C>> {
         &mut self.state
+    }
+}
+
+impl<C: Update> std::ops::Drop for BasicComponentState<C> {
+    fn drop(&mut self) {
+        self.batch_is_enable.set(false);
+    }
+}
+
+impl<C: Component> BasicNodeBatch<C> {
+    pub fn new(
+        target_id: usize,
+        is_enable: Arc<Cell<bool>>,
+        batch: Box<dyn BatchProcess<C>>,
+    ) -> Self {
+        Self {
+            target_id,
+            is_enable,
+            batch,
+        }
+    }
+}
+
+impl<C: Component> Batch for BasicNodeBatch<C> {
+    fn poll(&mut self) -> Option<crate::future_msg::Task> {
+        if self.is_enable.get() {
+            let task = self.batch.poll();
+            let target_id = self.target_id;
+            let task = Box::pin(async move {
+                let cmd = task.await;
+                let msg = Msg::busy(target_id, Box::new(BasicNodeMsg::ComponentCmd(cmd)));
+                vec![msg]
+            }) as crate::future_msg::Task;
+            Some(task)
+        } else {
+            None
+        }
     }
 }

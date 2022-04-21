@@ -1,8 +1,8 @@
 use super::DomNode;
 use crate::DomEvents;
 use crate::{DomRenderer, Html, HtmlRenderer};
-use kagura::node::{FutureMsg, Msg, RenderNode, UpdateNode};
-use std::collections::VecDeque;
+use kagura::node::{Msg, NodeCmd, RenderNode, UpdateNode};
+use kagura::FutureMsg;
 use std::future;
 use std::pin::Pin;
 
@@ -16,6 +16,7 @@ pub struct BasicDomNode {
     dom_events: DomEvents,
     html_renderer: HtmlRenderer<BasicDomComponent>,
     render: Box<dyn FnMut(&BasicDomComponent) -> Vec<Html>>,
+    is_first_render: bool,
 }
 
 impl BasicDomNode {
@@ -34,31 +35,37 @@ impl BasicDomNode {
             dom_events,
             html_renderer: HtmlRenderer::new(),
             render,
+            is_first_render: true,
         }
     }
 }
 
 impl UpdateNode for BasicDomNode {
-    fn update(&mut self, msg: Msg) -> VecDeque<FutureMsg> {
+    fn update(&mut self, msg: Msg) -> NodeCmd {
         self.html_renderer.update(msg)
     }
 }
 
-impl RenderNode<VecDeque<FutureMsg>> for BasicDomNode {
-    fn render(&mut self) -> VecDeque<FutureMsg> {
+impl RenderNode<NodeCmd> for BasicDomNode {
+    fn render(&mut self) -> NodeCmd {
         self.html_renderer
             .set_children((self.render)(&self.dummy_state.as_ref()));
-        let (v_nodes, mut tasks) = self.html_renderer.render(&self.dummy_state);
+        let (v_nodes, mut node_cmd) = self.html_renderer.render(&self.dummy_state);
         let event_listeners = self.dom_renderer.render(v_nodes);
 
         for rendered_handler in event_listeners.rendered_handlers {
             let msg = rendered_handler();
-            tasks.push_back(Box::pin(future::ready(vec![msg])) as FutureMsg);
+            node_cmd.push_back(FutureMsg::Task(Box::pin(future::ready(vec![msg]))));
         }
 
-        tasks.push_back(self.dom_events.listen(event_listeners.event_listeners));
+        self.dom_events.listen(event_listeners.event_listeners);
 
-        tasks
+        if self.is_first_render {
+            node_cmd.push_back(FutureMsg::Batch(Box::new(self.dom_events.batch())));
+            node_cmd.set_as_busy();
+        }
+
+        node_cmd
     }
 }
 

@@ -1,23 +1,29 @@
 use crate::Component;
 use std::any::Any;
 use std::cell::RefCell;
-use std::future::Future;
-use std::pin::Pin;
 use std::rc::Rc;
 
 #[derive(Clone)]
 pub struct Msg {
     target: usize,
     data: Rc<RefCell<Option<Box<dyn Any>>>>,
+    is_lazy: bool,
 }
 
-pub type FutureMsg = Pin<Box<dyn Future<Output = Vec<Msg>>>>;
-
 impl Msg {
-    pub fn new(target: usize, data: Box<dyn Any>) -> Self {
+    pub fn busy(target: usize, data: Box<dyn Any>) -> Self {
         Self {
             target,
             data: Rc::new(RefCell::new(Some(data))),
+            is_lazy: false,
+        }
+    }
+
+    pub fn lazy(target: usize, data: Box<dyn Any>) -> Self {
+        Self {
+            target,
+            data: Rc::new(RefCell::new(Some(data))),
+            is_lazy: true,
         }
     }
 
@@ -43,5 +49,9 @@ impl Msg {
         } else {
             false
         }
+    }
+
+    pub fn is_lazy(&self) -> bool {
+        self.is_lazy
     }
 }

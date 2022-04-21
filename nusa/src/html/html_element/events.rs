@@ -36,7 +36,7 @@ impl Events {
         handelrs.bubbles.push(Box::new(move |e| {
             let msg = handler(e);
             let msg = BasicNodeMsg::<Target>::ComponentMsg(msg);
-            Msg::new(target_id, Box::new(msg))
+            Msg::busy(target_id, Box::new(msg))
         }));
         self.events.events.insert(type_, handelrs);
         self
@@ -58,7 +58,7 @@ impl Events {
         handelrs.captures.push(Box::new(move |e| {
             let msg = handler(e);
             let msg = BasicNodeMsg::<Target>::ComponentMsg(msg);
-            Msg::new(target_id, Box::new(msg))
+            Msg::busy(target_id, Box::new(msg))
         }));
         self.events.events.insert(type_, handelrs);
         self
@@ -73,7 +73,7 @@ impl Events {
         let handler = Box::new(move |el| {
             let msg = handler(el);
             let msg = BasicNodeMsg::<Target>::ComponentMsg(msg);
-            Msg::new(target_id, Box::new(msg))
+            Msg::busy(target_id, Box::new(msg))
         });
         let refer_handler = VReferHandler::new(target_id, handler);
         self.events.refers.push(refer_handler);

@@ -44,7 +44,7 @@ impl DomEvent {
         Self { state }
     }
 
-    pub fn poll(&self) -> impl Future<Output = web_sys::Event> {
+    pub fn poll(&self) -> DomEventPoller {
         DomEventPoller {
             state: Arc::clone(&self.state),
         }
@@ -56,10 +56,9 @@ impl Future for DomEventPoller {
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if let Some(mut state) = self.as_mut().state.try_lock_arc() {
+            state.waker = Some(cx.waker().clone());
             if let Some(event) = state.event_queue.pop_front() {
                 return Poll::Ready(event);
-            } else {
-                state.waker = Some(cx.waker().clone())
             }
         }
         Poll::Pending

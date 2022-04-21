@@ -1,34 +1,48 @@
-mod task;
-
-use crate::node::{FutureMsg, RenderNode, UpdateNode};
+use crate::node::{NodeCmd, RenderNode, UpdateNode};
 use std::collections::VecDeque;
-use task::Task;
 
-pub struct Runtime<Node: UpdateNode + RenderNode<VecDeque<FutureMsg>> + 'static> {
-    task: Task,
+mod schedule;
+
+use schedule::Scedule;
+
+pub struct Runtime<Node: UpdateNode + RenderNode<NodeCmd> + 'static> {
+    schedule: Scedule,
     node: Node,
 }
 
-impl<Node: UpdateNode + RenderNode<VecDeque<FutureMsg>> + 'static> Runtime<Node> {
+impl<Node: UpdateNode + RenderNode<NodeCmd> + 'static> Runtime<Node> {
     pub async fn run(node: Node) {
         let mut runtime = Self {
-            task: Task::new(),
+            schedule: Scedule::new(),
             node: node,
         };
 
+        let mut is_busy = true;
         loop {
-            runtime.event_loop().await;
+            is_busy = runtime.event_loop(is_busy).await;
         }
     }
 
-    async fn event_loop(&mut self) {
-        let mut tasks = self.node.render();
-        self.task.append(&mut tasks).await;
-        let msgs = self.task.listen().await;
-        let mut tasks = VecDeque::new();
+    async fn event_loop(&mut self, is_busy: bool) -> bool {
+        let mut is_busy = if is_busy {
+            let mut schedules = self.node.render();
+            self.schedule.append(&mut schedules).await;
+            !schedules.is_lazy()
+        } else {
+            false
+        };
+        let msgs = self.schedule.listen().await;
+        let mut schedules = VecDeque::new();
         for msg in msgs {
-            tasks.append(&mut self.node.update(msg));
+            let msg_is_busy = !msg.is_lazy();
+            let mut node_cmd = self.node.update(msg);
+            let cmd_is_busy = !node_cmd.is_lazy();
+            schedules.append(&mut node_cmd);
+            if msg_is_busy && cmd_is_busy {
+                is_busy = true;
+            }
         }
-        self.task.append(&mut tasks).await;
+        self.schedule.append(&mut schedules).await;
+        is_busy
     }
 }

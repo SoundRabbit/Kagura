@@ -3,7 +3,7 @@ use crate::Html;
 use crate::HtmlNode;
 use crate::VNode;
 use kagura::component::Render;
-use kagura::node::{FutureMsg, Msg};
+use kagura::node::{Msg, NodeCmd};
 use std::collections::VecDeque;
 use std::pin::Pin;
 use std::rc::Rc;
@@ -34,36 +34,44 @@ impl<This: Render<Html>> HtmlRenderer<This> {
         self.children = Some(children);
     }
 
-    pub fn update(&mut self, msg: Msg) -> VecDeque<FutureMsg> {
+    pub fn update(&mut self, msg: Msg) -> NodeCmd {
         Self::update_rendered(&mut self.rendered_node, msg)
     }
 
-    fn update_rendered(node: &mut RenderedNode, msg: Msg) -> VecDeque<FutureMsg> {
+    fn update_rendered(node: &mut RenderedNode, msg: Msg) -> NodeCmd {
         match node {
             RenderedNode::Component(node) => node.update(msg),
             RenderedNode::Element(children) => {
-                let mut tasks = VecDeque::new();
+                let mut scedules = VecDeque::new();
+                let mut is_busy = false;
                 for child in children {
-                    let mut tasks_buf = Self::update_rendered(child, msg.clone());
-                    tasks.append(&mut tasks_buf);
+                    let mut node_cmd = Self::update_rendered(child, msg.clone());
+                    scedules.append(&mut node_cmd);
+                    if !node_cmd.is_lazy() {
+                        is_busy = true;
+                    }
                 }
-                tasks
+                NodeCmd::new(!is_busy, scedules)
             }
             RenderedNode::Fragment(children) => {
-                let mut tasks = VecDeque::new();
+                let mut scedules = VecDeque::new();
+                let mut is_busy = false;
                 for child in children {
-                    let mut tasks_buf = Self::update_rendered(child, msg.clone());
-                    tasks.append(&mut tasks_buf);
+                    let mut node_cmd = Self::update_rendered(child, msg.clone());
+                    scedules.append(&mut node_cmd);
+                    if !node_cmd.is_lazy() {
+                        is_busy = true;
+                    }
                 }
-                tasks
+                NodeCmd::new(!is_busy, scedules)
             }
-            RenderedNode::RNode(..) => VecDeque::new(),
-            RenderedNode::None => VecDeque::new(),
-            RenderedNode::Text => VecDeque::new(),
+            RenderedNode::RNode(..) => NodeCmd::new(true, VecDeque::new()),
+            RenderedNode::None => NodeCmd::new(true, VecDeque::new()),
+            RenderedNode::Text => NodeCmd::new(true, VecDeque::new()),
         }
     }
 
-    pub fn render(&mut self, state: &Pin<Box<This>>) -> (VecDeque<VNode>, VecDeque<FutureMsg>) {
+    pub fn render(&mut self, state: &Pin<Box<This>>) -> (VecDeque<VNode>, NodeCmd) {
         let html = state
             .as_ref()
             .render(self.children.take().unwrap_or_default());
@@ -71,15 +79,15 @@ impl<This: Render<Html>> HtmlRenderer<This> {
         let mut rendered_node = RenderedNode::None;
         std::mem::swap(&mut self.rendered_node, &mut rendered_node);
 
-        let (rendered_node, v_nodes, tasks) = Self::render_html(rendered_node, html);
+        let (rendered_node, v_nodes, node_cmd) = Self::render_html(rendered_node, html);
         self.rendered_node = rendered_node;
-        (v_nodes, tasks)
+        (v_nodes, node_cmd)
     }
 
     fn render_html(
         rendered_node: RenderedNode,
         html: Html,
-    ) -> (RenderedNode, VecDeque<VNode>, VecDeque<FutureMsg>) {
+    ) -> (RenderedNode, VecDeque<VNode>, NodeCmd) {
         match html {
             Html::Fragment(htmls) => {
                 let rendered_nodes = if let RenderedNode::Fragment(rendered_nodes) = rendered_node {
@@ -116,17 +124,23 @@ impl<This: Render<Html>> HtmlRenderer<This> {
             }
             Html::Component(prefab) => match rendered_node {
                 RenderedNode::Component(mut component) if component.is(prefab.as_ref()) => {
-                    let mut tasks = component.update_by_prefab(prefab);
-                    let (v_nodes, mut child_tasks) = component.render();
-                    tasks.append(&mut child_tasks);
-                    (RenderedNode::Component(component), v_nodes, tasks)
+                    let mut node_cmd = component.update_by_prefab(prefab);
+                    let (v_nodes, mut child_node_cmd) = component.render();
+                    node_cmd.append(&mut child_node_cmd);
+                    if !child_node_cmd.is_lazy() {
+                        node_cmd.set_as_busy();
+                    }
+                    (RenderedNode::Component(component), v_nodes, node_cmd)
                 }
                 _ => {
                     let mut component = prefab.into_node();
-                    let mut tasks = component.on_assemble();
-                    let (v_nodes, mut child_tasks) = component.render();
-                    tasks.append(&mut child_tasks);
-                    (RenderedNode::Component(component), v_nodes, tasks)
+                    let mut node_cmd = component.on_assemble();
+                    let (v_nodes, mut child_node_cmd) = component.render();
+                    node_cmd.append(&mut child_node_cmd);
+                    if !child_node_cmd.is_lazy() {
+                        node_cmd.set_as_busy();
+                    }
+                    (RenderedNode::Component(component), v_nodes, node_cmd)
                 }
             },
             Html::HtmlText(text) => (
@@ -135,21 +149,25 @@ impl<This: Render<Html>> HtmlRenderer<This> {
                     text: Rc::new(text.text),
                 })]
                 .into(),
-                VecDeque::new(),
+                NodeCmd::new(true, VecDeque::new()),
             ),
             Html::RNode(r_node) => (
                 RenderedNode::RNode(r_node.clone()),
                 vec![VNode::RNode(r_node)].into(),
-                VecDeque::new(),
+                NodeCmd::new(true, VecDeque::new()),
             ),
-            Html::None => (RenderedNode::None, VecDeque::new(), VecDeque::new()),
+            Html::None => (
+                RenderedNode::None,
+                VecDeque::new(),
+                NodeCmd::new(true, VecDeque::new()),
+            ),
         }
     }
 
     fn render_html_group(
         prev_rendered_nodes: VecDeque<RenderedNode>,
         htmls: VecDeque<Html>,
-    ) -> (VecDeque<RenderedNode>, VecDeque<VNode>, VecDeque<FutureMsg>) {
+    ) -> (VecDeque<RenderedNode>, VecDeque<VNode>, NodeCmd) {
         let mixeds = crate::util::mix(
             prev_rendered_nodes,
             htmls.into(),
@@ -160,8 +178,12 @@ impl<This: Render<Html>> HtmlRenderer<This> {
         );
 
         mixeds.into_iter().fold(
-            (VecDeque::new(), VecDeque::new(), VecDeque::new()),
-            |(mut now_rendered_nodes, mut v_nodes, mut tasks), mixed| {
+            (
+                VecDeque::new(),
+                VecDeque::new(),
+                NodeCmd::new(true, VecDeque::new()),
+            ),
+            |(mut now_rendered_nodes, mut v_nodes, mut node_cmd), mixed| {
                 let rendered = match mixed {
                     crate::util::mix::Edit::Append(html) => {
                         Some(Self::render_html(RenderedNode::None, html))
@@ -177,9 +199,12 @@ impl<This: Render<Html>> HtmlRenderer<This> {
                 if let Some(mut rendered) = rendered {
                     now_rendered_nodes.push_back(rendered.0);
                     v_nodes.append(&mut rendered.1);
-                    tasks.append(&mut rendered.2);
+                    node_cmd.append(&mut rendered.2);
+                    if !rendered.2.is_lazy() {
+                        node_cmd.set_as_busy();
+                    }
                 }
-                (now_rendered_nodes, v_nodes, tasks)
+                (now_rendered_nodes, v_nodes, node_cmd)
             },
         )
     }

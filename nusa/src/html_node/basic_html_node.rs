@@ -4,7 +4,7 @@ use crate::HtmlRenderer;
 use crate::{Html, HtmlPrefab, VNode};
 use kagura::component::{Render, Update};
 use kagura::node::{
-    BasicComponentState, BasicNodeMsg, FutureMsg, Msg, RenderNode, SubHandler, UpdateNode,
+    BasicComponentState, BasicNodeMsg, Msg, NodeCmd, RenderNode, SubHandler, UpdateNode,
 };
 use std::collections::VecDeque;
 use std::pin::Pin;
@@ -33,7 +33,7 @@ impl<This: Render<Html> + Update> BasicHtmlNode<This> {
 }
 
 impl<This: Render<Html> + Update> UpdateNode for BasicHtmlNode<This> {
-    fn update(&mut self, mut msg: Msg) -> VecDeque<FutureMsg> {
+    fn update(&mut self, mut msg: Msg) -> NodeCmd {
         if msg.target() == self.state.target_id() && msg.type_is::<BasicNodeMsg<This>>() {
             if let Some(msg) = msg
                 .take()
@@ -41,7 +41,7 @@ impl<This: Render<Html> + Update> UpdateNode for BasicHtmlNode<This> {
             {
                 self.state.update(*msg)
             } else {
-                VecDeque::new()
+                NodeCmd::new(true, VecDeque::new())
             }
         } else {
             self.html_renderer.update(msg)
@@ -49,10 +49,8 @@ impl<This: Render<Html> + Update> UpdateNode for BasicHtmlNode<This> {
     }
 }
 
-impl<This: Render<Html> + Update> RenderNode<(VecDeque<VNode>, VecDeque<FutureMsg>)>
-    for BasicHtmlNode<This>
-{
-    fn render(&mut self) -> (VecDeque<VNode>, VecDeque<FutureMsg>) {
+impl<This: Render<Html> + Update> RenderNode<(VecDeque<VNode>, NodeCmd)> for BasicHtmlNode<This> {
+    fn render(&mut self) -> (VecDeque<VNode>, NodeCmd) {
         self.html_renderer.render(&self.state)
     }
 }
@@ -66,11 +64,11 @@ impl<This: Render<Html> + Update> HtmlNode for BasicHtmlNode<This> {
         )
     }
 
-    fn on_assemble(&mut self) -> VecDeque<FutureMsg> {
+    fn on_assemble(&mut self) -> NodeCmd {
         self.state.on_assemble()
     }
 
-    fn update_by_prefab(&mut self, prefab: Box<dyn HtmlPrefab>) -> VecDeque<FutureMsg> {
+    fn update_by_prefab(&mut self, prefab: Box<dyn HtmlPrefab>) -> NodeCmd {
         if self.is(prefab.as_ref()) {
             if let Ok(prefab) = prefab.into_any().downcast::<BasicHtmlPrefab<This>>() {
                 let (props, index_id, sub_handler, children) = prefab.into_data();
@@ -80,7 +78,7 @@ impl<This: Render<Html> + Update> HtmlNode for BasicHtmlNode<This> {
                 return self.state.on_load(props);
             }
         }
-        VecDeque::new()
+        NodeCmd::new(true, VecDeque::new())
     }
 }
 

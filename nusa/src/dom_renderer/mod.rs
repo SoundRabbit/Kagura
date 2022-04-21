@@ -7,7 +7,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::rc::Rc;
 use wasm_bindgen::JsCast;
 
-pub type VEventListener = Box<dyn FnOnce(web_sys::Event) -> (bool, VecDeque<Msg>)>;
+pub type VEventListener = Box<dyn FnMut(web_sys::Event) -> (bool, VecDeque<Msg>)>;
 pub type VRenderedHandler = Box<dyn FnOnce() -> Msg>;
 
 pub struct VEventListeners {
@@ -31,6 +31,7 @@ impl DomRenderer {
     }
 
     pub fn render(&mut self, nows: VecDeque<VNode>) -> VEventListeners {
+        web_sys::console::log_1(&wasm_bindgen::JsValue::from("render nodes"));
         let rendered_nows = nows
             .iter()
             .map(|now| now.as_rendered())
@@ -106,13 +107,13 @@ impl DomRenderer {
 
         let event_listeners = events.into_iter().fold(
             HashMap::new(),
-            |mut event_listeners, (event_type, event_listener_list)| {
+            |mut event_listeners, (event_type, mut event_listener_list)| {
                 event_listeners.insert(
                     event_type,
                     Box::new(move |e: web_sys::Event| {
                         let mut msgs = VecDeque::new();
                         let mut stop_propagation = false;
-                        for event_listener in event_listener_list {
+                        for event_listener in &mut event_listener_list {
                             let mut res = event_listener(e.clone());
                             stop_propagation = stop_propagation | res.0;
                             msgs.append(&mut res.1);
@@ -183,7 +184,13 @@ impl DomRenderer {
             (VNode::VElement(prev), VNode::VElement(now)) => self.keep_element(prev, now, raw),
             (VNode::VText(prev), VNode::VText(now)) => self.keep_text(prev, now, raw),
             (VNode::RNode(..), VNode::RNode(..)) => VEventListeners::new(),
-            _ => unreachable!(),
+            (prev, now) => {
+                web_sys::console::log_1(&wasm_bindgen::JsValue::from(format!(
+                    "{:?} and {:?} is not same node",
+                    prev, now
+                )));
+                unreachable!()
+            }
         }
     }
 
@@ -218,6 +225,9 @@ impl DomRenderer {
 
             event_listeners
         } else {
+            web_sys::console::log_1(&wasm_bindgen::JsValue::from(
+                "Can not dy_ref as web_sys::Element",
+            ));
             unreachable!();
         }
     }
@@ -284,7 +294,7 @@ impl DomRenderer {
     ) -> VEventListeners {
         let mut event_listeners = HashMap::new();
         for (event_type, event_handlers) in events.events {
-            let child_event_listener = if let Some(child_event_listener) =
+            let mut child_event_listener = if let Some(child_event_listener) =
                 child_event_listeners.event_listeners.remove(&event_type)
             {
                 child_event_listener
@@ -292,6 +302,7 @@ impl DomRenderer {
                 Box::new(|_e: web_sys::Event| (false, VecDeque::new()))
             };
             let raw = raw.clone();
+            let mut event_handlers = Some(event_handlers);
             event_listeners.insert(
                 event_type,
                 Box::new(move |e: web_sys::Event| {
@@ -300,11 +311,20 @@ impl DomRenderer {
                             .as_ref()
                             .and_then(|target| target.dyn_ref::<web_sys::Node>()),
                     ) {
-                        let (stop_propagation, mut msgs) =
-                            Self::attach_events(&e, event_handlers.captures);
+                        let (captures, bubbles) = event_handlers
+                            .take()
+                            .map(|eh| (Some(eh.captures), Some(eh.bubbles)))
+                            .unwrap_or((None, None));
 
-                        if stop_propagation {
-                            return (stop_propagation, msgs);
+                        let mut msgs = VecDeque::new();
+                        if let Some(captures) = captures {
+                            let (stop_propagation, mut additional_msgs) =
+                                Self::attach_events(&e, captures);
+                            msgs.append(&mut additional_msgs);
+
+                            if stop_propagation {
+                                return (stop_propagation, msgs);
+                            }
                         }
 
                         let (stop_propagation, mut additional_msgs) =
@@ -315,13 +335,19 @@ impl DomRenderer {
                             return (stop_propagation, msgs);
                         }
 
-                        let (stop_propagation, mut additional_msgs) =
-                            Self::attach_events(&e, event_handlers.bubbles);
-                        msgs.append(&mut additional_msgs);
-                        (stop_propagation, msgs)
-                    } else {
-                        (false, VecDeque::new())
+                        if let Some(bubbles) = bubbles {
+                            let (stop_propagation, mut additional_msgs) =
+                                Self::attach_events(&e, bubbles);
+                            msgs.append(&mut additional_msgs);
+
+                            if stop_propagation {
+                                return (stop_propagation, msgs);
+                            }
+                        }
+
+                        return (stop_propagation, msgs);
                     }
+                    (false, VecDeque::new())
                 }) as VEventListener,
             );
         }
