@@ -38,7 +38,11 @@ impl DomEvent {
                 });
             }
         }) as Box<dyn FnMut(web_sys::Event)>);
-        let _ = target.add_event_listener_with_callback(event_type, a.as_ref().unchecked_ref());
+        let _ = target.add_event_listener_with_callback_and_bool(
+            event_type,
+            a.as_ref().unchecked_ref(),
+            true,
+        );
         a.forget();
 
         Self { state }
