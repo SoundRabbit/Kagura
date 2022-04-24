@@ -3,6 +3,7 @@ use kagura::node::Msg;
 use std::cell::Cell;
 use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
+use wasm_bindgen::JsCast;
 
 pub struct VElement {
     pub tag_name: Rc<String>,
@@ -40,15 +41,15 @@ pub struct VEventHandlers {
     pub captures: Vec<VEventHandler>,
 }
 
-pub type VEventHandler = Box<dyn FnOnce(VEvent) -> Msg>;
+pub type VEventHandler = Box<dyn FnOnce(VEvent<web_sys::Event>) -> Msg>;
 
 pub struct VReferHandler {
     pub target: usize,
     handler: Option<Box<dyn FnOnce(web_sys::Node) -> Msg>>,
 }
 
-pub struct VEvent {
-    data: web_sys::Event,
+pub struct VEvent<T> {
+    data: T,
     stop_propagation: Rc<Cell<bool>>,
 }
 
@@ -133,20 +134,31 @@ impl std::fmt::Debug for VEventHandlers {
     }
 }
 
-impl VEvent {
-    pub fn new(data: web_sys::Event, stop_propagation: Rc<Cell<bool>>) -> Self {
+impl<T> VEvent<T> {
+    pub fn new(data: T, stop_propagation: Rc<Cell<bool>>) -> Self {
         Self {
             data,
             stop_propagation,
         }
     }
 
-    pub fn data(&self) -> web_sys::Event {
-        self.data.clone()
-    }
-
     pub fn stop_propagation(&self) {
         self.stop_propagation.set(true);
+    }
+}
+
+impl<T: Clone> VEvent<T> {
+    pub fn data(&self) -> T {
+        self.data.clone()
+    }
+}
+
+impl<T: JsCast> VEvent<T> {
+    pub fn dyn_into<U: JsCast>(self) -> Result<VEvent<U>, Self> {
+        match self.data.dyn_into::<U>() {
+            Ok(data) => Ok(VEvent::new(data, self.stop_propagation)),
+            Err(data) => Err(Self::new(data, self.stop_propagation)),
+        }
     }
 }
 
@@ -176,14 +188,14 @@ impl std::fmt::Debug for VReferHandler {
     }
 }
 
-impl std::ops::Deref for VEvent {
-    type Target = web_sys::Event;
+impl<T> std::ops::Deref for VEvent<T> {
+    type Target = T;
     fn deref(&self) -> &Self::Target {
         &self.data
     }
 }
 
-impl std::ops::DerefMut for VEvent {
+impl<T> std::ops::DerefMut for VEvent<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.data
     }

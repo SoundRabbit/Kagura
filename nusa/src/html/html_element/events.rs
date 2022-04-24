@@ -24,7 +24,7 @@ impl Events {
         mut self,
         type_: impl Into<String>,
         target: &Target,
-        handler: impl FnOnce(VEvent) -> Target::Msg + 'static,
+        handler: impl FnOnce(VEvent<web_sys::Event>) -> Target::Msg + 'static,
     ) -> Self {
         let type_ = type_.into();
         let target_id = Msg::target_id(target);
@@ -46,7 +46,7 @@ impl Events {
         mut self,
         type_: impl Into<String>,
         target: &Target,
-        handler: impl FnOnce(VEvent) -> Target::Msg + 'static,
+        handler: impl FnOnce(VEvent<web_sys::Event>) -> Target::Msg + 'static,
     ) -> Self {
         let type_ = type_.into();
         let target_id = Msg::target_id(target);
@@ -103,7 +103,7 @@ macro_rules! event_type {
         pub fn $b_name<Target: Component + 'static>(
             self,
             target: &Target,
-            handler: impl FnOnce(VEvent) -> Target::Msg + 'static,
+            handler: impl FnOnce(VEvent<web_sys::Event>) -> Target::Msg + 'static,
         ) -> Self {
             self.on($event_ty, target, handler)
         }
@@ -111,7 +111,7 @@ macro_rules! event_type {
         pub fn $c_name<Target: Component + 'static>(
             self,
             target: &Target,
-            handler: impl FnOnce(VEvent) -> Target::Msg + 'static,
+            handler: impl FnOnce(VEvent<web_sys::Event>) -> Target::Msg + 'static,
         ) -> Self {
             self.capture_on($event_ty, target, handler)
         }
