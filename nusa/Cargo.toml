@@ -1,6 +1,6 @@
 [package]
 name = "nusa"
-version = "0.1.6"
+version = "0.1.7"
 authors = ["SoundRabbit <soundrabbitstd@gmail.com>"]
 edition = "2021"
 description = "web-frontend features for kagura"
