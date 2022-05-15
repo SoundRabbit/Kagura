@@ -143,7 +143,7 @@ impl Attributes {
     attr!("placeholder": String / "" as placeholder);
     attr!("src": String / " " as src);
     attr!("title": String / " " as title);
-    attr!("type_": String / " " as type_);
+    attr!("type": String / " " as type_);
     attr!("value": String / " " as value);
 }
 
