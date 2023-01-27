@@ -8,6 +8,10 @@ use std::collections::VecDeque;
 use std::pin::Pin;
 use std::rc::Rc;
 
+mod namespace_context;
+
+use namespace_context::NamespaceContext;
+
 enum RenderedNode {
     None,
     RNode(web_sys::Node),
@@ -71,7 +75,9 @@ impl<This: Render<Html>> HtmlRenderer<This> {
         let mut rendered_node = RenderedNode::None;
         std::mem::swap(&mut self.rendered_node, &mut rendered_node);
 
-        let (rendered_node, v_nodes, node_cmd) = Self::render_html(rendered_node, html);
+        let mut namespace_context = NamespaceContext::new();
+        let (rendered_node, v_nodes, node_cmd) =
+            Self::render_html(rendered_node, html, &mut namespace_context);
         self.rendered_node = rendered_node;
         (v_nodes, node_cmd)
     }
@@ -79,6 +85,7 @@ impl<This: Render<Html>> HtmlRenderer<This> {
     fn render_html(
         rendered_node: RenderedNode,
         html: Html,
+        namespace_context: &mut NamespaceContext,
     ) -> (RenderedNode, VecDeque<VNode>, NodeCmd) {
         match html {
             Html::Fragment(htmls) => {
@@ -88,7 +95,8 @@ impl<This: Render<Html>> HtmlRenderer<This> {
                     VecDeque::new()
                 };
 
-                let rendered = Self::render_html_group(rendered_nodes, htmls.into());
+                let rendered =
+                    Self::render_html_group(rendered_nodes, htmls.into(), namespace_context);
 
                 (RenderedNode::Fragment(rendered.0), rendered.1, rendered.2)
             }
@@ -99,12 +107,38 @@ impl<This: Render<Html>> HtmlRenderer<This> {
                     VecDeque::new()
                 };
 
-                let children = Self::render_html_group(rendered_nodes, element.children.into());
+                let (default_namespace, is_new_default_namespace_scope) =
+                    if let Some(default_namespace) = element.attributes.get("xmlns") {
+                        let default_namespace = default_namespace.to_string();
+                        namespace_context.push_default_ns(default_namespace.clone());
+                        (Some(default_namespace), true)
+                    } else {
+                        (namespace_context.default_ns().map(String::clone), false)
+                    };
+
+                let children = Self::render_html_group(
+                    rendered_nodes,
+                    element.children.into(),
+                    namespace_context,
+                );
+
+                if is_new_default_namespace_scope {
+                    namespace_context.pop_default_ns();
+                }
+
+                let namespace = if let Some(namespace_name) = element.namespace_name {
+                    namespace_context
+                        .get_ns(namespace_name.as_str())
+                        .map(String::clone)
+                } else {
+                    default_namespace
+                };
 
                 (
                     RenderedNode::Element(children.0),
                     vec![VNode::VElement(VElement {
                         tag_name: Rc::new(element.tag_name),
+                        namespace: namespace,
                         attributes: element.attributes,
                         events: element.events,
                         children: children.1,
@@ -153,6 +187,7 @@ impl<This: Render<Html>> HtmlRenderer<This> {
     fn render_html_group(
         prev_rendered_nodes: VecDeque<RenderedNode>,
         htmls: VecDeque<Html>,
+        namespace_context: &mut NamespaceContext,
     ) -> (VecDeque<RenderedNode>, VecDeque<VNode>, NodeCmd) {
         let mixeds = crate::util::mix(
             prev_rendered_nodes,
@@ -171,16 +206,18 @@ impl<This: Render<Html>> HtmlRenderer<This> {
             ),
             |(mut now_rendered_nodes, mut v_nodes, mut node_cmd), mixed| {
                 let rendered = match mixed {
-                    crate::util::mix::Edit::Append(html) => {
-                        Some(Self::render_html(RenderedNode::None, html))
-                    }
-                    crate::util::mix::Edit::Keep(prev_rendered_node, html) => {
-                        Some(Self::render_html(prev_rendered_node, html))
-                    }
+                    crate::util::mix::Edit::Append(html) => Some(Self::render_html(
+                        RenderedNode::None,
+                        html,
+                        namespace_context,
+                    )),
+                    crate::util::mix::Edit::Keep(prev_rendered_node, html) => Some(
+                        Self::render_html(prev_rendered_node, html, namespace_context),
+                    ),
                     crate::util::mix::Edit::Remove(..) => None,
-                    crate::util::mix::Edit::Replace(prev_rendered_node, html) => {
-                        Some(Self::render_html(prev_rendered_node, html))
-                    }
+                    crate::util::mix::Edit::Replace(prev_rendered_node, html) => Some(
+                        Self::render_html(prev_rendered_node, html, namespace_context),
+                    ),
                 };
                 if let Some(mut rendered) = rendered {
                     now_rendered_nodes.push_back(rendered.0);

@@ -147,7 +147,9 @@ impl DomRenderer {
     fn compare_nodes(prev: &VNode, now: &VNode) -> bool {
         match (prev, now) {
             (VNode::VElement(prev), VNode::VElement(now)) => {
-                *prev.tag_name == *now.tag_name && prev.index_id == now.index_id
+                *prev.tag_name == *now.tag_name
+                    && prev.index_id == now.index_id
+                    && prev.namespace == now.namespace
             }
             (VNode::VText(..), VNode::VText(..)) => true,
             (VNode::RNode(prev), VNode::RNode(now)) => prev.is_same_node(Some(&now)),
@@ -271,7 +273,13 @@ impl DomRenderer {
     }
 
     fn create_element(&self, now: VElement, prev: &VEvents) -> (VEventListeners, web_sys::Node) {
-        let raw_element = self.document.create_element(&now.tag_name).unwrap();
+        let raw_element = if let Some(namespace) = now.namespace {
+            self.document
+                .create_element_ns(Some(namespace.as_str()), &now.tag_name)
+                .unwrap()
+        } else {
+            self.document.create_element(&now.tag_name).unwrap()
+        };
 
         let child_event_listeners = self.render_nodes(VecDeque::new(), now.children, &raw_element);
 

@@ -9,6 +9,7 @@ pub use events::Events;
 
 pub struct HtmlElement {
     pub tag_name: String,
+    pub namespace_name: Option<String>,
     pub children: Vec<Html>,
     pub attributes: VAttributes,
     pub events: VEvents,

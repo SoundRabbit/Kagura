@@ -11,6 +11,7 @@ pub struct VElement {
     pub events: VEvents,
     pub children: VecDeque<VNode>,
     pub index_id: Option<String>,
+    pub namespace: Option<String>,
 }
 
 pub type VAttributes = HashMap<String, VAttributeValues>;
@@ -65,6 +66,7 @@ impl VElement {
                 .map(|v_node| v_node.as_rendered())
                 .collect(),
             index_id: self.index_id.clone(),
+            namespace: self.namespace.clone(),
         }
     }
 }
